@@ -1,6 +1,7 @@
-# Emuera 本体（第三者製バイナリ・同梱ドキュメント）
-*.exe
-Emuera_readme.txt
+# Emuera 本体
+# Emuera.NET はプレイに必要なため同梱する（zlib/libpng ライセンス）
+# 出自の明示のため Emuera_readme.txt も併せて収録
+EmueraEX.exe
 
 # ローカル環境依存の設定・状態
 emuera.config
