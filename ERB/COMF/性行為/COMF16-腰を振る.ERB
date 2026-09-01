@@ -1,0 +1,78 @@
+﻿;================================================
+; 腰を振る（挿入中のみ）
+;  生身で結合しているときだけ選べる抽送コマンド。
+;  攻め（挿入）でも受け（被挿入）でも選べ、地の文とソースを切り替える。
+;  ※体位帯(60-79)ではなく愛撫帯に置く＝USERCOMの現在体位上書き(cat4/6)を避けるため
+;================================================
+@XCOM_ABLE16(ARG)
+VARSET LOCAL
+LOCAL = ARG
+VARSET ARG
+SIF !TCVAR:LOCAL:行為対象
+	RETURN 0
+;生身で結合中のみ（攻め＝挿入 / 受け＝被挿入）
+SIF !TCVAR:LOCAL:挿入 && !生身被挿入部位(LOCAL)
+	RETURN 0
+RETURN GLOBAL_COMABLE(16)
+
+;-------------------------------------------------
+;腰を振る
+;-------------------------------------------------
+@XCOM16(ARG)
+#DIM 相手
+#DIM 攻
+#DIM 受
+VARSET LOCAL
+相手 = TCVAR:ARG:行為対象
+攻 = TCVAR:ARG:挿入
+受 = 生身被挿入部位(ARG)
+PRINTL
+PRINTFORML %"=" * 107%
+PRINTFORML 腰を振る(%CALLNAME:ARG%)
+;地の文（MASTERが関与する時のみ）
+IF ARG == MASTER || 相手 == MASTER
+	IF 攻
+		PRINTFORML %CALLNAME:ARG%は%CALLNAME:相手%の奥を穿つように、腰を前後に使い始めた。
+	ELSE
+		PRINTFORML %CALLNAME:ARG%は繋がったまま、自ら腰をくねらせて刺激を貪った。
+	ENDIF
+	CALL 汎用口上(3, 相手, ARG)
+ENDIF
+;-------------------------------------------------
+;ソース追加処理
+;-------------------------------------------------
+IF 攻
+	;ARGが攻め：ARGは快Ｃ、相手(受け)へ挿入部位の快感
+	DOWNBASE:ARG:体力 += 20
+	DOWNBASE:ARG:気力 += 30
+	SOURCE:ARG:性行動 = 60
+	SOURCE:ARG:快Ｃ = 200
+	SOURCE:ARG:欲情 = 40
+	IF 攻 == 2
+		SOURCE:相手:快Ａ = 200
+	ELSE
+		SOURCE:相手:快Ｖ = 250
+	ENDIF
+	SOURCE:相手:欲情 = 40
+	SOURCE:相手:性行動 = 30
+ELSEIF 受
+	;ARGが受け：ARGは挿入部位の快感、相手(攻め)へ快Ｃ
+	DOWNBASE:ARG:体力 += 15
+	DOWNBASE:ARG:気力 += 30
+	SOURCE:ARG:性行動 = 40
+	SOURCE:ARG:欲情 = 40
+	IF 受 == 2
+		SOURCE:ARG:快Ａ = 200
+	ELSE
+		SOURCE:ARG:快Ｖ = 250
+	ENDIF
+	SOURCE:相手:快Ｃ = 150
+	SOURCE:相手:性行動 = 30
+ENDIF
+;-------------------------------------------------
+;経験の処理
+;-------------------------------------------------
+CALL HETEROSEX_EXP(ARG, 相手, 3)
+CFLAG:ARG:待機時間 += 3
+VARSET ARG
+RETURN 1

@@ -1,0 +1,409 @@
+﻿@SHIHAI_SYUUKEI()
+FOR J:101,301,(CHARANUM + 300)
+	S:(J:101) = 0
+NEXT
+FOR J:101,101,(CHARANUM + 100)
+	S:(J:101) = 0
+NEXT
+FOR J:101,201,(CHARANUM + 200)
+	S:(J:101) = 0
+NEXT
+FOR J:101,901,(CHARANUM + 900)
+	S:(J:101) = 0
+NEXT
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;MAP0	集計上は3
+FOR J:111,1,31
+	SIF PLACE_NAME_0(J:111) == ""
+		CONTINUE
+	J:102 = 0
+	FOR J:101,1,CHARANUM
+		SIF TB:0:(J:111):(J:101) > 0 && ((TB:0:(J:111):(J:101) * BASE:(J:101):評判 / 1000) > (TB:0:(J:111):(J:102) * BASE:(J:102):評判 / 1000))
+			J:102 = J:101
+	NEXT
+	IF J:102
+		J:102 += 300
+		S:(J:102) += 1
+		J:102 += 600
+		S:(J:102) += 1
+	ENDIF
+NEXT
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;MAP1
+FOR J:111,1,31
+	SIF PLACE_NAME_1(J:111) == ""
+		CONTINUE
+	J:102 = 0
+	FOR J:101,1,CHARANUM
+		SIF TB:1:(J:111):(J:101) > 0 && ((TB:1:(J:111):(J:101) * BASE:(J:101):評判 / 1000) > (TB:1:(J:111):(J:102) * BASE:(J:102):評判 / 1000))
+			J:102 = J:101
+	NEXT
+	IF J:102
+		J:102 += 100
+		S:(J:102) += 1
+		J:102 += 800
+		S:(J:102) += 1
+	ENDIF
+NEXT
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;MAP2
+FOR J:111,1,29
+	SIF PLACE_NAME_2(J:111) == ""
+		CONTINUE
+	J:102 = 0
+	FOR J:101,1,CHARANUM
+		SIF TB:2:(J:111):(J:101) > 0 && ((TB:2:(J:111):(J:101) * BASE:(J:101):評判 / 1000) > (TB:2:(J:111):(J:102) * BASE:(J:102):評判 / 1000))
+			J:102 = J:101
+	NEXT
+	IF J:102
+		J:102 += 200
+		S:(J:102) += 1
+		J:102 += 700
+		S:(J:102) += 1
+	ENDIF
+NEXT
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;MAP0	集計上は3
+J:102 = 0
+S:399 = 0
+FOR J:101,301,CHARANUM + 300
+	IF S:(J:101) > J:102
+		J:102 = S:(J:101)
+		S:399 = J:101 - 300
+	ENDIF
+NEXT
+J:102 = 0
+S:398 = 0
+IF S:399
+	FOR J:101,1,CHARANUM
+		SIF TA:(S:399):(J:101):6 > 0 && TA:(S:399):(J:101):6 > TA:(S:399):(J:102):6
+			J:102 = J:101
+	NEXT
+	SIF J:102
+		S:398 = J:102
+ENDIF
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;MAP1
+J:102 = 0
+S:199 = 0
+FOR J:101,101,CHARANUM + 100
+	IF S:(J:101) > J:102
+		J:102 = S:(J:101)
+		S:199 = J:101 - 100
+	ENDIF
+NEXT
+J:102 = 0
+S:198 = 0
+IF S:199
+	FOR J:101,1,CHARANUM
+		SIF TA:(S:199):(J:101):6 > 0 && TA:(S:199):(J:101):6 > TA:(S:199):(J:102):6
+			J:102 = J:101
+	NEXT
+	SIF J:102
+		S:198 = J:102
+ENDIF
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;MAP2
+J:102 = 0
+FOR J:101,201,CHARANUM + 200
+	IF S:(J:101) > J:102
+		J:102 = S:(J:101)
+		S:299 = J:101 - 200
+	ENDIF
+NEXT
+J:102 = 0
+S:298 = 0
+IF S:299
+	FOR J:101,1,CHARANUM
+		SIF TA:(S:299):(J:101):6 > 0 && TA:(S:299):(J:101):6 > TA:(S:299):(J:102):6
+			J:102 = J:101
+	NEXT
+	SIF J:102
+		S:298 = J:102
+ENDIF
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;TOTAL
+J:102 = 0
+FOR J:101,901,CHARANUM + 900
+	IF S:(J:101) > J:102
+		J:102 = S:(J:101)
+		S:999 = J:101 - 900
+	ENDIF
+NEXT
+J:102 = 0
+S:998 = 0
+IF S:999
+	FOR J:101,1,CHARANUM
+		SIF TA:(S:999):(J:101):6 > 0 && TA:(S:999):(J:101):6 > TA:(S:999):(J:102):6
+			J:102 = J:101
+	NEXT
+	SIF J:102
+		S:998 = J:102
+ENDIF
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+PRINTW 月末には、支配者の発表があります。
+PRINTFORML [0] - 「確認」
+INPUT
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+PRINTW 支配者の発表です。
+PRINTW 今月のMAP0の支配者は
+PRINTL         ・
+PRINTL         ・
+PRINTW         ・
+IF S:399
+	SETCOLOR 0xFFCC00
+	PRINTFORMW %CALLNAME:(S:399)%！
+	RESETCOLOR
+	PRINTL おめでとうございます
+	MAXBASE:(S:399):気力 += 500
+	PRINTFORMW %CALLNAME:(S:399)%の気力が５００上がりました
+	IF S:398
+		FOR J:111,1,31
+			SIF PLACE_NAME_0(J:111) == ""
+				CONTINUE
+			SIF TB:0:(J:111):(S:398) > 0
+				TB:0:(J:111):(S:398) = 0
+		NEXT
+		PRINTFORML %CALLNAME:(S:399)%と一番仲が悪かった%CALLNAME:(S:398)%の
+		PRINTW MAP0の支配度が無くなりました
+	ELSE
+		PRINTFORML %CALLNAME:(S:399)%と一番仲が悪かった人は居ませんでした
+		PRINTW 良かったですね
+	ENDIF
+ELSE
+	PRINTW 残念ながら居ませんでした
+ENDIF
+PRINTL
+PRINTL
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+PRINTW 今月のMAP1の支配者は
+PRINTL         ・
+PRINTL         ・
+PRINTW         ・
+IF S:199
+	SETCOLOR 0xFFCC00
+	PRINTFORMW %CALLNAME:(S:199)%！
+	RESETCOLOR
+	PRINTL おめでとうございます
+	MAXBASE:(S:199):気力 += 500
+	PRINTFORMW %CALLNAME:(S:199)%の気力が５００上がりました
+	IF S:198
+		FOR J:111,1,31
+			SIF PLACE_NAME_1(J:111) == ""
+				CONTINUE
+			SIF TB:1:(J:111):(S:198) > 0
+				TB:1:(J:111):(S:198) = 0
+		NEXT
+		PRINTFORML %CALLNAME:(S:199)%と一番仲が悪かった%CALLNAME:(S:198)%の
+		PRINTW MAP1の支配度が無くなりました
+	ELSE
+		PRINTFORML %CALLNAME:(S:199)%と一番仲が悪かった人は居ませんでした
+		PRINTW 良かったですね
+	ENDIF
+ELSE
+	PRINTW 残念ながら居ませんでした
+ENDIF
+PRINTL
+PRINTL
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+PRINTW 今月のMAP2の支配者は
+PRINTL         ・
+PRINTL         ・
+PRINTW         ・
+IF S:299
+	SETCOLOR 0xFFCC00
+	PRINTFORMW %CALLNAME:(S:299)%！
+	RESETCOLOR
+	PRINTL おめでとうございます
+	MAXBASE:(S:299):気力 += 500
+	PRINTFORMW %CALLNAME:(S:299)%の気力が５００上がりました
+	IF S:298
+		FOR J:111,1,29
+			SIF PLACE_NAME_2(J:111) == ""
+				CONTINUE
+			SIF TB:2:(J:111):(S:298) > 0
+				TB:2:(J:111):(S:298) = 0
+		NEXT
+		PRINTFORML %CALLNAME:(S:299)%と一番仲が悪かった%CALLNAME:(S:298)%の
+		PRINTW MAP2の支配度が無くなりました
+	ELSE
+		PRINTFORML %CALLNAME:(S:299)%と一番仲が悪かった人は居ませんでした
+		PRINTW 良かったですね
+	ENDIF
+ELSE
+	PRINTW 残念ながら居ませんでした
+ENDIF
+PRINTL
+PRINTL
+PRINTL         ・
+PRINTL         ・
+PRINTL         ・
+PRINTL そして、
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+PRINTW 今月の総支配者は
+PRINTL         ・
+PRINTL         ・
+PRINTW         ・
+IF S:999
+	SETCOLOR 0xFF0000
+	PRINTFORMW %CALLNAME:(S:999)%！
+	RESETCOLOR
+	PRINTL おめでとうございます
+	MAXBASE:(S:999):体力 += 500
+	MAXBASE:(S:999):気力 += 500
+	PRINTFORMW %CALLNAME:(S:999)%の体力、気力が５００上がりました
+	IF S:999 == 1
+		PRINTFORML [0] - 「確認」
+		INPUT
+		DRAWLINE
+		PRINTW （おめでとう）
+		PRINTW またこの声だ
+		CLEARLINE 2
+		PRINTW （君はこの街を支配した）
+		PRINTW （それによって私も得るものがあった）
+		PRINTW （ありがとう）
+		CLEARLINE 3
+		PRINTW （君もこの街に違和感を感じていただろう…）
+		PRINTW （そう、ここは別の世界だ）
+		PRINTW （望めば元の世界に戻る事は出来る）
+		PRINTW （どうする？）
+		CLEARLINE 4
+		PRINTW （ささやかなお礼として）
+		PRINTW （元の世界で君は）
+		PRINTW （少し運がいい人になっているだろう）
+		CLEARLINE 3
+$INPUT_LOOP901
+		PRINTL どうしますか？
+		PRINTFORML [0] - このままここに居る（そのままゲームを続けます）
+		PRINTFORML [1] - 元の世界に戻る（ゲームを終了します）
+		INPUT
+		SIF RESULT != 0 && RESULT != 1
+			GOTO INPUT_LOOP901
+		IF RESULT == 1
+			CLEARLINE 6
+			DRAWLINE
+			PRINTW 起きたらいつもの部屋にいた。
+			PRINTW しかしここは元の世界だ。
+			CLEARLINE 2
+			PRINTW 運かぁ、何かな？恋人かな？お金かな？
+			PRINTW それに…………
+			PRINTW 不思議な体験をした事で、君は少し優越感も感じていた。
+			CLEARLINE 3
+			PRINTW ………
+			PRINTW ………
+			PRINTW ………
+			PRINTW おわり
+			QUIT
+		ELSE
+			PRINTL 総支配者には景品があります
+			PRINTL         ・
+			PRINTL         ・
+			PRINTL         ・
+			PRINTW では支配者の景品を選んでください。
+		ENDIF
+
+$INPUT_LOOP1
+		PRINTFORML [0] - 何もしない
+		PRINTFORML [1] - みんなからお金を巻き上げる
+		PRINTFORML [2] - 誰かの支配度を０にする
+		INPUT
+		SIF RESULT != 0 && RESULT != 1 && RESULT != 2
+			GOTO INPUT_LOOP1
+		IF RESULT == 1
+			CALL HOUBI1(1)
+		ELSEIF RESULT == 2
+			CALL HOUBI2()
+			SIF RESULT == 0
+				GOTO INPUT_LOOP1
+		ELSE
+			PRINTW おお、なんてやさしい人だ。
+		ENDIF
+	ELSE
+		PRINTL 総支配者には景品があります
+		PRINTL         ・
+		PRINTL         ・
+		PRINTW         ・
+		SELECTCASE NO:(S:999)
+		CASE 5,6,8,10,14,18,23,25,35
+			CALL HOUBI1(S:999)
+			PRINTFORMW %CALLNAME:(S:999)%にお金を巻き上げられた！
+		CASE 2,3,12,13,17,19,21,24,28,30,31,33
+			IF S:998
+				CALL HOUBI2()
+			ELSE
+				PRINTW 何も要求されなかった。
+			ENDIF
+		CASEELSE
+				PRINTW 何も要求されなかった。
+		ENDSELECT
+	ENDIF
+ELSE
+	PRINTW 残念ながら居ませんでした
+ENDIF
+PRINTL         ・
+PRINTL         ・
+PRINTL         ・
+PRINTL こうして
+PRINTW 今月の表彰は終わった。
+
+@HOUBI1(ARG)
+FOR J:101,1,CHARANUM
+	SIF J:101 == ARG
+		CONTINUE
+	SIF NO:(J:101) == 34
+		CONTINUE
+	IF MONEY:(J:101) > 0
+		TA:(J:101):ARG:6 += MONEY:(J:101)
+		MONEY:ARG += MONEY:(J:101)
+		MONEY:(J:101) = 1000
+	ENDIF
+NEXT
+
+@HOUBI2()
+IF S:999 == 1
+	PRINTL 誰にしますか？
+$INPUT_LOOP2
+		PRINTFORML [0] - やっぱりやめる
+	FOR J:101,2,CHARANUM
+		SIF NO:(J:101) == 34
+			CONTINUE
+		PRINTFORML [{J:101}] - %CALLNAME:(J:101)%
+	NEXT
+	INPUT
+	SIF RESULT < 0 && RESULT > CHARANUM
+		GOTO INPUT_LOOP2
+	SIF RESULT == 0
+		RETURN 0
+	S:998 = RESULT
+	SETCOLOR 0xFF0000
+	PRINTFORML [{RESULT}] - %CALLNAME:(RESULT)%
+	RESETCOLOR
+	PRINTL 宜しいですか？
+		PRINTFORML [0] - いいよ
+		PRINTFORML [1] - 考え直す
+$INPUT_LOOP3
+	INPUT
+	SIF RESULT != 0 && RESULT != 1
+		GOTO INPUT_LOOP3
+	IF RESULT == 1
+		GOTO INPUT_LOOP2
+	ENDIF
+ELSE
+	PRINTFORML %CALLNAME:(S:999)%と一番仲が悪かった%CALLNAME:(S:998)%の
+	PRINTW 全ての支配度が無くなりました
+ENDIF
+
+FOR J:111,1,31
+	SIF PLACE_NAME_0(J:111) == ""
+		CONTINUE
+	SIF TB:0:(J:111):(S:998) > 0
+		TB:0:(J:111):(S:998) = 0
+NEXT
+FOR J:111,1,31
+	SIF PLACE_NAME_1(J:111) == ""
+		CONTINUE
+	SIF TB:1:(J:111):(S:998) > 0
+		TB:1:(J:111):(S:998) = 0
+NEXT
+
+FOR J:111,1,29
+	SIF PLACE_NAME_2(J:111) == ""
+		CONTINUE
+	SIF TB:2:(J:111):(S:998) > 0
+		TB:2:(J:111):(S:998) = 0
+NEXT
+RETURN 1
+

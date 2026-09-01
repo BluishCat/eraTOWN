@@ -1,0 +1,79 @@
+﻿;================================================
+; 押小路美麻瑠（キャラ番号 40）の妊娠・出産口上
+; 状況：1危険日 2妊娠中 3発覚 4陣痛開始 5出産 6陣痛激化 7いきみ 8破水
+;================================================
+
+;@妊娠口上_1_40(ARG,ARG:1)
+;;危険日の中出し
+;PRINTFORMW %CALLNAME:ARG%「（危険日の中出しの台詞）」
+;RETURN
+;@妊娠口上_2_40(ARG,ARG:1)
+;;妊娠中の中出し
+;PRINTFORMW %CALLNAME:ARG%「（妊娠中の中出しの台詞）」
+;RETURN
+@妊娠口上_3_40(ARG,ARG:1)
+;妊娠発覚
+SELECTCASE RAND(3)
+	CASE 0
+		PRINTFORMW %CALLNAME:ARG%「あら……わたくし、身籠りましたのね」
+	CASE 1
+		PRINTFORMW %CALLNAME:ARG%「ふふ……押小路家に、新しい命が。」
+	CASEELSE
+		PRINTFORMW %CALLNAME:ARG%「まあ……なんて、喜ばしいこと。」
+ENDSELECT
+RETURN
+@妊娠口上_4_40(ARG,ARG:1)
+;陣痛・破水
+SELECTCASE RAND(3)
+	CASE 0
+		PRINTFORMW %CALLNAME:ARG%「っ……ふぅ、はしたない声が……我慢、我慢……っ」
+	CASE 1
+		PRINTFORMW %CALLNAME:ARG%「くぅ……っ、こ、これは、耐えがたい……！」
+	CASEELSE
+		PRINTFORMW %CALLNAME:ARG%「ん……っ、もう少しの、辛抱ですわ……」
+ENDSELECT
+RETURN
+@妊娠口上_5_40(ARG,ARG:1)
+;出産
+SELECTCASE RAND(3)
+	CASE 0
+		PRINTFORMW %CALLNAME:ARG%「はぁ……ふふ、無事に……よき日ですこと」
+	CASE 1
+		PRINTFORMW %CALLNAME:ARG%「まあ……なんて、愛らしい……」
+	CASEELSE
+		PRINTFORMW %CALLNAME:ARG%「ふぅ……よく生まれてきましたわね。」
+ENDSELECT
+RETURN
+@妊娠口上_6_40(ARG,ARG:1)
+;陣痛激化
+SELECTCASE RAND(2)
+	CASE 0
+		PRINTFORMW %CALLNAME:ARG%「っ……は、はしたない声が……我慢が……！」
+	CASEELSE
+		PRINTFORMW %CALLNAME:ARG%「くぅ……っ、波が、大きく……っ」
+ENDSELECT
+RETURN
+@妊娠口上_7_40(ARG,ARG:1)
+;いきみ
+SELECTCASE RAND(2)
+	CASE 0
+		PRINTFORMW %CALLNAME:ARG%「い、いきみますわ……ん――っ！」
+	CASEELSE
+		PRINTFORMW %CALLNAME:ARG%「お許しを……そーれっ……！」
+ENDSELECT
+RETURN
+@妊娠口上_8_40(ARG,ARG:1)
+;破水
+SELECTCASE RAND(2)
+	CASE 0
+		PRINTFORMW %CALLNAME:ARG%「きゃっ……！？　は、はしたない……破水ですわ……！」
+	CASEELSE
+		PRINTFORMW %CALLNAME:ARG%「まあ……羊水が……こらえきれませんわ……」
+ENDSELECT
+RETURN
+
+@妊娠口上_9_40(ARG,ARG:1)
+;多胎に気づく（驚き）
+TSTR:(FLAG:口上候補数++) = %CALLNAME:ARG%「まあ……!?　まだ、お腹に……!?　双子でしたの……!?」
+TSTR:(FLAG:口上候補数++) = %CALLNAME:ARG%「な、なんてこと……もう一人だなんて……!」
+RETURN

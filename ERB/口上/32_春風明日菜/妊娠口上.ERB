@@ -1,0 +1,79 @@
+﻿;================================================
+; 春風明日菜（キャラ番号 32）の妊娠・出産口上
+; 状況：1危険日 2妊娠中 3発覚 4陣痛開始 5出産 6陣痛激化 7いきみ 8破水
+;================================================
+
+;@妊娠口上_1_32(ARG,ARG:1)
+;;危険日の中出し
+;PRINTFORMW %CALLNAME:ARG%「（危険日の中出しの台詞）」
+;RETURN
+;@妊娠口上_2_32(ARG,ARG:1)
+;;妊娠中の中出し
+;PRINTFORMW %CALLNAME:ARG%「（妊娠中の中出しの台詞）」
+;RETURN
+@妊娠口上_3_32(ARG,ARG:1)
+;妊娠発覚
+SELECTCASE RAND(3)
+	CASE 0
+		PRINTFORMW %CALLNAME:ARG%「わ、わたし……赤ちゃんが……どうしよう……」
+	CASE 1
+		PRINTFORMW %CALLNAME:ARG%「こわい、です……でも、この子は……」
+	CASEELSE
+		PRINTFORMW %CALLNAME:ARG%「ほんとに……わたしのお腹に……？」
+ENDSELECT
+RETURN
+@妊娠口上_4_32(ARG,ARG:1)
+;陣痛・破水
+SELECTCASE RAND(3)
+	CASE 0
+		PRINTFORMW %CALLNAME:ARG%「ひぁ……っ、痛い、痛いです……！」
+	CASE 1
+		PRINTFORMW %CALLNAME:ARG%「こわいよぉ……せ、先輩ぁ……！」
+	CASEELSE
+		PRINTFORMW %CALLNAME:ARG%「ふぇ……っ、もう、むりぃ……！」
+ENDSELECT
+RETURN
+@妊娠口上_5_32(ARG,ARG:1)
+;出産
+SELECTCASE RAND(3)
+	CASE 0
+		PRINTFORMW %CALLNAME:ARG%「ふぇぇ……産まれ、ました……わたし、頑張り、ました……」
+	CASE 1
+		PRINTFORMW %CALLNAME:ARG%「ちいさい……あったかい、です……」
+	CASEELSE
+		PRINTFORMW %CALLNAME:ARG%「えぐっ……よかった、ぁ……」
+ENDSELECT
+RETURN
+@妊娠口上_6_32(ARG,ARG:1)
+;陣痛激化
+SELECTCASE RAND(2)
+	CASE 0
+		PRINTFORMW %CALLNAME:ARG%「ひぐっ……もっと、痛い、です……！」
+	CASEELSE
+		PRINTFORMW %CALLNAME:ARG%「こわいですぅ……せんぱぁい……！」
+ENDSELECT
+RETURN
+@妊娠口上_7_32(ARG,ARG:1)
+;いきみ
+SELECTCASE RAND(2)
+	CASE 0
+		PRINTFORMW %CALLNAME:ARG%「ふぇぇ……いきむ、です……っ」
+	CASEELSE
+		PRINTFORMW %CALLNAME:ARG%「もう、むりぃ……でも、ふんっ……！」
+ENDSELECT
+RETURN
+@妊娠口上_8_32(ARG,ARG:1)
+;破水
+SELECTCASE RAND(2)
+	CASE 0
+		PRINTFORMW %CALLNAME:ARG%「ひゃあっ！？　な、なにか出ちゃいました……！」
+	CASEELSE
+		PRINTFORMW %CALLNAME:ARG%「こわいですぅ……濡れちゃって……これが破水……」
+ENDSELECT
+RETURN
+
+@妊娠口上_9_32(ARG,ARG:1)
+;多胎に気づく（驚き）
+TSTR:(FLAG:口上候補数++) = %CALLNAME:ARG%「ふぇぇ……!?　ま、まだいるんですか……!?　こわいですぅ……!」
+TSTR:(FLAG:口上候補数++) = %CALLNAME:ARG%「双子……!?　わたし、二人も……!?」
+RETURN

@@ -1,0 +1,79 @@
+﻿;================================================
+; デルモ（キャラ番号 39）の妊娠・出産口上
+; 状況：1危険日 2妊娠中 3発覚 4陣痛開始 5出産 6陣痛激化 7いきみ 8破水
+;================================================
+
+;@妊娠口上_1_39(ARG,ARG:1)
+;;危険日の中出し
+;PRINTFORMW %CALLNAME:ARG%「（危険日の中出しの台詞）」
+;RETURN
+;@妊娠口上_2_39(ARG,ARG:1)
+;;妊娠中の中出し
+;PRINTFORMW %CALLNAME:ARG%「（妊娠中の中出しの台詞）」
+;RETURN
+@妊娠口上_3_39(ARG,ARG:1)
+;妊娠発覚
+SELECTCASE RAND(3)
+	CASE 0
+		PRINTFORMW %CALLNAME:ARG%「うそ、わたし妊娠したの……？」
+	CASE 1
+		PRINTFORMW %CALLNAME:ARG%「なんか最近変だと思ったんだよね……」
+	CASEELSE
+		PRINTFORMW %CALLNAME:ARG%「へぇ……わたしもママになるのか……」
+ENDSELECT
+RETURN
+@妊娠口上_4_39(ARG,ARG:1)
+;陣痛・破水
+SELECTCASE RAND(3)
+	CASE 0
+		PRINTFORMW %CALLNAME:ARG%「いた……っ、お腹が……！」
+	CASE 1
+		PRINTFORMW %CALLNAME:ARG%「うぅ……っ、けっこう痛いんだけど……！」
+	CASEELSE
+		PRINTFORMW %CALLNAME:ARG%「はぁはぁ……もうちょっと……っ」
+ENDSELECT
+RETURN
+@妊娠口上_5_39(ARG,ARG:1)
+;出産
+SELECTCASE RAND(3)
+	CASE 0
+		PRINTFORMW %CALLNAME:ARG%「はぁ……産めた……記念に写真、撮ろうかな……なんてね」
+	CASE 1
+		PRINTFORMW %CALLNAME:ARG%「ちっちゃ……モデルになれそう、なんて。」
+	CASEELSE
+		PRINTFORMW %CALLNAME:ARG%「ふぅ……無事でよかったぁ……」
+ENDSELECT
+RETURN
+@妊娠口上_6_39(ARG,ARG:1)
+;陣痛激化
+SELECTCASE RAND(2)
+	CASE 0
+		PRINTFORMW %CALLNAME:ARG%「いた……っ、けっこう強い……！」
+	CASEELSE
+		PRINTFORMW %CALLNAME:ARG%「うぅ……間隔短い……っ」
+ENDSELECT
+RETURN
+@妊娠口上_7_39(ARG,ARG:1)
+;いきみ
+SELECTCASE RAND(2)
+	CASE 0
+		PRINTFORMW %CALLNAME:ARG%「ふんっ……いくよ……！」
+	CASEELSE
+		PRINTFORMW %CALLNAME:ARG%「もう出そう……っ！」
+ENDSELECT
+RETURN
+@妊娠口上_8_39(ARG,ARG:1)
+;破水
+SELECTCASE RAND(2)
+	CASE 0
+		PRINTFORMW %CALLNAME:ARG%「うわっ、なんか出た！？　これ破水……！」
+	CASEELSE
+		PRINTFORMW %CALLNAME:ARG%「え、濡れた……マジか、いよいよか……」
+ENDSELECT
+RETURN
+
+@妊娠口上_9_39(ARG,ARG:1)
+;多胎に気づく（驚き）
+TSTR:(FLAG:口上候補数++) = %CALLNAME:ARG%「え、まだ!?　双子だったの!?　マジか……!」
+TSTR:(FLAG:口上候補数++) = %CALLNAME:ARG%「もう一人……いや、それどころじゃない……!」
+RETURN

@@ -1,0 +1,142 @@
+﻿@XCOM_ABLE1015(ARG)
+VARSET LOCAL
+LOCAL = ARG
+VARSET ARG
+SIF !GETBIT(DA:(CFLAG:LOCAL:現在地区):(CFLAG:LOCAL:現在位置),5)
+	RETURN 0
+;営業時間外は注文できない
+SIF !営業中(CFLAG:LOCAL:現在地区, CFLAG:LOCAL:現在位置)
+	RETURN 0
+;昼休みの食事処は「お昼を食べる」(COMF1010)の担当。二重に食事させないため引っ込める(2026-08-31)
+;条件は COMF1010 の @XCOM_ABLE1010 と対。あちらが出ない状況（休日・食事済み）ではこちらが出る
+SIF 昼食場所か(CFLAG:LOCAL:現在地区, CFLAG:LOCAL:現在位置) && !D:101 && TIME >= 750 && TIME <= 810 && !GETBIT(CFLAG:LOCAL:食事,1)
+	RETURN 0
+
+RETURN GLOBAL_COMABLE(1015)
+@XCOM1015(ARG)
+VARSET LOCAL
+PRINTL 
+PRINTFORML %"=" * 107%
+;注文する
+;--- 店ごとの単価・所要時間・満足度(2026-08-30)
+;それまでは店に関係なく一律400円/60分で、ハンバーガー屋とファミレスと喫茶店に差がなかった。
+;LOCAL:1 料金 / LOCAL:2 所要分 / LOCAL:3 体力回復 / LOCAL:4 疲労回復 / LOCAL:5 ストレス解消
+;LOCAL:6 同席時の会話経験 / LOCAL:7 同席時の歓楽
+;既定値＝従来の一律値。専用メニューを持つ居酒屋(54)・バー(55)はここでは触らない
+LOCAL:1 = 400
+LOCAL:2 = 60
+LOCAL:3 = 50
+LOCAL:4 = 100
+LOCAL:5 = 100
+LOCAL:6 = 3
+LOCAL:7 = 800
+IF CFLAG:ARG:現在地区 == 0
+	SELECTCASE CFLAG:ARG:現在位置
+		;定食屋：高いが一番腹が膨れる。町で唯一の飲食店(2026-09-01)
+		CASE 14
+			LOCAL:1 = 700
+			LOCAL:2 = 60
+			LOCAL:3 = 100
+			LOCAL:4 = 80
+			LOCAL:5 = 80
+			LOCAL:6 = 3
+			LOCAL:7 = 850
+	ENDSELECT
+ELSEIF CFLAG:ARG:現在地区 == 1
+	SELECTCASE CFLAG:ARG:現在位置
+		;学生食堂：安くて量がある。騒がしいのでストレスは抜けにくい(2026-08-31)
+		CASE 25
+			LOCAL:1 = 300
+			LOCAL:2 = 45
+			LOCAL:3 = 80
+			LOCAL:4 = 80
+			LOCAL:5 = 50
+			LOCAL:6 = 3
+			LOCAL:7 = 800
+	ENDSELECT
+ELSEIF CFLAG:ARG:現在地区 == 2
+	SELECTCASE CFLAG:ARG:現在位置
+		;ハンバーガー屋：安くて早い。腹は膨れるが落ち着かない
+		CASE 6
+			LOCAL:1 = 400
+			LOCAL:2 = 30
+			LOCAL:3 = 60
+			LOCAL:4 = 50
+			LOCAL:5 = 50
+			LOCAL:6 = 2
+			LOCAL:7 = 700
+		;ファミレス：高いが長居できる＝相手と一番話が弾む
+		CASE 12
+			LOCAL:1 = 800
+			LOCAL:2 = 60
+			LOCAL:3 = 80
+			LOCAL:4 = 120
+			LOCAL:5 = 120
+			LOCAL:6 = 4
+			LOCAL:7 = 900
+		;喫茶店：腹は膨れないが、疲れとストレスがよく抜ける
+		CASE 14
+			LOCAL:1 = 600
+			LOCAL:2 = 60
+			LOCAL:3 = 30
+			LOCAL:4 = 150
+			LOCAL:5 = 200
+			LOCAL:6 = 4
+			LOCAL:7 = 900
+	ENDSELECT
+ENDIF
+
+IF MONEY:ARG < LOCAL:1
+	PRINTW お金が足りません
+	RETURN 0
+ENDIF
+
+DOWNBASE:ARG:体力 -= LOCAL:3
+DOWNBASE:ARG:気力 -= 80
+CFLAG:ARG:待機時間 = LOCAL:2
+DOWNBASE:ARG:疲労 += LOCAL:4
+DOWNBASE:ARG:ストレス += LOCAL:5
+MONEY:ARG -= LOCAL:1
+
+IF TCVAR:ARG:行為対象
+;相手からの好意が40以上、愛情が1以上（又は好意が90以上）、服従が1以上、肉欲が1以上でなければ相手にされない
+	IF (TA:(TCVAR:ARG:行為対象):ARG:0 >= 1) && ((TA:(TCVAR:ARG:行為対象):ARG:1 >= 1) | (TA:(TCVAR:ARG:行為対象):ARG:3 >= 90)) && (TA:(TCVAR:ARG:行為対象):ARG:2 >= 1) && (TA:(TCVAR:ARG:行為対象):ARG:3 >= 40)
+		DOWNBASE:(TCVAR:ARG:行為対象):体力 -= LOCAL:3
+		DOWNBASE:(TCVAR:ARG:行為対象):気力 -= 80
+		EXP:ARG:会話経験 += LOCAL:6
+		EXP:(TCVAR:ARG:行為対象):会話経験 += LOCAL:6
+		CFLAG:(TCVAR:ARG:行為対象):待機時間 = LOCAL:2
+		SOURCE:(TCVAR:ARG:行為対象):歓楽 = LOCAL:7
+;行為者にも同じ値をセット（好意があるので話しかけたと仮定）
+		SOURCE:ARG:歓楽 = SOURCE:(TCVAR:ARG:行為対象):歓楽
+;;;	支配度に＋２、相手に−２
+		CALL 支配度加算(ARG, 2)
+		TB:(CFLAG:ARG:現在地区):(CFLAG:ARG:現在位置):(TCVAR:ARG:行為対象) -= 2
+	ELSE
+;但し、確率でOK
+		A = RAND(900)
+		A = A * TA:ARG:(CFLAG:(TCVAR:ARG:行為対象):タイプ):5 / 100
+		IF !(A >400)
+			PRINTFORML %CALLNAME:(TCVAR:ARG:行為対象)%は奢って欲しくないようだ・・・
+;;;	支配度に−２、相手は無し
+			CALL 支配度加算(ARG, -2)
+		ELSE
+			DOWNBASE:(TCVAR:ARG:行為対象):体力 -= LOCAL:3
+			DOWNBASE:(TCVAR:ARG:行為対象):気力 -= 80
+			EXP:ARG:会話経験 += LOCAL:6
+			EXP:(TCVAR:ARG:行為対象):会話経験 += LOCAL:6
+			CFLAG:(TCVAR:ARG:行為対象):待機時間 = LOCAL:2
+			SOURCE:(TCVAR:ARG:行為対象):歓楽 = LOCAL:7
+;行為者にも同じ値をセット（好意があるので話しかけたと仮定）
+			SOURCE:ARG:歓楽 = SOURCE:(TCVAR:ARG:行為対象):歓楽
+;;;	支配度に＋２、相手に−２
+			CALL 支配度加算(ARG, 2)
+			TB:(CFLAG:ARG:現在地区):(CFLAG:ARG:現在位置):(TCVAR:ARG:行為対象) -= 2
+		ENDIF
+	ENDIF
+ENDIF
+
+VARSET ARG
+RETURN 1
+
+

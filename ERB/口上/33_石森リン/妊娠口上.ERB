@@ -1,0 +1,79 @@
+﻿;================================================
+; 石森リン（キャラ番号 33）の妊娠・出産口上
+; 状況：1危険日 2妊娠中 3発覚 4陣痛開始 5出産 6陣痛激化 7いきみ 8破水
+;================================================
+
+;@妊娠口上_1_33(ARG,ARG:1)
+;;危険日の中出し
+;PRINTFORMW %CALLNAME:ARG%「（危険日の中出しの台詞）」
+;RETURN
+;@妊娠口上_2_33(ARG,ARG:1)
+;;妊娠中の中出し
+;PRINTFORMW %CALLNAME:ARG%「（妊娠中の中出しの台詞）」
+;RETURN
+@妊娠口上_3_33(ARG,ARG:1)
+;妊娠発覚
+SELECTCASE RAND(3)
+	CASE 0
+		PRINTFORMW %CALLNAME:ARG%「わたし……赤ちゃんができたんだ……」
+	CASE 1
+		PRINTFORMW %CALLNAME:ARG%「ふふ、新しい命が……歌を、聴かせてあげたいな。」
+	CASEELSE
+		PRINTFORMW %CALLNAME:ARG%「そっか……わたし、お母さんになるんだ。」
+ENDSELECT
+RETURN
+@妊娠口上_4_33(ARG,ARG:1)
+;陣痛・破水
+SELECTCASE RAND(3)
+	CASE 0
+		PRINTFORMW %CALLNAME:ARG%「っ……ふぅ、痛……。声、出ちゃう……っ」
+	CASE 1
+		PRINTFORMW %CALLNAME:ARG%「んぁ……っ、これは、高音より苦しい……！」
+	CASEELSE
+		PRINTFORMW %CALLNAME:ARG%「はぁ、はぁ……もう少し……っ」
+ENDSELECT
+RETURN
+@妊娠口上_5_33(ARG,ARG:1)
+;出産
+SELECTCASE RAND(3)
+	CASE 0
+		PRINTFORMW %CALLNAME:ARG%「はぁ……ふふ、産まれた……この子に、子守唄うたおう……」
+	CASE 1
+		PRINTFORMW %CALLNAME:ARG%「小さな声……いつか、一緒に歌おうね。」
+	CASEELSE
+		PRINTFORMW %CALLNAME:ARG%「ふぅ……よく、生まれてきてくれたね。」
+ENDSELECT
+RETURN
+@妊娠口上_6_33(ARG,ARG:1)
+;陣痛激化
+SELECTCASE RAND(2)
+	CASE 0
+		PRINTFORMW %CALLNAME:ARG%「んぁ……っ、高音より、キツい……！」
+	CASEELSE
+		PRINTFORMW %CALLNAME:ARG%「はぁ、はぁ……声が、抑えられない……っ」
+ENDSELECT
+RETURN
+@妊娠口上_7_33(ARG,ARG:1)
+;いきみ
+SELECTCASE RAND(2)
+	CASE 0
+		PRINTFORMW %CALLNAME:ARG%「いきむね……ん――っ！」
+	CASEELSE
+		PRINTFORMW %CALLNAME:ARG%「ラストの一音みたいに……そーれっ！」
+ENDSELECT
+RETURN
+@妊娠口上_8_33(ARG,ARG:1)
+;破水
+SELECTCASE RAND(2)
+	CASE 0
+		PRINTFORMW %CALLNAME:ARG%「きゃっ……！　な、なにか溢れて……破水……！」
+	CASEELSE
+		PRINTFORMW %CALLNAME:ARG%「っ……羊水……この日が、来たんだね……」
+ENDSELECT
+RETURN
+
+@妊娠口上_9_33(ARG,ARG:1)
+;多胎に気づく（驚き）
+TSTR:(FLAG:口上候補数++) = %CALLNAME:ARG%「え……!?　まだ……?　双子、だったんだ……!」
+TSTR:(FLAG:口上候補数++) = %CALLNAME:ARG%「まだ、お腹に……!?　もう一人、いるの……!?」
+RETURN

@@ -1,0 +1,708 @@
+﻿@COM_MESSAGE_1005
+SIF M:101 == 1
+	RETURN 0
+
+IF CFLAG:MASTER:職業 == 13
+	;アダルトショップ
+	;===============================================================================
+	;アルバイトをする
+	;　ランダムで、淫具実演（内部で更に分岐）、淫具解説、撮影会に分岐
+	;===============================================================================
+	;シーンはXCOM1005（アダルトショップ接客抽選）でM:104に決定済み。SOURCE・経験もそちらで仕込む
+	;--------------------------------------------------------------------------
+	;淫具実演
+	;--------------------------------------------------------------------------
+	IF M:104 >= 1 && M:104 <= 6
+		PRINTFORML ＜淫具実演＞
+		PRINTFORMW 客に、淫具の実演を求められた。
+		;露出癖Lv3以上＋恥薄い or 露出癖Lv6以上
+		IF (ABL:MASTER:露出癖 >= 3 && TALENT:MASTER:羞恥心 == -1) || ABL:MASTER:露出癖 >= 6
+			PRINTFORM %CALLNAME:MASTER%はどこか楽しげな様子で
+		;露出癖Lv3以上
+		ELSEIF ABL:MASTER:露出癖 >= 3
+			PRINTFORML これもアルバイトの一環…断るわけにはいかない。
+			PRINTFORM %CALLNAME:MASTER%は羞恥に頬を染め
+			;気丈 or 反抗的 or プライド高い or 抵抗
+			IF TALENT:MASTER:度胸 == 1 || TALENT:MASTER:態度 == 1 || TALENT:MASTER:プライド == 1 || TALENT:MASTER:抵抗
+				PRINTFORM 、歯噛みしながら
+			ELSE
+				PRINTFORM たまま、恥ずかしげに
+			ENDIF
+		ELSE
+			PRINTFORML 店長に目をやると、「やれ」と言いたげな表情で%CALLNAME:MASTER%を見ている。
+			PRINTFORMW …断れない。
+			PRINTFORM %CALLNAME:MASTER%は真っ赤な顔で
+		ENDIF
+		;--------------------------------------------------------------------------
+		;バイブ
+		;--------------------------------------------------------------------------
+		IF M:104 == 1
+			;下半身下着あり＋下半身上着なし
+			IF TEQUIP:MASTER:下半身上着 == 0 && TEQUIP:MASTER:下半身下着
+				PRINTFORM 下着を下ろし、
+			;スカート類
+			ELSEIF TEQUIP:MASTER:下半身上着 <= 274 && TEQUIP:MASTER:下半身上着 != 0
+				PRINTFORM スカートを捲り、
+				;下半身下着あり
+				SIF TEQUIP:MASTER:下半身下着
+					PRINTFORM 下着を下ろして
+			;ズボン類
+			ELSEIF TEQUIP:MASTER:下半身上着 >= 275
+				;下半身下着あり
+				SIF TEQUIP:MASTER:下半身下着
+					PRINTFORM 下着と一緒に
+				PRINTFORM %ITEMNAME:(TEQUIP:MASTER:下半身上着)%を下ろして
+			ENDIF
+			;PALAM潤滑Lv3以上
+			SIF PALAM:MASTER:潤滑 >= PALAMLV:3
+				PRINTFORM 濡れそぼった
+			PRINTFORML 秘部を晒すと、客から受け取ったバイブの先端を、膣口にあてがった。
+			;Ｖ感覚Lv3以上
+			IF ABL:MASTER:Ｖ感覚 >= 3
+				PRINTFORM すっかりこなれている秘処は、人工の肉棒を易々と
+			ELSE
+				PRINTFORM まだ経験の少ない肉洞が、少しずつバイブを
+			ENDIF
+			PRINTFORML 飲み込んでいく。
+			PRINTFORM 続きをやって見せるようにとの客の要望に応え、%CALLNAME:MASTER%は
+			;Ｖ感覚Lv3以上
+			IF ABL:MASTER:Ｖ感覚 >= 3
+				PRINTFORM どこか熱い吐息を洩らしながら、バイブを
+			ELSE
+				PRINTFORM 目尻に涙を浮かべながら、バイブを
+			ENDIF
+			;PALAM潤滑Lv3以上
+			SIF PALAM:MASTER:潤滑 >= PALAMLV:3
+				PRINTFORM ぐちゅぐちゅと
+			PRINTFORMW 動かして見せた…
+		;--------------------------------------------------------------------------
+		;アナルバイブ
+		;--------------------------------------------------------------------------
+		ELSEIF M:104 == 2
+			;下半身下着あり＋下半身上着なし
+			IF TEQUIP:MASTER:下半身上着 == 0 && TEQUIP:MASTER:下半身下着
+				PRINTFORM 下着を下ろし、
+			;スカート類
+			ELSEIF TEQUIP:MASTER:下半身上着 <= 274 && TEQUIP:MASTER:下半身上着 != 0
+				PRINTFORM スカートを捲り、
+				;下半身下着あり
+				SIF TEQUIP:MASTER:下半身下着
+					PRINTFORM 下着を下ろして
+			;ズボン類
+			ELSEIF TEQUIP:MASTER:下半身上着 >= 275
+				;下半身下着あり
+				SIF TEQUIP:MASTER:下半身下着
+					PRINTFORM 下着と一緒に
+				PRINTFORM %ITEMNAME:(TEQUIP:MASTER:下半身上着)%を下ろして
+			ENDIF
+			PRINTFORML お尻を晒すと、客から受け取った細いバイブの先端を、菊穴にあてがった。
+			;Ａ感覚Lv3以上
+			IF ABL:MASTER:Ａ感覚 >= 3
+				PRINTFORM すっかり開発されているアナルは、人工の肉棒を易々と
+			ELSE
+				PRINTFORM まだ硬さを残している後門が、それでも順調にバイブを
+			ENDIF
+			PRINTFORML 飲み込んでいく。
+			PRINTFORM 続きをやって見せるようにとの客の要望に応え、%CALLNAME:MASTER%は
+			;Ａ感覚Lv3以上
+			IF ABL:MASTER:Ａ感覚 >= 3
+				PRINTFORM どこか熱い吐息を洩らし
+			ELSE
+				PRINTFORM 目尻に涙を浮かべ
+			ENDIF
+			PRINTFORMW ながら、バイブを動かして見せた…
+		;--------------------------------------------------------------------------
+		;ニプルキャップ
+		;--------------------------------------------------------------------------
+		ELSEIF M:104 == 3
+			;上半身上着あり or 上半身下着あり
+			SIF TEQUIP:MASTER:上半身上着 || TEQUIP:MASTER:上半身下着
+				PRINTFORM 上半身を覆う衣服を脱ぎ捨て、
+			PRINTFORM 裸の胸を晒すと、客から受け取ったニプルキャップを押しつぶし、
+			;絶壁 or (オトコ＋並乳)
+			IF TALENT:MASTER:バストサイズ == -2 || (TALENT:MASTER:性別 == 2 && TALENT:MASTER:バストサイズ == 0)
+				PRINTFORM 平坦な胸で存在を主張する
+			ELSE
+				PRINTFORM 乳房の頂にある
+			ENDIF
+			;PALAM欲情Lv3以上
+			IF PALAM:MASTER:欲情 >= PALAMLV:3
+				PRINTFORM 勃起
+			ELSE
+				PRINTFORM まだ柔らかい
+			ENDIF
+			PRINTFORML 乳首にあてがい、指を離す。
+			PRINTFORM 乳首が急激に吸引される
+			;Ｂ感覚Lv3以上
+			IF ABL:MASTER:3 >= 3
+				PRINTFORML 際に全身を貫いた快楽に、%CALLNAME:MASTER%は背をのけ反らせた。
+			ELSE
+				PRINTFORML 苦痛に、%CALLNAME:MASTER%はうめき声を洩らした。
+			ENDIF
+			LOCAL = RAND:3
+			IF LOCAL == 0
+				PRINTFORMW その様子を、客は楽しげに眺めている…
+			ELSEIF LOCAL == 1
+				PRINTFORMW 悶える%CALLNAME:MASTER%の様子を、客は楽しげに眺めている…
+			ELSE
+				PRINTFORMW 客は意地悪く笑うと、%CALLNAME:MASTER%にそれを自ら弄って見せるように告げた…
+			ENDIF
+		;--------------------------------------------------------------------------
+		;クリキャップ
+		;--------------------------------------------------------------------------
+		ELSEIF M:104 == 4
+			;下半身下着あり＋下半身上着なし
+			IF TEQUIP:MASTER:下半身上着 == 0 && TEQUIP:MASTER:下半身下着
+				PRINTFORM 下着を下ろし、
+			;スカート類
+			ELSEIF TEQUIP:MASTER:下半身上着 <= 274 && TEQUIP:MASTER:下半身上着 != 0
+				PRINTFORM スカートを捲り、
+				;下半身下着あり
+				SIF TEQUIP:MASTER:下半身下着
+					PRINTFORM 下着を下ろして
+			;ズボン類
+			ELSEIF TEQUIP:MASTER:下半身上着 >= 275
+				;下半身下着あり
+				SIF TEQUIP:MASTER:下半身下着
+					PRINTFORM 下着と一緒に
+				PRINTFORM %ITEMNAME:(TEQUIP:MASTER:下半身上着)%を下ろして
+			ENDIF
+			;PALAM潤滑Lv3以上
+			SIF PALAM:MASTER:潤滑 >= PALAMLV:3
+				PRINTFORM 濡れそぼった
+			PRINTFORML 秘部を晒すと、客から受け取ったクリキャップを押しつぶし、敏感な肉突起にあてがい、指を離す。
+			PRINTFORM 陰核が急激に吸引される
+			;Ｃ感覚Lv3以上
+			IF ABL:MASTER:0 >= 3
+				PRINTFORML 際に全身を貫いた強烈な快楽に、%CALLNAME:MASTER%は背をのけ反らせた。
+			ELSE
+				PRINTFORML 苦痛に、%CALLNAME:MASTER%はうめき声を洩らした。
+			ENDIF
+			LOCAL = RAND:3
+			IF LOCAL == 0
+				PRINTFORMW その様子を、客は楽しげに眺めている…
+			ELSEIF LOCAL == 1
+				;PALAM潤滑Lv3以上
+				IF PALAM:MASTER:潤滑 >= PALAMLV:3
+					PRINTFORM 愛液で溢れる%CALLNAME:MASTER%の秘部
+				ELSE
+					PRINTFORM 悶える%CALLNAME:MASTER%の様子
+				ENDIF
+				PRINTFORMW を、客は楽しげに眺めている…
+			ELSE
+				PRINTFORMW 客は意地悪く笑うと、%CALLNAME:MASTER%にそれを使って自慰して見せるように告げた…
+			ENDIF
+		;--------------------------------------------------------------------------
+		;ローター
+		;--------------------------------------------------------------------------
+		ELSEIF M:104 == 5
+			;下半身下着あり＋下半身上着なし
+			IF TEQUIP:MASTER:下半身上着 == 0 && TEQUIP:MASTER:下半身下着
+				PRINTFORM 下着を下ろし、
+			;スカート類
+			ELSEIF TEQUIP:MASTER:下半身上着 <= 274 && TEQUIP:MASTER:下半身上着 != 0
+				PRINTFORM スカートを捲り、
+				;下半身下着あり
+				SIF TEQUIP:MASTER:下半身下着
+					PRINTFORM 下着を下ろして
+			;ズボン類
+			ELSEIF TEQUIP:MASTER:下半身上着 >= 275
+				;下半身下着あり
+				SIF TEQUIP:MASTER:下半身下着
+					PRINTFORM 下着と一緒に
+				PRINTFORM %ITEMNAME:(TEQUIP:MASTER:下半身上着)%を下ろして
+			ENDIF
+			;PALAM潤滑Lv3以上
+			SIF PALAM:MASTER:潤滑 >= PALAMLV:3
+				PRINTFORM 濡れそぼった
+			PRINTFORML 秘部を晒すと、客から受け取った振動するローターを、敏感な肉突起に押し当てた。
+			;PALAM潤滑Lv3以上
+			SIF PALAM:MASTER:潤滑 >= PALAMLV:3
+				PRINTFORM 愛液の飛沫を撒き散らしながら
+			;Ｃ感覚Lv3以上
+			IF ABL:MASTER:0 >= 3
+				PRINTFORM ガクガクと全身を震わせる
+			ELSE
+				PRINTFORM 苦痛と悦楽の入り混じった表情を浮かべる
+			ENDIF
+			PRINTFORMW %CALLNAME:MASTER%を、客は楽しげに眺めている…
+		;--------------------------------------------------------------------------
+		;乳首ローター
+		;--------------------------------------------------------------------------
+		ELSE
+			;上半身上着あり or 上半身下着あり
+			SIF TEQUIP:MASTER:上半身上着 || TEQUIP:MASTER:上半身下着
+				PRINTFORM 上半身を覆う衣服を脱ぎ捨て、
+			PRINTFORM 裸の胸を晒すと、客から受け取ったローターを、
+			;絶壁 or (オトコ＋並乳)
+			IF TALENT:MASTER:バストサイズ == -2 || (TALENT:MASTER:性別 == 2 && TALENT:MASTER:バストサイズ == 0)
+				PRINTFORM 平坦な胸で存在を主張する
+			ELSE
+				PRINTFORM 乳房の頂にある
+			ENDIF
+			;PALAM欲情Lv3以上
+			IF PALAM:MASTER:欲情 >= PALAMLV:3
+				PRINTFORM 勃起
+			ELSE
+				PRINTFORM まだ柔らかい
+			ENDIF
+			PRINTFORML 乳首に押し当てた。
+			PRINTFORM ローターが伝える淫らな振動に
+			;Ｂ感覚Lv3以上
+			IF ABL:MASTER:Ｂ感覚 >= 3
+				PRINTFORM ガクガクと全身を震わせる
+			ELSE
+				PRINTFORM 苦痛と悦楽の入り混じった表情を浮かべる
+			ENDIF
+			PRINTFORMW %CALLNAME:MASTER%を、客は楽しげに眺めている…
+		ENDIF
+	;--------------------------------------------------------------------------
+	;淫具解説
+	;--------------------------------------------------------------------------
+	ELSEIF M:104 == 10
+		PRINTFORML ＜淫具解説＞
+		PRINTFORMW 客に、アダルトグッズの説明を求められた。
+		;無関心 or 感情乏しい
+		IF TALENT:MASTER:無関心 || TALENT:MASTER:感情乏しい
+			PRINTFORMW 淡々と説明する%CALLNAME:MASTER%の様子に、客はどこかつまらなそうにしている…
+		;露出癖Lv3以上＋恥薄い or 露出癖Lv6以上
+		ELSEIF (ABL:MASTER:露出癖 >= 3 && TALENT:MASTER:羞恥心 == -1) || ABL:MASTER:露出癖 >= 6
+			IF RAND:2 == 0
+				PRINTFORM どこか淫靡ささえ漂わせている
+			ELSE
+				PRINTFORM まるで挑発しているかのような様子の
+			ENDIF
+			PRINTFORM %CALLNAME:MASTER%に、客は
+			IF RAND:3 == 0
+				PRINTFORMW むしろ引き気味のようだ…
+			ELSEIF RAND:2 == 0
+				PRINTFORMW 股間の膨らみを増している…
+			ELSE
+				PRINTFORMW ごくりと生唾を呑み込んでいる…
+			ENDIF
+		;露出癖Lv3以上
+		ELSEIF ABL:MASTER:露出癖 >= 3
+			IF RAND:2 == 0
+				PRINTFORM 顔を真っ赤にして
+			ELSE
+				PRINTFORM 恥じらいながらも
+			ENDIF
+			PRINTFORMW 説明を続ける%CALLNAME:MASTER%の様子に、客は興奮の色を隠せないでいる…
+		ELSE
+			PRINTFORML 羞恥で顔を真っ赤にしている%CALLNAME:MASTER%の声は小さく、説明の内容はほとんど聞こえない。
+			PRINTFORMW が、その様子さえ楽しんでいるのか、客はニヤニヤと笑っている…
+		ENDIF
+	;--------------------------------------------------------------------------
+	;撮影会
+	;　上着は店側で用意。下着が必要な場合は自前のもので判定。玩具類は外してる感じで。
+	;　現状、メイド服、セーラー服、ブレザー制服、レオタード、競泳水着、スク水、ブルマ、ボンデージに対応
+	;--------------------------------------------------------------------------
+	ELSE
+		PRINTFORML ＜撮影会＞
+		PRINTFORML コスプレ撮影会のモデル役を命じられた。
+		PRINTFORM 身に着けるコスチュームは、
+		LOCAL = RAND:4
+		IF LOCAL == 0
+			;スカートありの衣服
+			LOCAL = RAND:3
+			IF LOCAL == 0
+				PRINTFORMW メイド服だ。
+			ELSEIF LOCAL == 1
+				PRINTFORMW セーラー服だ。
+			ELSE
+				PRINTFORMW ブレザータイプの制服姿だ。
+			ENDIF
+			PRINTFORM 撮影者たちに指示された%CALLNAME:MASTER%が
+			;無関心 or 感情乏しい
+			IF TALENT:MASTER:無関心 || TALENT:MASTER:感情乏しい
+				PRINTFORM 特に抵抗もなく
+			;露出癖Lv3以上＋恥薄い or 露出癖Lv6以上
+			ELSEIF (ABL:MASTER:露出癖 >= 3 && TALENT:MASTER:羞恥心 == -1) || ABL:MASTER:露出癖 >= 6
+				PRINTFORM 焦らすようにゆっくりと
+			;露出癖Lv3以上
+			ELSEIF ABL:MASTER:露出癖 >= 3
+				PRINTFORM 恥ずかしげに
+			ELSE
+				PRINTFORM 怯えた様子で
+			ENDIF
+			PRINTFORM スカートを持ち上げ、
+			;下半身下着なし
+			IF TEQUIP:MASTER:下半身下着 == 0
+				PRINTFORM 下着を着けていない
+				;男性器あり
+				IF TALENT:MASTER:性別 & 2
+					PRINTFORM がために剥き出しの
+					;PALAM欲情Lv3以上
+					SIF PALAM:MASTER:欲情 >= PALAMLV:3
+						PRINTFORM 勃起
+					PRINTFORM ペニス
+				ELSE
+					;PALAM潤滑Lv3以上
+					SIF PALAM:MASTER:潤滑 >= PALAMLV:3
+						PRINTFORM 濡れそぼった
+					PRINTFORM 秘部
+				ENDIF
+				PRINTFORMW を晒すと、観客の中からどよめきの声が上がった。
+			ELSE
+				;PALAM潤滑Lv3以上＋女性器あり
+				SIF PALAM:MASTER:潤滑 >= PALAMLV:3 && TALENT:MASTER:性別 & 1
+					PRINTFORM 濡れそぼった
+				PRINTFORMW 下着を晒すと、観客の中から歓声が上がった。
+			ENDIF
+		ELSEIF LOCAL == 1
+			;肩紐・股布ずらしに対応した衣服。主にワンピース水着・レオタード系。
+			IF LOCAL == 0
+				PRINTFORMW 体のラインの浮き出るレオタードだ。
+			ELSEIF LOCAL == 1
+				PRINTFORMW 体のラインの浮き出る競泳水着だ。
+			ELSE
+				;小柄体型以下 or （貧乳以下＋女性）
+				IF TALENT:MASTER:体型 <= -1 || (TALENT:MASTER:バストサイズ <= -1 && TALENT:MASTER:性別 & 1)
+					PRINTFORM 幼げな肢体によく似合う
+				;巨乳 or 爆乳
+				ELSEIF TALENT:MASTER:バストサイズ >= 1
+					PRINTFORM 肉感的な肢体とのアンバランスさが映える
+				ELSE
+					PRINTFORM 体のラインの浮き出る
+				ENDIF
+				PRINTFORMW スクール水着だ。
+			ENDIF
+			PRINTFORM 撮影者たちに指示された%CALLNAME:MASTER%が
+			;無関心 or 感情乏しい
+			IF TALENT:MASTER:無関心 || TALENT:MASTER:感情乏しい
+				PRINTFORM 特に抵抗もなく
+			;露出癖Lv3以上＋恥薄い or 露出癖Lv6以上
+			ELSEIF (ABL:MASTER:露出癖 >= 3 && TALENT:MASTER:羞恥心 == -1) || ABL:MASTER:露出癖 >= 6
+				PRINTFORM 焦らすようにゆっくりと
+			;露出癖Lv3以上
+			ELSEIF ABL:MASTER:露出癖 >= 3
+				PRINTFORM 恥ずかしげに
+			ELSE
+				PRINTFORM 怯えた様子で
+			ENDIF
+			IF RAND:2 == 0
+				PRINTFORM 肩紐を外して
+				;絶壁以外＋女性
+				IF TALENT:MASTER:105 != -2 && TALENT:MASTER:性別 & 1
+					;巨乳 or 爆乳
+					SIF TALENT:MASTER:バストサイズ >= 1
+						PRINTFORM 豊満な
+					PRINTFORM 乳房と
+				ENDIF
+				;PALAM欲情Lv3以上
+				IF PALAM:MASTER:欲情 >= PALAMLV:3
+					PRINTFORM 勃起した乳首
+				ELSE
+					PRINTFORM まだ柔らかい乳首
+				ENDIF
+			ELSE
+				PRINTFORM 股布をずらして
+				;男性器あり
+				IF TALENT:MASTER:性別 & 2
+					;PALAM欲情Lv3以上
+					SIF PALAM:MASTER:欲情 >= PALAMLV:3
+						PRINTFORM 勃起
+					PRINTFORM ペニス
+				ELSE
+					;PALAM潤滑Lv3以上
+					SIF PALAM:MASTER:潤滑 >= PALAMLV:3
+						PRINTFORM 濡れそぼった
+					PRINTFORM 秘部
+				ENDIF
+			ENDIF
+			PRINTFORMW を晒すと、観客の中から歓声が上がった。
+		ELSEIF LOCAL == 2
+			;上着捲り・股布ずらしに対応した衣服。現状はブルマのみ。
+			PRINTFORMW ブルマから伸びる足が魅力的な体操服姿だ。
+			PRINTFORM 撮影者たちに指示された%CALLNAME:MASTER%が
+			;無関心 or 感情乏しい
+			IF TALENT:MASTER:無関心 || TALENT:MASTER:感情乏しい
+				PRINTFORM 特に抵抗もなく
+			;露出癖Lv3以上＋恥薄い or 露出癖Lv6以上
+			ELSEIF (ABL:MASTER:露出癖 >= 3 && TALENT:MASTER:羞恥心 == -1) || ABL:MASTER:露出癖 >= 6
+				PRINTFORM 焦らすようにゆっくりと
+			;露出癖Lv3以上
+			ELSEIF ABL:MASTER:露出癖 >= 3
+				PRINTFORM 恥ずかしげに
+			ELSE
+				PRINTFORM 怯えた様子で
+			ENDIF
+			IF RAND:2 == 0
+				PRINTFORM 服の裾を持ち上げ、
+				;上半身下着あり
+				SIF TEQUIP:MASTER:上半身下着
+					PRINTFORM 下着に包まれた
+				;絶壁 or (オトコ＋並乳)
+				IF TALENT:MASTER:バストサイズ == -2 || (TALENT:MASTER:性別 == 2 && TALENT:MASTER:バストサイズ == 0)
+					PRINTFORM 胸
+				ELSE
+					;巨乳 or 爆乳
+					SIF TALENT:MASTER:バストサイズ >= 1
+						PRINTFORM 豊満な
+					PRINTFORM 乳房
+				ENDIF
+				;PALAM欲情Lv3以上＋上半身下着なし
+				IF PALAM:MASTER:欲情 >= PALAMLV:3 && TEQUIP:MASTER:上半身下着 == 0
+					PRINTFORM と勃起した乳首
+				;上半身下着なし
+				ELSEIF TEQUIP:MASTER:上半身下着 == 0
+					PRINTFORM とまだ柔らかい乳首
+				ENDIF
+			ELSE
+				PRINTFORM 股布をずらして
+				;男性器あり
+				IF TALENT:MASTER:性別 & 2
+					;PALAM欲情Lv3以上
+					SIF PALAM:MASTER:欲情 >= PALAMLV:3
+						PRINTFORM 勃起
+					PRINTFORM ペニス
+				ELSE
+					;PALAM潤滑Lv3以上
+					SIF PALAM:MASTER:潤滑 >= PALAMLV:3
+						PRINTFORM 濡れそぼった
+					PRINTFORM 秘部
+				ENDIF
+			ENDIF
+			PRINTFORMW を晒すと、観客の中から歓声が上がった。
+		ELSEIF LOCAL == 3
+			;局部にジッパー付きの衣服。…ボンデージくらいしか対応しませんが。
+			;巨乳 or 爆乳
+			IF TALENT:MASTER:バストサイズ >= 1
+				PRINTFORM 肉感的な体の魅力が最大限に生きる
+			ELSE
+				PRINTFORM 体のラインの浮き出る
+			ENDIF
+			PRINTFORMW ボンデージ姿だ。
+			PRINTFORM 撮影者たちに指示された%CALLNAME:MASTER%が
+			;無関心 or 感情乏しい
+			IF TALENT:MASTER:無関心 || TALENT:MASTER:感情乏しい
+				PRINTFORM 特に抵抗もなく
+			;露出癖Lv3以上＋恥薄い or 露出癖Lv6以上
+			ELSEIF (ABL:MASTER:露出癖 >= 3 && TALENT:MASTER:羞恥心 == -1) || ABL:MASTER:露出癖 >= 6
+				PRINTFORM 焦らすようにゆっくりと
+			;露出癖Lv3以上
+			ELSEIF ABL:MASTER:露出癖 >= 3
+				PRINTFORM 恥ずかしげに
+			ELSE
+				PRINTFORM 怯えた様子で
+			ENDIF
+			PRINTFORM 局部についたジッパーを開けて
+			;男性器あり
+			IF TALENT:MASTER:性別 & 2
+				;PALAM欲情Lv3以上
+				SIF PALAM:MASTER:欲情 >= PALAMLV:3
+					PRINTFORM 勃起
+				PRINTFORM ペニス
+			ELSE
+				;PALAM潤滑Lv3以上
+				SIF PALAM:MASTER:潤滑 >= PALAMLV:3
+					PRINTFORM 濡れそぼった
+				PRINTFORM 秘部
+			ENDIF
+			PRINTFORMW を晒すと、観客の中から歓声が上がった。
+		ENDIF
+	ENDIF
+
+ELSEIF CFLAG:MASTER:職業 == 14
+	CALL bite14
+ELSEIF CFLAG:MASTER:職業 == 18
+	CALL bite18
+ELSEIF CFLAG:MASTER:職業 == 19 || CFLAG:MASTER:職業 == 20
+	CALL bite19
+ELSEIF CFLAG:MASTER:職業 == 21
+	CALL bite21
+ELSE
+	;===============================================================================
+	;アルバイトをする
+	;===============================================================================
+	PRINTFORML ＜アルバイトをする＞
+	;接客技能による働きぶりの変化
+	IF ABL:MASTER:接客技能 >= 4
+		PRINTFORML 長いバイト経験に裏打ちされた手際で、%CALLNAME:MASTER%はテキパキと働いていく。
+	ELSEIF ABL:MASTER:接客技能 >= 2
+		PRINTFORML 仕事にも大分慣れ、%CALLNAME:MASTER%の動きは板についてきた。
+	ELSE
+		PRINTFORML まだ慣れない仕事に、%CALLNAME:MASTER%はたどたどしく取り組んでいる。
+	ENDIF
+	;--------------------------------------------------------------------------
+	;淫具装着
+	;--------------------------------------------------------------------------
+	IF TEQUIP:MASTER:胸 || TEQUIP:MASTER:クリトリス || (TEQUIP:MASTER:膣 == 1) || (TEQUIP:MASTER:アナル >= 60 && TEQUIP:MASTER:アナル <= 62)
+		;確率が一定じゃないのは故意にやってます
+		IF RAND:5 == 0
+			PRINTFORM 多くの客でごった返す
+		ELSEIF RAND:5 == 1
+			PRINTFORM 閑散としている
+		ELSE
+			PRINTFORM いつもと変わらぬ様子の
+		ENDIF
+		PRINTFORM 店内で、取り付けられた
+		;胸刺激
+		IF TEQUIP:MASTER:胸
+			PRINTFORM %ITEMNAME:(TEQUIP:MASTER:胸)%が%CALLNAME:MASTER%の
+			;絶壁 or (オトコ＋並乳)
+			IF TALENT:MASTER:バストサイズ == -2 || (TALENT:MASTER:性別 == 2 && TALENT:MASTER:バストサイズ == 0)
+				;女性
+				IF TALENT:MASTER:性別 & 1
+					;幼児体型
+					SIF TALENT:MASTER:100 == -2
+						PRINTFORM 見た目相応の
+					;長身以上
+					SIF TALENT:MASTER:100 >= 1
+						PRINTFORM 見た目に反して
+				ENDIF
+				PRINTFORM 平坦な
+			;貧乳
+			ELSEIF TALENT:MASTER:105 == -1
+				;小柄体型
+				SIF TALENT:MASTER:100 == -1
+					PRINTFORM 見た目相応の
+				;長身以上
+				SIF TALENT:MASTER:100 >= 1
+					PRINTFORM 見た目に反して
+				PRINTFORM なだらかな
+
+			;巨乳
+			ELSEIF TALENT:MASTER:105 == 1
+				;小柄体型 or 幼児体型
+				SIF TALENT:MASTER:100 == -1 || TALENT:MASTER:100 == -2
+					PRINTFORM 見た目に反して
+				PRINTFORM 豊かな
+			;爆乳
+			ELSEIF TALENT:MASTER:105 == 2
+				PRINTFORM 豊か過ぎる
+			ENDIF
+			PRINTFORML 胸の先を刺激する。
+		;クリ刺激
+		ELSEIF TEQUIP:MASTER:クリトリス
+			PRINTFORML %ITEMNAME:(TEQUIP:MASTER:クリトリス)%が%CALLNAME:MASTER%のクリトリスを刺激する。
+		;膣刺激
+		ELSEIF TEQUIP:MASTER:膣
+			PRINTFORML %ITEMNAME:(TEQUIP:MASTER:膣)%が%CALLNAME:MASTER%の膣で震える。
+		;アナル刺激
+		ELSEIF TEQUIP:MASTER:アナル
+			PRINTFORML %ITEMNAME:(TEQUIP:MASTER:アナル)%が%CALLNAME:MASTER%の直腸で震える。
+		ENDIF
+		;PALAM欲情Lv3以上
+		IF PALAM:MASTER:欲情 >= PALAMLV:3
+			PRINTFORML 仕事に集中しなければ、と思うほど、淫具の刺激は%CALLNAME:MASTER%を苛んだ。
+			;女性器あり
+			IF TALENT:MASTER:性別 & 1
+				;下半身下着
+				IF TEQUIP:MASTER:下半身下着
+					PRINTFORM 身に付けた下着
+				ELSE
+					PRINTFORM 下着を着けていない秘処
+				ENDIF
+				;PALAM潤滑Lv3以上
+				IF PALAM:MASTER:潤滑 >= PALAMLV:3
+					PRINTFORMW からは愛液が溢れ、幾筋かは太ももに零れ落ちて輝線を描いている。
+				ELSE
+					PRINTFORMW は、染み出した愛液で濡れ始めている。
+				ENDIF
+			ELSE
+				PRINTFORM 股間では、勃起した肉棒
+				;スカート類
+				IF TEQUIP:MASTER:下半身上着 <= 274
+					PRINTFORMW がスカートを持ち上げて自己主張をしている。
+				ELSE
+					PRINTFORM の形が%ITEMNAME:(TEQUIP:MASTER:下半身上着)%越しにも
+					;下半身下着なし
+					SIF TEQUIP:MASTER:下半身下着 == 0
+						PRINTFORM はっきりと
+					PRINTFORMW わかる。
+				ENDIF
+			ENDIF
+		ELSE
+			PRINTFORMW 淫らな玩具の与える苦痛に耐えながら、%CALLNAME:MASTER%はアルバイトに専念した。
+		ENDIF
+		;淫具を着けたまま働き続けた：道具使用+1 異常+1（快感PALAMはSOURCE_CHECK_1のEQUIP_CHECKが反映）
+		CALL バイト経験加算(28, 1)
+		CALL バイト経験加算(53, 1)
+
+	;--------------------------------------------------------------------------
+	;ノーパン・通常
+	;--------------------------------------------------------------------------
+	ELSE
+		PRINTFORM 今日の店内は
+		;確率が一定じゃないのは故意にやってます
+		IF RAND:5 == 0
+			PRINTFORML 、いつもより盛況のようだ。
+			;下半身下着なし
+			IF TEQUIP:MASTER:下半身下着 == 0
+				;露出癖Lv3以上 or 露出癖Lv5以上＋恥じらい
+				IF ABL:MASTER:露出癖 >= 3 || (ABL:MASTER:露出癖 >= 5 && TALENT:MASTER:羞恥心 == 1)
+					PRINTFORML 下着を着けていない下半身に、疼くような感覚が走る。
+					PRINTFORMW %CALLNAME:MASTER%はどこか楽しげに、客でごった返す店内に向けて歩き出した。
+				ELSE
+					PRINTFORML 今日は、忙しく動き回ることになりそうだ。
+					PRINTFORML それはつまり、下着を穿いていないことがバレる危険性が増す、と言うことでもある。
+					PRINTFORMW %CALLNAME:MASTER%はどこか不安げに、客でごった返す店内に一歩を踏み出した…
+				ENDIF
+			ELSE
+				PRINTFORMW …今日は忙しくなりそうだ。
+			ENDIF
+		ELSEIF RAND:5 == 1
+			PRINTFORML 閑散としている。
+			;下半身下着なし
+			IF TEQUIP:MASTER:下半身下着 == 0
+				;露出癖Lv3以上 or 露出癖Lv4以上＋恥じらい
+				IF ABL:MASTER:露出癖 >= 3 || (ABL:MASTER:露出癖 >= 4 && TALENT:MASTER:羞恥心 == 1)
+					PRINTFORML …折角、下着を穿かずに来たと言うのに。
+					PRINTFORMW %CALLNAME:MASTER%はどこか残念そうに、溜息をついた。
+				ELSE
+					PRINTFORML …これならば、下着を穿いていないこともバレにくいかもしれない。
+					PRINTFORMW %CALLNAME:MASTER%は安堵の吐息を洩らし、とりあえず、あまり動かなくて済むような仕事に取り掛かることにした。
+				ENDIF
+			ELSE
+				PRINTFORMW %CALLNAME:MASTER%は溜息をつくと、とりあえず店内の掃除から始めることにした。
+			ENDIF
+		ELSE
+			PRINTFORML 、平常通りの客の入りのようだ。
+			;下半身下着なし
+			SIF TEQUIP:MASTER:下半身下着 == 0
+				PRINTFORML …下着を穿いていないことが、バレてしまわないだろうか。
+			PRINTFORM %CALLNAME:MASTER%は入って来た客に対して
+			;露出癖Lv3以上 or 露出癖Lv4以上＋恥じらい
+			IF ABL:MASTER:露出癖 >= 3 || (ABL:MASTER:露出癖 >= 4 && TALENT:MASTER:羞恥心 == 1)
+				PRINTFORM どこか楽しそうに
+			;臆病 or 下半身下着なし
+			ELSEIF TALENT:MASTER:度胸 == -1 || TEQUIP:MASTER:下半身下着 == 0
+				PRINTFORM ぎこちなく
+			;気丈 or 陽気 or 目立ちたがり
+			ELSEIF TALENT:MASTER:度胸 == 1 || TALENT:MASTER:陽気／陰気 == 1 || TALENT:MASTER:目立ちたがり
+				PRINTFORM 元気よく
+			;大人しい
+			ELSEIF TALENT:MASTER:応答 == -1
+				PRINTFORM 柔らかく
+			ENDIF
+			PRINTFORMW 微笑み、来店を歓迎した。
+		ENDIF
+	ENDIF
+ENDIF
+;今日の給料（額はXCOM1005で計算、M:103経由）。経験はここで加算し、獲得表示はSOURCE_CHECK_2の標準表示が行う
+PRINTL
+PRINTFORML 今日の給料 +%金額(M:103)%円
+CALL JOB_EXP_GAIN(CFLAG:MASTER:職業)
+
+;;;援交判定：店ごとの専用店主を相手にする（番号の解決は@JOB_MASTER_CHARA。JOB.ERB）
+I = -1
+D = JOB_MASTER_CHARA(CFLAG:MASTER:職業)
+IF D >= 0 && EXISTCSV(D,0)
+	I = GETCHARA(D)
+ENDIF
+;専用店主が未登録なら従来の汎用モブ(モブ男/モブ子)にフォールバック
+IF I < 0
+	IF RAND(2)
+		I = GETCHARA(37)
+	ELSE
+		I = GETCHARA(38)
+	ENDIF
+ENDIF
+
+;M:102==1（この接客で客ホテルが発生）のターンは店主援交をスキップ
+IF I >= 0 && BASE:1:評判 >= 600 && M:102 != 1
+	CALL NPC_ENKOU(I,1)
+ENDIF
+
+M:101 = 1

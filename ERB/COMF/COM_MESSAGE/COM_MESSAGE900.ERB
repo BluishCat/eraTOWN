@@ -1,0 +1,133 @@
+﻿;===============================================================================
+;抵抗するか否か
+;===============================================================================
+;--------------------------------------------------------------------------
+;痴漢を探す
+;　この判定に成功することで、「強気に抵抗する」が使用可能に。痴漢を見付けたらコマンド消滅。
+;　成否に関わらず、痴漢側に無条件で一手与える。
+;--------------------------------------------------------------------------
+@COM_MESSAGE_901
+
+PRINTFORML ＜痴漢を探す＞
+PRINTFORM 自身の体をまさぐられる感触
+;PALAM欲情Lv3以上
+IF PALAM:MASTER:欲情 >= PALAMLV:3
+	PRINTFORM に呼吸を乱し
+ELSE
+	PRINTFORM に不快感を感じ
+ENDIF
+PRINTFORML ながら、痴漢の姿を探す。
+;一定確率で成功。混み具合で変動とか？　とりあえず、テスト用に1/2で固定。
+IF RAND:3 == 0
+	T:105 = 1
+	PRINTFORM …どうやら、
+	IF RAND:3 == 0
+		PRINTFORM 背後の
+	ELSEIF RAND:3 == 1
+		PRINTFORM 隣に立っている
+	ELSE
+		PRINTFORM 目の前にいる
+	ENDIF
+	IF TALENT:(TCVAR:MASTER:行為対象):学生
+		IF NO:(TCVAR:MASTER:行為対象) == 4
+			PRINTFORM 他大学の生徒らしい少年
+		ELSE
+			PRINTFORM 同じ大学の制服を着た
+			IF TALENT:(TCVAR:MASTER:行為対象):性別 & 1
+				PRINTFORM 少女
+			ELSE
+				PRINTFORM 少年
+			ENDIF
+		ENDIF
+	ELSE
+		PRINTFORM %CALLNAME:(TCVAR:MASTER:行為対象)%
+	ENDIF
+	;同性の場合。女性の痴漢の場合は「痴女」にするべきかもですが、イメージ的に違う気がしないでもなく。
+	PRINTFORMW が、%CALLNAME:MASTER%の体を触っている痴漢らしい。
+	;主人公の家族の場合
+	IF NO:(TCVAR:MASTER:行為対象) >= 10 && NO:(TCVAR:MASTER:行為対象) <= 11
+		PRINTFORM よく見るとそれは、%CALLNAME:MASTER%の
+		IF NO:(TCVAR:MASTER:行為対象) == 10
+			PRINTFORMW 父親だ…
+		ELSEIF NO:(TCVAR:MASTER:行為対象) == 11
+			PRINTFORMW 母親だ…
+		ENDIF
+	ELSEIF (TALENT:MASTER:性別 & 1 && TALENT:(TCVAR:MASTER:行為対象):性別 & 1) || (TALENT:MASTER:性別 == 3 && TALENT:(TCVAR:MASTER:行為対象):性別 == 3)
+		PRINTFORMW …同性の痴漢とは、また珍しい。
+	ENDIF
+	CFLAG:(TCVAR:MASTER:行為対象):痴漢発見 = 1
+ELSE
+	LOCAL = RAND:3
+	IF LOCAL == 0
+		PRINTFORMW だが、電車内の人混みに紛れて、よくわからない…
+	ELSEIF LOCAL == 1
+		PRINTFORMW あの男だろうか…いや、人違いのようだ。
+	ELSE
+		PRINTFORMW いた！　…と思ったが、どうやら違うらしい。
+	ENDIF
+ENDIF
+;--------------------------------------------------------------------------
+;我慢する
+;　黙って痴漢されるよりも性的なPALAM上昇低め、利点は時間経過のみ
+;--------------------------------------------------------------------------
+@COM_MESSAGE_902
+
+PRINTFORML ＜我慢する＞
+LOCAL = RAND:3
+IF LOCAL == 0
+	PRINTFORML …迂闊に抵抗したら、行為がエスカレートしてしまうかもしれない。
+ELSEIF LOCAL == 1
+	PRINTFORML 下手に抵抗するより、我慢した方が得策かもしれない…
+ELSE
+	PRINTFORML 今は、早く目的地に着くことを祈るしかない…
+ENDIF
+PRINTFORM %CALLNAME:MASTER%は
+;臆病 or 大人しい
+IF TALENT:MASTER:度胸 == -1 || TALENT:MASTER:応答 == -1
+	LOCAL = RAND:2
+	IF LOCAL == 0
+		PRINTFORM 顔をうつむかせ、唇を噛んで
+	ELSE
+		PRINTFORM 目尻に涙を浮かべながら、
+	ENDIF
+ELSE
+	LOCAL = RAND:2
+	IF LOCAL == 0
+		PRINTFORM 歯噛みしながら、
+	ELSE
+		PRINTFORM 屈辱の涙を浮かべながら、
+	ENDIF
+ENDIF
+PRINTFORMW 痴漢行為をひたすらに堪え続けた。
+;--------------------------------------------------------------------------
+;強気に抵抗する（「痴漢を探す」に成功する必要あり。[臆病][大人しい]では実行不可）
+;　抵抗成功率・高、成否に関わらず恥情PALAM増加
+;--------------------------------------------------------------------------
+@COM_MESSAGE_903
+
+PRINTFORML ＜強気に抵抗する＞
+PRINTFORM %CALLNAME:MASTER%は
+LOCAL = RAND:3
+IF LOCAL == 0
+	PRINTFORMW 咄嗟に振り返り、驚いている痴漢の腕を掴もうとした。
+ELSEIF LOCAL == 1
+	PRINTFORMW 無言のまま、踵を痴漢の足の上に力いっぱい叩きつけようとした。
+ELSE
+	PRINTFORMW 強い意思のこもった視線で痴漢を睨み、周りにはっきり聞こえるよう、声を発しようとした。
+ENDIF
+
+
+;--------------------------------------------------------------------------
+;控えめに抵抗する
+;　抵抗成功率・低、PALAM変動なし
+;--------------------------------------------------------------------------
+@COM_MESSAGE_904
+
+PRINTFORML ＜控えめに抵抗する＞
+PRINTFORM %CALLNAME:MASTER%は
+LOCAL = RAND:2
+IF LOCAL == 0
+	PRINTFORMW まとわりついてくる痴漢の手を、身を捩って振りほどこうとした。
+ELSE
+	PRINTFORMW 辛うじて周りに聞こえる程度の声で、痴漢行為を止めるように訴えた。
+ENDIF

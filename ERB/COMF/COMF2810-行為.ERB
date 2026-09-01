@@ -1,0 +1,58 @@
+﻿@XCOM_ABLE2810(ARG)
+VARSET LOCAL
+LOCAL = ARG
+;;;VARSET ARG
+;;;SIF LOCAL == MASTER
+;;;	RETURN 0
+RETURN 1
+
+@XCOM2810(ARG)
+#DIM 前回
+#DIM 除外フラグ
+;行為
+VARSET LOCAL
+;TCVAR:610=前回N行為(前回選択した行為番号)。CSV名に依存しないよう数値indexで参照
+;※旧475はEXPスナップショット領域(400-499)と衝突しSOURCE_CHECK_2で毎回上書きされていたため610へ移動
+前回 = TCVAR:H:610
+除外フラグ = 1
+$再抽選2810
+VARSET LOCAL:2
+VARSET LOCAL:3
+VARSET LOCAL:4
+FOR LOCAL,2000,2200
+	SIF TRAINNAME:LOCAL == ""
+		CONTINUE
+	;前回と同じ行為は除外（ログの連続重複を避ける）
+	SIF 除外フラグ && LOCAL == 前回
+		CONTINUE
+	TRYCCALLFORM XCOM_ABLE{LOCAL}(H)
+	IF RESULT
+		LOCAL:1 = RAND(100)
+		IF LOCAL:2 < LOCAL:1
+			LOCAL:2 = LOCAL:1
+			LOCAL:3 = LOCAL
+			LOCAL:4++
+		ENDIF
+	ENDIF
+	CATCH
+PRINTVL LOCAL
+	ENDCATCH
+NEXT
+;前回除外で候補ゼロなら、除外を外して1回だけ再抽選
+IF !LOCAL:4 && 除外フラグ
+	除外フラグ = 0
+	GOTO 再抽選2810
+ENDIF
+STR:0 = % "XCOM" + TOSTR(LOCAL:3) %
+IF LOCAL:4
+	TCVAR:H:610 = LOCAL:3
+	;体位/させる体位コマンドは現在体位として保持（H状態表示に使用）
+	SIF (LOCAL:3 >= 2060 && LOCAL:3 <= 2079) || (LOCAL:3 >= 2100 && LOCAL:3 <= 2119)
+		TCVAR:H:現在体位 = LOCAL:3
+	CALLFORM %STR:0%(H)
+ELSE
+	CALL XCOM2199(H)
+ENDIF
+
+RETURN 1
+

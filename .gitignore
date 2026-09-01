@@ -1,0 +1,20 @@
+# Emuera 本体（第三者製バイナリ・同梱ドキュメント）
+*.exe
+Emuera_readme.txt
+
+# ローカル環境依存の設定・状態
+emuera.config
+setting.json
+profile
+setting.txt
+
+# 実行時に生成されるもの
+sav/
+debug/
+list.txt
+
+# 作業用
+.kg/
+.claude/
+*.bak
+*.ERB.bak

@@ -1,0 +1,213 @@
+﻿;================================================
+; あなた（キャラ番号 1）の汎用口上
+; 状況：1声かけ 2愛撫 3膣挿入 4アナル挿入 5絶頂 6口内/顔射 7抵抗 8甘え 9日常
+;================================================
+
+@汎用口上_1_1(ARG,ARG:1)
+SELECTCASE RAND(6)
+	CASE 0
+		PRINTFORMW %CALLNAME:ARG%「ん、わたし？　どうかした？」
+	CASE 1
+		PRINTFORMW %CALLNAME:ARG%「あ、%CALLNAME:(ARG:1)%さん。何か用ですか？」
+	CASE 2
+		PRINTFORMW %CALLNAME:ARG%「はい、なんでしょう？」
+	CASE 3
+		PRINTFORMW %CALLNAME:ARG%「……なに？　わたしに話があるの？」
+	CASE 4
+		PRINTFORMW %CALLNAME:ARG%「呼んだ？　どうしたの？」
+	CASEELSE
+		PRINTFORMW %CALLNAME:ARG%「こんにちは。ちょうど、ひと息ついてたところ」
+ENDSELECT
+RETURN
+@汎用口上_8_1(ARG,ARG:1)
+SELECTCASE RAND(6)
+	CASE 0
+		PRINTFORMW %CALLNAME:ARG%「えへへ……ちょっとだけ、そばにいてもいい？」
+	CASE 1
+		PRINTFORMW %CALLNAME:ARG%「……%CALLNAME:(ARG:1)%さんといると、なんだか落ち着くな……」
+	CASE 2
+		PRINTFORMW %CALLNAME:ARG%「今日は会えて、ちょっと嬉しい……なんてね」
+	CASE 3
+		PRINTFORMW %CALLNAME:ARG%「もう……そんなに優しくされたら、照れちゃうよ……」
+	CASE 4
+		PRINTFORMW %CALLNAME:ARG%「ねえ、また一緒に帰ろ？」
+	CASEELSE
+		PRINTFORMW %CALLNAME:ARG%「……ありがと。あなたのこと、けっこう頼りにしてるんだから」
+ENDSELECT
+RETURN
+@汎用口上_9_1(ARG,ARG:1)
+SELECTCASE RAND(8)
+	CASE 0
+		PRINTFORMW %CALLNAME:ARG%「ふぁ……ちょっと眠いなあ……」
+	CASE 1
+		PRINTFORMW %CALLNAME:ARG%「今日のごはん、なんだろう」
+	CASE 2
+		PRINTFORMW %CALLNAME:ARG%「宿題、まだ終わってないんだよね……」
+	CASE 3
+		PRINTFORMW %CALLNAME:ARG%「いい天気。どこか行きたくなっちゃうな」
+	CASE 4
+		PRINTFORMW %CALLNAME:ARG%「はぁ……なんだか気だるい一日」
+	CASE 5
+		PRINTFORMW %CALLNAME:ARG%「お腹すいた……何か食べたいなあ」
+	CASE 6
+		PRINTFORMW %CALLNAME:ARG%「今週、あっという間だったな……」
+	CASEELSE
+		PRINTFORMW %CALLNAME:ARG%「んーっ、ちょっと伸びしよ……よし」
+ENDSELECT
+RETURN
+
+;================================================
+; 以下、性的状況の口上
+;   ARG=本人(喋る側＝行為の受け手) / ARG:1=相手(行為者)
+;   KSTR方式：条件分岐で候補を溜め、ディスパッチャが1つをランダム表示。
+;   分岐軸：初回 / 関係性(恋人・敵対・従順・嫌々) / 欲情レベル / 性格
+;================================================
+
+;----- 2 愛撫される -----
+@汎用口上_2_1(ARG,ARG:1)
+;--- 関係性 ---
+IF LOVE_CHECK(ARG, ARG:1)
+	TSTR:(FLAG:口上候補数++) = %CALLNAME:ARG%「んっ……%CALLNAME:(ARG:1)%さんの手、あったかい……」
+	TSTR:(FLAG:口上候補数++) = %CALLNAME:ARG%「そこ、優しく撫でられると……ふぁ、くすぐったいよ……」
+ELSEIF TA:ARG:(ARG:1):6 > 500
+	TSTR:(FLAG:口上候補数++) = %CALLNAME:ARG%「やっ……触らないで！　あなたなんかに……っ」
+	TSTR:(FLAG:口上候補数++) = %CALLNAME:ARG%「気持ち悪い……離してよ……！」
+ELSEIF ABL:ARG:従順 >= 3
+	TSTR:(FLAG:口上候補数++) = %CALLNAME:ARG%「はい……%CALLNAME:(ARG:1)%さんの、好きにして……ください……」
+	TSTR:(FLAG:口上候補数++) = %CALLNAME:ARG%「んっ……どこでも、触っていいから……」
+ELSE
+	TSTR:(FLAG:口上候補数++) = %CALLNAME:ARG%「あ……ちょっと、待って……心の準備が……」
+	TSTR:(FLAG:口上候補数++) = %CALLNAME:ARG%「ん……なんだか、変な感じ……」
+ENDIF
+;--- 欲情レベル（高い時だけ追加の候補を溜める）---
+IF GETPALAMLV(PALAM:ARG:欲情, 5)
+	TSTR:(FLAG:口上候補数++) = %CALLNAME:ARG%「はぁっ、はぁ……もう、身体が熱くて……」
+	TSTR:(FLAG:口上候補数++) = %CALLNAME:ARG%「んんっ……そんなに、焦らさないで……」
+ENDIF
+;--- 性格 ---
+IF TALENT:ARG:羞恥心 > 0
+	TSTR:(FLAG:口上候補数++) = %CALLNAME:ARG%「やだ……こんなに明るいところで……恥ずかしいよ……」
+ELSEIF TALENT:ARG:快感応答 < 0
+	TSTR:(FLAG:口上候補数++) = %CALLNAME:ARG%「べ、別に……気持ちよくなんて、ないんだから……っ」
+ENDIF
+RETURN
+
+;----- 3 膣挿入される -----
+@汎用口上_3_1(ARG,ARG:1)
+;--- 初回 ---
+IF EXP:ARG:Ｖ性交経験 <= 1
+	TSTR:(FLAG:口上候補数++) = %CALLNAME:ARG%「あ……あぁっ……！　これが、挿入ってくる……感じ……っ」
+	TSTR:(FLAG:口上候補数++) = %CALLNAME:ARG%「痛……っ、こわいよ……でも、やめないで……」
+ENDIF
+;--- 関係性 ---
+IF LOVE_CHECK(ARG, ARG:1)
+	TSTR:(FLAG:口上候補数++) = %CALLNAME:ARG%「あんっ……%CALLNAME:(ARG:1)%さんと、ひとつになってる……嬉しい……」
+	TSTR:(FLAG:口上候補数++) = %CALLNAME:ARG%「奥まで、来て……あなたで、いっぱいにして……」
+ELSEIF TA:ARG:(ARG:1):6 > 500
+	TSTR:(FLAG:口上候補数++) = %CALLNAME:ARG%「いやっ、抜いて……！　こんなの、認めない……っ」
+	TSTR:(FLAG:口上候補数++) = %CALLNAME:ARG%「くっ……こんなことで、屈したりしないんだから……！」
+ELSEIF ABL:ARG:従順 >= 3
+	TSTR:(FLAG:口上候補数++) = %CALLNAME:ARG%「はぁっ……%CALLNAME:(ARG:1)%さんの、好きなだけ……使ってください……」
+	TSTR:(FLAG:口上候補数++) = %CALLNAME:ARG%「んっ、んっ……奥、突いて……ちゃんと、するから……」
+ELSE
+	TSTR:(FLAG:口上候補数++) = %CALLNAME:ARG%「や、やめ……っ、まだ、心が追いつかない……」
+	TSTR:(FLAG:口上候補数++) = %CALLNAME:ARG%「んくっ……勝手に、身体が……いやなのに……」
+ENDIF
+;--- 欲情レベル ---
+IF GETPALAMLV(PALAM:ARG:欲情, 5)
+	TSTR:(FLAG:口上候補数++) = %CALLNAME:ARG%「あぁっ、あぁっ！　もう、だめ……気持ちよすぎて、おかしくなっちゃう……！」
+	TSTR:(FLAG:口上候補数++) = %CALLNAME:ARG%「もっと、奥……いっぱい、突いて……ぇ……っ」
+ELSEIF PALAM:ARG:潤滑 >= PALAMLV:3
+	TSTR:(FLAG:口上候補数++) = %CALLNAME:ARG%「んぁ……とろとろに、なってて……するって、挿入っちゃう……」
+ELSE
+	TSTR:(FLAG:口上候補数++) = %CALLNAME:ARG%「んくぅっ……まだ、硬くて……ちょっと、痛い……」
+ENDIF
+;--- 性格 ---
+IF TALENT:ARG:羞恥心 > 0
+	TSTR:(FLAG:口上候補数++) = %CALLNAME:ARG%「見ないで……つながってるとこ、見ちゃ、やだ……っ」
+ELSEIF TALENT:ARG:自己愛 < 0 || TALENT:ARG:抵抗
+	TSTR:(FLAG:口上候補数++) = %CALLNAME:ARG%「ひどく、されると……なんで、こんなに……感じちゃうの……っ」
+ENDIF
+RETURN
+
+;----- 4 アナル挿入される -----
+@汎用口上_4_1(ARG,ARG:1)
+IF EXP:ARG:Ａ性交経験 <= 1
+	TSTR:(FLAG:口上候補数++) = %CALLNAME:ARG%「ひぁっ……！　そんな、とこ……だめ、汚いよ……っ」
+ENDIF
+IF LOVE_CHECK(ARG, ARG:1)
+	TSTR:(FLAG:口上候補数++) = %CALLNAME:ARG%「あなたのためなら……お尻でも、受け入れる……から……」
+ELSEIF TA:ARG:(ARG:1):6 > 500
+	TSTR:(FLAG:口上候補数++) = %CALLNAME:ARG%「いやぁっ、そこだけは……！　やめて、おねがい……っ」
+ELSEIF ABL:ARG:従順 >= 3
+	TSTR:(FLAG:口上候補数++) = %CALLNAME:ARG%「はい……お尻の穴も、%CALLNAME:(ARG:1)%さんの、ものです……」
+ELSE
+	TSTR:(FLAG:口上候補数++) = %CALLNAME:ARG%「こわい……裂けちゃうよ……ゆっくり、して……っ」
+ENDIF
+IF GETPALAMLV(PALAM:ARG:欲情, 5)
+	TSTR:(FLAG:口上候補数++) = %CALLNAME:ARG%「あぁっ、お尻なのに……気持ちいっ……わたし、変になってる……」
+ELSE
+	TSTR:(FLAG:口上候補数++) = %CALLNAME:ARG%「んくぅっ……お腹の中、いっぱいで……苦しい……」
+ENDIF
+RETURN
+
+;----- 5 絶頂 -----
+@汎用口上_5_1(ARG,ARG:1)
+;相手が居ない（自慰）／相手＝自分 → 相手を参照しないソロ用絶頂台詞
+IF !ARG:1 || ARG:1 == ARG
+	IF TALENT:ARG:羞恥心 > 0
+		TSTR:(FLAG:口上候補数++) = %CALLNAME:ARG%「んっ、んんっ……だめ、声、出ちゃ……イ、く……っ！」
+		TSTR:(FLAG:口上候補数++) = %CALLNAME:ARG%「や……こんなの、自分で……イ、っちゃ……あぁっ……！」
+	ELSEIF TALENT:ARG:快感応答 < 0
+		TSTR:(FLAG:口上候補数++) = %CALLNAME:ARG%「ちが……これ、勝手に……あっ、あぁあっ……！」
+	ELSE
+		TSTR:(FLAG:口上候補数++) = %CALLNAME:ARG%「あっ、あっ……イく、イっちゃう……んぁっ……！」
+		TSTR:(FLAG:口上候補数++) = %CALLNAME:ARG%「んくっ……もう、止まらな……イ、くぅ……っ！」
+	ENDIF
+	RETURN
+ENDIF
+;--- 関係性で絶頂の質を出し分け ---
+IF LOVE_CHECK(ARG, ARG:1)
+	TSTR:(FLAG:口上候補数++) = %CALLNAME:ARG%「イく……あなたと一緒に、イっちゃう……っ、すきぃ……！」
+	TSTR:(FLAG:口上候補数++) = %CALLNAME:ARG%「だめ、もう……イく、イくっ……%CALLNAME:(ARG:1)%さぁん……！」
+ELSEIF ABL:ARG:従順 >= 3
+	TSTR:(FLAG:口上候補数++) = %CALLNAME:ARG%「イかせて、ください……%CALLNAME:(ARG:1)%さんの前で、イきますっ……！」
+ELSE
+	TSTR:(FLAG:口上候補数++) = %CALLNAME:ARG%「や、やだっ、イきたくないのに……勝手に……あぁっ！」
+ENDIF
+;--- 性格 ---
+IF TALENT:ARG:羞恥心 > 0
+	TSTR:(FLAG:口上候補数++) = %CALLNAME:ARG%「見ないでっ……イく顔、見ちゃ、やだぁ……っ」
+ELSEIF TALENT:ARG:快感応答 < 0
+	TSTR:(FLAG:口上候補数++) = %CALLNAME:ARG%「ちが……これは、イってなんか……あっ、あぁあっ……！」
+ENDIF
+RETURN
+
+;----- 6 口内・顔に射精される -----
+@汎用口上_6_1(ARG,ARG:1)
+IF EXP:ARG:口淫経験 <= 1
+	TSTR:(FLAG:口上候補数++) = %CALLNAME:ARG%「んぷっ……！　口の中に、こんな……熱いの……」
+ENDIF
+IF LOVE_CHECK(ARG, ARG:1)
+	TSTR:(FLAG:口上候補数++) = %CALLNAME:ARG%「んく……ん……ぜんぶ、飲んだよ……えへへ……」
+ELSEIF TA:ARG:(ARG:1):6 > 500
+	TSTR:(FLAG:口上候補数++) = %CALLNAME:ARG%「けほっ……最低……こんなの、吐き出してやる……っ」
+ELSEIF ABL:ARG:従順 >= 3
+	TSTR:(FLAG:口上候補数++) = %CALLNAME:ARG%「んっ……一滴も、こぼしません……ごちそうさま、でした……」
+ELSE
+	TSTR:(FLAG:口上候補数++) = %CALLNAME:ARG%「んんっ……顔に、かかって……あぅ、どうしよう……」
+ENDIF
+RETURN
+
+;----- 7 行為を拒む・抵抗する -----
+@汎用口上_7_1(ARG,ARG:1)
+IF TA:ARG:(ARG:1):6 > 500
+	TSTR:(FLAG:口上候補数++) = %CALLNAME:ARG%「離せっ……！　あなたの思い通りには、絶対ならない……！」
+ELSEIF TALENT:ARG:抵抗
+	TSTR:(FLAG:口上候補数++) = %CALLNAME:ARG%「いや……っ、こんなこと、認めない……やめてよ……！」
+ELSEIF TALENT:ARG:羞恥心 > 0
+	TSTR:(FLAG:口上候補数++) = %CALLNAME:ARG%「だ、だめ……こんなの、恥ずかしくて……できないよ……っ」
+ELSE
+	TSTR:(FLAG:口上候補数++) = %CALLNAME:ARG%「ぅ……やだ……やめて……おねがい、だから……」
+ENDIF
+RETURN

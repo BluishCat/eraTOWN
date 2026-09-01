@@ -1,0 +1,64 @@
+﻿;ローター
+@XCOM_ABLE40(ARG)
+VARSET LOCAL
+LOCAL = ARG
+VARSET ARG
+SIF !TCVAR:LOCAL:行為対象
+	RETURN 0
+SIF !GETBIT(TALENT:(TCVAR:LOCAL:行為対象):2,0)
+	RETURN 0
+SIF TALENT:(TCVAR:LOCAL:行為対象):2 == 3
+	RETURN 0
+SIF !EQUIP:LOCAL:ローター
+	RETURN 0
+;NPCは道具を常時携帯しない → 低確率でのみ使用
+SIF LOCAL != MASTER && RAND(100) >= 15
+	RETURN 0
+SIF TEQUIP:(TCVAR:LOCAL:行為対象):下半身下着 == 373
+	RETURN 0
+;行為者が縄装着時は不可
+SIF TEQUIP:LOCAL:縄
+	RETURN 0
+
+RETURN GLOBAL_COMABLE(40)
+
+;-------------------------------------------------
+;ローター
+;-------------------------------------------------
+@XCOM40(ARG)
+VARSET LOCAL
+PRINTL 
+PRINTFORML %"=" * 107%
+PRINTFORML ローター(%CALLNAME:ARG%)
+SIF ARG == MASTER || TCVAR:ARG:行為対象 == MASTER
+	CALL 汎用口上(2, TCVAR:ARG:行為対象, ARG)
+;-------------------------------------------------
+;ソース追加処理
+;-------------------------------------------------
+;消費体力、気力
+DOWNBASE:(TCVAR:ARG:行為対象):体力 += 10
+DOWNBASE:(TCVAR:ARG:行為対象):気力 += 80
+
+SOURCE:(TCVAR:ARG:行為対象):快Ｃ = 250
+SOURCE:(TCVAR:ARG:行為対象):露出 = 20
+SOURCE:(TCVAR:ARG:行為対象):逸脱 = 30
+SOURCE:(TCVAR:ARG:行為対象):反感 = 30
+;-------------------------------------------------
+;特殊ソース処理
+;-------------------------------------------------
+;抑圧、抵抗持ちには、抑鬱ソース追加
+SIF TALENT:(TCVAR:ARG:行為対象):自己愛 < 0 || TALENT:(TCVAR:ARG:行為対象):抵抗
+	SOURCE:(TCVAR:ARG:行為対象):鬱屈 += 30
+;-------------------------------------------------
+;経験の処理
+;-------------------------------------------------
+CALL HETEROSEX_EXP(ARG,TCVAR:ARG:行為対象,1)
+CFLAG:ARG:待機時間 += 2
+IF TEQUIP:(TCVAR:ARG:行為対象):クリトリス == 40 || TEQUIP:(TCVAR:ARG:行為対象):クリトリス == 41
+	TEQUIP:(TCVAR:ARG:行為対象):クリトリス = 0
+ELSE
+	TEQUIP:(TCVAR:ARG:行為対象):クリトリス = 40
+ENDIF
+EXP:ARG:道具使用経験 ++
+VARSET ARG
+RETURN 1

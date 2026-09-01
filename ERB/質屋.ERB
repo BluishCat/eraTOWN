@@ -1,0 +1,310 @@
+﻿;================================================================
+; 質屋（地区2・位置56、繁華街接続。2026-07-22追加）
+;  ・営業10時〜20時（営業時間.ERB）。閉店中はCOMF1000の移動ガードで入店不可。
+;  ・店主キャラは置かない（カウンター越しの匿名の店員として地の文で処理する）。
+;    ＝CHARANUM相対式（基準値70）の更新は不要。
+;  ・機能は3つ:
+;      借りる   … 限度額の範囲で現金を借りる。月初に利息10%
+;      返す     … 所持金の範囲で残高を減らす（@ホスト売掛返済と同型）
+;      質入れ   … 所持アイテムをITEMPRICEの3割で買い取ってもらう
+;  ・滞納時は「質流れ」＝所持アイテムを自動で取り上げて残高に充当する。
+;    住居システム（マンション.ERB）には触らない＝差し押さえはアイテムのみ。
+;  ・ホストクラブの売掛(CFLAG:3512)とは別勘定。
+;    売掛は店へのツケ、こちらは現金の借金で、質屋で借りて売掛を返すことができる。
+;  ・使用フラグ（CSV未登録の生番号運用＝酔い3515-3521の続き）:
+;      CFLAG:MASTER:3522 借金残高（円）
+;      CFLAG:MASTER:3523 借入累計（円。信用＝限度額の算定に使う）
+;      CFLAG:MASTER:3524 質流れ回数（累計・永続）
+;================================================================
+
+;================================================================
+;@質屋_限度額
+;  今いくらまで借りられるか（#FUNCTION）。
+;  基本10万。借りて返した実績が積むほど信用が付き、上限50万まで伸びる。
+;  現在の残高分は当然引かれる。
+;================================================================
+@質屋_限度額
+#FUNCTION
+#DIM 枠
+枠 = 100000 + MIN(CFLAG:MASTER:3523 / 2, 400000)
+枠 = MIN(枠, 500000)
+枠 -= CFLAG:MASTER:3522
+RETURNF MAX(枠, 0)
+
+;================================================================
+;@質屋_査定額(ARG)
+;  ARG = アイテム番号。質屋の買い取り価格（#FUNCTION）。
+;  法定価格の3割。端数は切り捨て。
+;================================================================
+@質屋_査定額(ARG)
+#FUNCTION
+RETURNF ITEMPRICE:ARG * 3 / 10
+
+;================================================================
+;@質屋受付
+;  質屋(2,56)到着時のフック（ROOM_IN_OUT.ERB @到着時処理から呼ばれる）。
+;================================================================
+@質屋受付
+SIF CFLAG:MASTER:現在地区 != 2 || CFLAG:MASTER:現在位置 != 56
+	RETURN
+;イベント文脈からの到着では何もしない（通常コマンド文脈のみ）
+SIF TCVAR:MASTER:イベント
+	RETURN
+PRINTL
+PRINTFORML %"=" * 107%
+PRINTL 磨りガラスの引き戸を開けると、線香のような匂いがした。
+IF CFLAG:MASTER:3522 > 0
+	PRINTL カウンターの奥から初老の店主が顔を出し、あなたを見て小さく頷いた。
+	PRINTFORMW 「ああ、あんたか。……で、今日はどっちの用だい」（借入残高%金額(CFLAG:MASTER:3522)%円）
+ELSE
+	PRINTL 硝子ケースには時計や指輪が並び、値札はどれも裏返しになっている。
+	PRINTFORMW カウンターの奥から初老の店主が「いらっしゃい」と気のない声を寄越した。
+ENDIF
+CALL 質屋メニュー
+RETURN
+
+;================================================================
+;@質屋メニュー
+;  帰るまで用件を選び続ける（@居酒屋メニューと同型）。
+;================================================================
+@質屋メニュー
+$SHICHIYA_MENU_INPUT
+PRINTL
+PRINTFORML ＜質屋／{TIME / 60}時{TIME % 60}分／所持金%金額(MONEY:MASTER)%円／借入残高%金額(CFLAG:MASTER:3522)%円＞
+IF 質屋_限度額() > 0
+	PRINTFORML [0] - 金を借りる（あと%金額(質屋_限度額())%円まで）
+ELSE
+	SETCOLOR 96 , 96, 96
+	PRINTL 　　　金を借りる（これ以上は貸してもらえない）
+	RESETCOLOR
+ENDIF
+IF CFLAG:MASTER:3522 > 0
+	PRINTL [1] - 借りた金を返す
+ELSE
+	SETCOLOR 96 , 96, 96
+	PRINTL 　　　借りた金を返す（借金は残っていない）
+	RESETCOLOR
+ENDIF
+PRINTL [2] - 品物を質入れする
+PRINTL [3] - 店を出る
+INPUT
+SIF RESULT < 0 || RESULT > 3
+	GOTO SHICHIYA_MENU_INPUT
+SIF RESULT == 0 && 質屋_限度額() <= 0
+	GOTO SHICHIYA_MENU_INPUT
+SIF RESULT == 1 && CFLAG:MASTER:3522 <= 0
+	GOTO SHICHIYA_MENU_INPUT
+SELECTCASE RESULT
+	CASE 0
+		CALL 質屋_借入
+	CASE 1
+		CALL 質屋_返済
+	CASE 2
+		CALL 質屋_質入れ
+	CASEELSE
+		PRINTFORMW 店主は何も聞かず、引き戸が閉まるまで手元の帳面を見ていた。
+		RETURN
+ENDSELECT
+GOTO SHICHIYA_MENU_INPUT
+
+;================================================================
+;@質屋_借入
+;  限度額の範囲で現金を借りる。利息は月初に@質屋日次がまとめて付ける。
+;================================================================
+@質屋_借入
+#DIM 枠
+#DIM 額
+#DIM 選択
+枠 = 質屋_限度額()
+PRINTL
+PRINTFORML いくら借りますか？（限度額%金額(枠)%円）
+PRINTL [0] - 10,000円
+PRINTL [1] - 50,000円
+PRINTL [2] - 100,000円
+PRINTL [3] - 限度額いっぱい
+PRINTL [4] - やめておく
+$SHICHIYA_KARI_INPUT
+INPUT
+SIF RESULT < 0 || RESULT > 4
+	GOTO SHICHIYA_KARI_INPUT
+選択 = RESULT
+IF 選択 == 4
+	PRINTL 結局、何も言わずに引き下がった。
+	RETURN
+ENDIF
+SELECTCASE 選択
+	CASE 0
+		額 = 10000
+	CASE 1
+		額 = 50000
+	CASE 2
+		額 = 100000
+	CASEELSE
+		額 = 枠
+ENDSELECT
+IF 額 > 枠
+	PRINTFORMW 店主は帳面を繰り、「……あんたに貸せるのは%金額(枠)%円までだね」と首を振った。
+	RETURN
+ENDIF
+MONEY:MASTER += 額
+CFLAG:MASTER:3522 += 額
+CFLAG:MASTER:3523 += 額
+CFLAG:MASTER:待機時間 += 20
+PRINTL
+PRINTL 店主は無言で奥へ引っ込み、輪ゴムで留めた札束を持って戻ってきた。
+PRINTFORML 「月が変わったら取りに行くよ。利息は一割だ」（+%金額(額)%円　借入残高%金額(CFLAG:MASTER:3522)%円）
+PRINTFORMW 判子を押す手が、思ったよりも軽く動いた。
+
+;================================================================
+;@質屋_返済
+;  所持金の範囲で返す（@ホスト売掛返済と同型）。
+;================================================================
+@質屋_返済
+#DIM 額
+額 = MIN(MONEY:MASTER, CFLAG:MASTER:3522)
+IF 額 <= 0
+	PRINTFORMW 返そうにも、今は一円も持ち合わせがなかった。
+	RETURN
+ENDIF
+PRINTL
+PRINTFORML 借入残高は%金額(CFLAG:MASTER:3522)%円。今なら%金額(額)%円まで返せる。
+PRINTL [0] - 返す
+PRINTL [1] - やめておく
+$SHICHIYA_HENSAI_INPUT
+INPUT
+SIF RESULT != 0 && RESULT != 1
+	GOTO SHICHIYA_HENSAI_INPUT
+IF RESULT == 1
+	PRINTL 今日は見送ることにした。
+	RETURN
+ENDIF
+MONEY:MASTER -= 額
+CFLAG:MASTER:3522 -= 額
+CFLAG:MASTER:待機時間 += 15
+IF CFLAG:MASTER:3522 <= 0
+	CFLAG:MASTER:3522 = 0
+	PRINTFORML 店主は札を数え直し、帳面に横線を引いた。（-%金額(額)%円）
+	PRINTFORMW 「はい、これで綺麗さっぱり。……また来なくて済むといいね」
+ELSE
+	PRINTFORML 店主は札を数え直し、帳面の数字を書き換えた。（-%金額(額)%円）
+	PRINTFORMW 「残りは%金額(CFLAG:MASTER:3522)%円。忘れないうちに頼むよ」
+ENDIF
+RETURN
+
+;================================================================
+;@質屋_質入れ
+;  所持アイテムを法定価格の3割で買い取ってもらう。1回に1個。
+;  列挙は COMF1006-買い物 の FOR 0,1000 に合わせる。
+;================================================================
+@質屋_質入れ
+#DIM 候補, 40
+#DIM 件数
+#DIM 選択
+#DIM 品目
+#DIM 額
+件数 = 0
+FOR LOCAL, 0, 1000
+	SIF ITEM:LOCAL <= 0
+		CONTINUE
+	;値の付かないものは引き取ってもらえない
+	SIF 質屋_査定額(LOCAL) <= 0
+		CONTINUE
+	SIF 件数 >= 40
+		BREAK
+	候補:件数 = LOCAL
+	件数 ++
+NEXT
+IF !件数
+	PRINTFORMW 鞄をひっくり返してみたが、金になりそうなものは何ひとつ出てこなかった。
+	RETURN
+ENDIF
+PRINTL
+PRINTL 何を質に入れますか？
+FOR LOCAL, 0, 件数
+	PRINTFORML [{LOCAL}] - %ITEMNAME:(候補:LOCAL),20,LEFT%（所持{ITEM:(候補:LOCAL)}個　査定%金額(質屋_査定額(候補:LOCAL))%円）
+NEXT
+PRINTFORML [{件数}] - やめておく
+$SHICHIYA_SHICHI_INPUT
+INPUT
+SIF RESULT < 0 || RESULT > 件数
+	GOTO SHICHIYA_SHICHI_INPUT
+選択 = RESULT
+IF 選択 == 件数
+	PRINTL 結局、どれも手放す気になれなかった。
+	RETURN
+ENDIF
+品目 = 候補:選択
+額 = 質屋_査定額(品目)
+ITEM:品目 -= 1
+MONEY:MASTER += 額
+CFLAG:MASTER:待機時間 += 20
+PRINTL
+PRINTFORML 店主はルーペを片目に当て、%ITEMNAME:品目%をしばらく光にかざしていた。
+PRINTFORMW 「……%金額(額)%円だね。嫌なら他所へ持っていきな」（+%金額(額)%円）
+RETURN
+
+;================================================================
+;@質屋日次
+;  EVENTTRAIN.ERB（毎朝）から呼ばれる。@ホストクラブ日次と同じ月初徴収方式。
+;   ・月初(DAY:3==1)に借金を所持金から徴収する
+;   ・払いきれない分に利息10%を付ける
+;   ・それでも残るなら所持アイテムを質流れさせて充当する（＝資産差し押さえ）
+;================================================================
+@質屋日次
+#DIM 徴収
+SIF CFLAG:MASTER:3522 <= 0 || DAY:3 != 1
+	RETURN
+徴収 = MIN(MONEY:MASTER, CFLAG:MASTER:3522)
+IF 徴収 > 0
+	MONEY:MASTER -= 徴収
+	CFLAG:MASTER:3522 -= 徴収
+	PRINTFORMW 質屋の取り立てが来て、借金を返しました(-%金額(徴収)%円)
+ENDIF
+SIF CFLAG:MASTER:3522 <= 0
+	RETURN
+CFLAG:MASTER:3522 = CFLAG:MASTER:3522 * 110 / 100
+PRINTFORMW 払いきれなかった借金に利息が付いた(残り%金額(CFLAG:MASTER:3522)%円)
+CALL 質屋_質流れ
+RETURN
+
+;================================================================
+;@質屋_質流れ
+;  滞納分を所持アイテムで埋める。査定額は買い取りと同じく法定価格の3割。
+;  残高が消えるか、値の付く持ち物が尽きるまで取り上げる。
+;  ※装備スロット(CFLAG:200-217)には触らない＝手持ちの在庫のみが対象
+;================================================================
+@質屋_質流れ
+#DIM 額
+#DIM 点数
+点数 = 0
+FOR LOCAL, 0, 1000
+	SIF CFLAG:MASTER:3522 <= 0
+		BREAK
+	SIF ITEM:LOCAL <= 0
+		CONTINUE
+	額 = 質屋_査定額(LOCAL)
+	SIF 額 <= 0
+		CONTINUE
+	;同じ品を複数持っていれば、足りるまで順に流す
+	WHILE ITEM:LOCAL > 0 && CFLAG:MASTER:3522 > 0
+		ITEM:LOCAL -= 1
+		CFLAG:MASTER:3522 = MAX(CFLAG:MASTER:3522 - 額, 0)
+		点数 ++
+		SIF 点数 <= 5
+			PRINTFORML 　%ITEMNAME:LOCAL%を持っていかれた（-%金額(額)%円分）
+	WEND
+NEXT
+IF !点数
+	PRINTFORMW 店主は部屋を見回し、「……持っていけるもんも無いか」と舌打ちして帰っていった。
+	RETURN
+ENDIF
+CFLAG:MASTER:3524 += 1
+SIF 点数 > 5
+	PRINTFORML 　……ほか{点数 - 5}点。
+IF CFLAG:MASTER:3522 <= 0
+	CFLAG:MASTER:3522 = 0
+	PRINTFORMW 目ぼしい物は根こそぎ持っていかれたが、これで借金は消えた。
+ELSE
+	PRINTFORMW 持ち物を漁られた上、まだ%金額(CFLAG:MASTER:3522)%円が残っている。
+ENDIF
+RETURN

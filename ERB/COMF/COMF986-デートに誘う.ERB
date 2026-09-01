@@ -1,0 +1,53 @@
+﻿;[デートに誘う]（2026-07-16追加。デート.ERB / 恋愛.ERB と連動）
+;会話イベント(3)中に相手をデートに誘う。承諾すると同行(COMF996と同じ)＋デート中状態になり、
+;街(地区2)のデートスポット到着でイベントが発生する（デート.ERB）。
+
+@XCOM_ABLE986(ARG)
+VARSET LOCAL
+LOCAL = ARG
+VARSET ARG
+;同行はデートの前提であって競合ではない（かつて排除条件に入っていたため、
+;先に996「同行してもらう」を使うとデートに誘えなくなる詰みがあった）
+SIF TCVAR:LOCAL:イベント != 3 || TCVAR:LOCAL:デート中
+	RETURN 0
+;家族は不可。恋人・セフレ、または好意150以上の相手のみ
+SIF TALENT:(TCVAR:LOCAL:行為対象):家族
+	RETURN 0
+SIF !TALENT:(TCVAR:LOCAL:行為対象):恋人 && !TA:(TCVAR:LOCAL:行為対象):LOCAL:7 && TA:(TCVAR:LOCAL:行為対象):LOCAL:3 < 150
+	RETURN 0
+RETURN GLOBAL_COMABLE(986)
+
+@XCOM986(ARG)
+VARSET LOCAL
+PRINTL
+PRINTFORML %"=" * 107%
+
+TFLAG:成否用変数 = 0
+;恋人は無条件で承諾。非恋人はCOMF996(同行)と同じ拒否判定
+IF !TALENT:(TCVAR:ARG:行為対象):恋人 && !(TALENT:(TCVAR:ARG:行為対象):家族)
+	IF TALENT:(TCVAR:ARG:行為対象):163 | (TA:(TCVAR:ARG:行為対象):ARG:0 >= 1) && ((TA:(TCVAR:ARG:行為対象):ARG:1 >= 1) | (TA:(TCVAR:ARG:行為対象):ARG:3 >= 120)) && (TA:(TCVAR:ARG:行為対象):ARG:2 >= 1) && (TA:(TCVAR:ARG:行為対象):ARG:3 >= 50)
+	ELSE
+	;但し、確率でOK（セフレは気軽に応じてくれる＝閾値緩和。恋人の無条件承諾よりは下）
+		LOCAL:9 = 620
+		SIF TA:(TCVAR:ARG:行為対象):ARG:7
+			LOCAL:9 = 400
+		A = RAND(900)
+		A = A * TA:ARG:(TCVAR:ARG:行為対象):5 / 100 + (D:101 * 200)
+		IF !(A > LOCAL:9)
+			PRINTFORML %CALLNAME:(TCVAR:ARG:行為対象)%にやんわりと断られた
+			TFLAG:成否用変数 = -2
+			CFLAG:ARG:待機時間 += 10
+			VARSET ARG
+			RETURN 1
+		ENDIF
+	ENDIF
+ENDIF
+
+;デート開始（同行と同じ追従移動＋デート中フラグ）
+TCVAR:ARG:同行 = 1
+TCVAR:(TCVAR:ARG:行為対象):同行 = 1
+TCVAR:ARG:デート中 = TCVAR:ARG:行為対象
+TCVAR:(TCVAR:ARG:行為対象):デート中 = ARG
+CALL 汎用口上(14, TCVAR:ARG:行為対象, ARG)
+VARSET ARG
+RETURN 1

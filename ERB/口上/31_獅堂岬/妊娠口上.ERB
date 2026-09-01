@@ -1,0 +1,79 @@
+﻿;================================================
+; 獅堂岬（キャラ番号 31）の妊娠・出産口上
+; 状況：1危険日 2妊娠中 3発覚 4陣痛開始 5出産 6陣痛激化 7いきみ 8破水
+;================================================
+
+;@妊娠口上_1_31(ARG,ARG:1)
+;;危険日の中出し
+;PRINTFORMW %CALLNAME:ARG%「（危険日の中出しの台詞）」
+;RETURN
+;@妊娠口上_2_31(ARG,ARG:1)
+;;妊娠中の中出し
+;PRINTFORMW %CALLNAME:ARG%「（妊娠中の中出しの台詞）」
+;RETURN
+@妊娠口上_3_31(ARG,ARG:1)
+;妊娠発覚
+SELECTCASE RAND(3)
+	CASE 0
+		PRINTFORMW %CALLNAME:ARG%「え、あたし妊娠したの……！？」
+	CASE 1
+		PRINTFORMW %CALLNAME:ARG%「なんか変だと思ったら……うそでしょ……」
+	CASEELSE
+		PRINTFORMW %CALLNAME:ARG%「ほんとだ……あたし、ママになるんだ……」
+ENDSELECT
+RETURN
+@妊娠口上_4_31(ARG,ARG:1)
+;陣痛・破水
+SELECTCASE RAND(3)
+	CASE 0
+		PRINTFORMW %CALLNAME:ARG%「いっ……たぁ！　これは、キツい……！」
+	CASE 1
+		PRINTFORMW %CALLNAME:ARG%「はぁはぁ……ラリー続けるより、しんどい……！」
+	CASEELSE
+		PRINTFORMW %CALLNAME:ARG%「ぐ……っ、もう少し、集中……っ！」
+ENDSELECT
+RETURN
+@妊娠口上_5_31(ARG,ARG:1)
+;出産
+SELECTCASE RAND(3)
+	CASE 0
+		PRINTFORMW %CALLNAME:ARG%「はぁ……はぁ……やった、産まれた……！」
+	CASE 1
+		PRINTFORMW %CALLNAME:ARG%「マッチポイント……いや、産まれたっ！」
+	CASEELSE
+		PRINTFORMW %CALLNAME:ARG%「ちっちゃ……へへ、可愛い……」
+ENDSELECT
+RETURN
+@妊娠口上_6_31(ARG,ARG:1)
+;陣痛激化
+SELECTCASE RAND(2)
+	CASE 0
+		PRINTFORMW %CALLNAME:ARG%「いった……っ、強くなってる……！」
+	CASEELSE
+		PRINTFORMW %CALLNAME:ARG%「はぁはぁ……ここ集中……っ！」
+ENDSELECT
+RETURN
+@妊娠口上_7_31(ARG,ARG:1)
+;いきみ
+SELECTCASE RAND(2)
+	CASE 0
+		PRINTFORMW %CALLNAME:ARG%「いっけぇ……！　ふんっ！」
+	CASEELSE
+		PRINTFORMW %CALLNAME:ARG%「スマッシュ……いや、いきむっ……！」
+ENDSELECT
+RETURN
+@妊娠口上_8_31(ARG,ARG:1)
+;破水
+SELECTCASE RAND(2)
+	CASE 0
+		PRINTFORMW %CALLNAME:ARG%「うわっ！？　なんか出た……破水だ……！」
+	CASEELSE
+		PRINTFORMW %CALLNAME:ARG%「え、濡れた……！　いよいよなんだ……！」
+ENDSELECT
+RETURN
+
+@妊娠口上_9_31(ARG,ARG:1)
+;多胎に気づく（驚き）
+TSTR:(FLAG:口上候補数++) = %CALLNAME:ARG%「え、まだ!?　ダブルスかよ……双子だったの!?」
+TSTR:(FLAG:口上候補数++) = %CALLNAME:ARG%「まだ来る……!?　うそでしょ……!」
+RETURN

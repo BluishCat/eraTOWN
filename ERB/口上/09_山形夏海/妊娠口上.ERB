@@ -1,0 +1,79 @@
+﻿;================================================
+; 山形夏海（キャラ番号 9）の妊娠・出産口上
+; 状況：1危険日 2妊娠中 3発覚 4陣痛開始 5出産 6陣痛激化 7いきみ 8破水
+;================================================
+
+;@妊娠口上_1_9(ARG,ARG:1)
+;;危険日の中出し
+;PRINTFORMW %CALLNAME:ARG%「（危険日の中出しの台詞）」
+;RETURN
+;@妊娠口上_2_9(ARG,ARG:1)
+;;妊娠中の中出し
+;PRINTFORMW %CALLNAME:ARG%「（妊娠中の中出しの台詞）」
+;RETURN
+@妊娠口上_3_9(ARG,ARG:1)
+;妊娠発覚
+SELECTCASE RAND(3)
+	CASE 0
+		PRINTFORMW %CALLNAME:ARG%「え、うそ……あたし、妊娠してんの……！？」
+	CASE 1
+		PRINTFORMW %CALLNAME:ARG%「なんか最近だるいと思ったら……マジか……」
+	CASEELSE
+		PRINTFORMW %CALLNAME:ARG%「うわ、ほんとだ……あたしのお腹に、赤ちゃん……」
+ENDSELECT
+RETURN
+@妊娠口上_4_9(ARG,ARG:1)
+;陣痛・破水
+SELECTCASE RAND(3)
+	CASE 0
+		PRINTFORMW %CALLNAME:ARG%「いっ……たぁ……！　お腹、めっちゃ痛いんだけど……！」
+	CASE 1
+		PRINTFORMW %CALLNAME:ARG%「ぐぅ……っ、これがうわさの陣痛かー……っ」
+	CASEELSE
+		PRINTFORMW %CALLNAME:ARG%「はぁはぁ……あ、あたし、いけるって……！」
+ENDSELECT
+RETURN
+@妊娠口上_5_9(ARG,ARG:1)
+;出産
+SELECTCASE RAND(3)
+	CASE 0
+		PRINTFORMW %CALLNAME:ARG%「はぁ……やった……無事に産まれた……あたし頑張った……！」
+	CASE 1
+		PRINTFORMW %CALLNAME:ARG%「うわぁ……ちっちゃい……あたしの子だぁ……」
+	CASEELSE
+		PRINTFORMW %CALLNAME:ARG%「ふぅ……なんか、涙出てきた……えへへ……」
+ENDSELECT
+RETURN
+@妊娠口上_6_9(ARG,ARG:1)
+;陣痛激化
+SELECTCASE RAND(2)
+	CASE 0
+		PRINTFORMW %CALLNAME:ARG%「いった……！　さっきの比じゃないんだけど……！」
+	CASEELSE
+		PRINTFORMW %CALLNAME:ARG%「うぐぐ……間隔やばい、めっちゃ短い……！」
+ENDSELECT
+RETURN
+@妊娠口上_7_9(ARG,ARG:1)
+;いきみ
+SELECTCASE RAND(2)
+	CASE 0
+		PRINTFORMW %CALLNAME:ARG%「いくよ……っ、ふんっ……！」
+	CASEELSE
+		PRINTFORMW %CALLNAME:ARG%「もう出る、出るってぇ……！」
+ENDSELECT
+RETURN
+@妊娠口上_8_9(ARG,ARG:1)
+;破水
+SELECTCASE RAND(2)
+	CASE 0
+		PRINTFORMW %CALLNAME:ARG%「うわっ、なにこれ！？　やば、破水した……！」
+	CASEELSE
+		PRINTFORMW %CALLNAME:ARG%「え、ちょ、溢れてる……！　これ破水じゃん……！」
+ENDSELECT
+RETURN
+
+@妊娠口上_9_9(ARG,ARG:1)
+;多胎に気づく（驚き）
+TSTR:(FLAG:口上候補数++) = %CALLNAME:ARG%「え、うそ、まだいるの!?　双子だったの!?」
+TSTR:(FLAG:口上候補数++) = %CALLNAME:ARG%「まだ出てくるって……!?　あたし、聞いてないんだけど……!」
+RETURN

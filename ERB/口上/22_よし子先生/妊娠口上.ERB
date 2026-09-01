@@ -1,0 +1,79 @@
+﻿;================================================
+; よし子先生（キャラ番号 22）の妊娠・出産口上
+; 状況：1危険日 2妊娠中 3発覚 4陣痛開始 5出産 6陣痛激化 7いきみ 8破水
+;================================================
+
+;@妊娠口上_1_22(ARG,ARG:1)
+;;危険日の中出し
+;PRINTFORMW %CALLNAME:ARG%「（危険日の中出しの台詞）」
+;RETURN
+;@妊娠口上_2_22(ARG,ARG:1)
+;;妊娠中の中出し
+;PRINTFORMW %CALLNAME:ARG%「（妊娠中の中出しの台詞）」
+;RETURN
+@妊娠口上_3_22(ARG,ARG:1)
+;妊娠発覚
+SELECTCASE RAND(3)
+	CASE 0
+		PRINTFORMW %CALLNAME:ARG%「まあ……わたし、赤ちゃんを授かったのね」
+	CASE 1
+		PRINTFORMW %CALLNAME:ARG%「ふふ、先生、お母さんになるのね。」
+	CASEELSE
+		PRINTFORMW %CALLNAME:ARG%「新しい命……大切に育てなくちゃ。」
+ENDSELECT
+RETURN
+@妊娠口上_4_22(ARG,ARG:1)
+;陣痛・破水
+SELECTCASE RAND(3)
+	CASE 0
+		PRINTFORMW %CALLNAME:ARG%「っ……ふぅ、ふぅ……もうすぐ、会えるのね……っ」
+	CASE 1
+		PRINTFORMW %CALLNAME:ARG%「痛いけど……頑張らなくちゃ、ね……」
+	CASEELSE
+		PRINTFORMW %CALLNAME:ARG%「ん……っ、もう少し、もう少しよ……」
+ENDSELECT
+RETURN
+@妊娠口上_5_22(ARG,ARG:1)
+;出産
+SELECTCASE RAND(3)
+	CASE 0
+		PRINTFORMW %CALLNAME:ARG%「はぁ……ふふ、ようこそ。待ってたのよ……」
+	CASE 1
+		PRINTFORMW %CALLNAME:ARG%「可愛い……先生、幸せ者ね。」
+	CASEELSE
+		PRINTFORMW %CALLNAME:ARG%「よく生まれてきてくれました。ありがとう。」
+ENDSELECT
+RETURN
+@妊娠口上_6_22(ARG,ARG:1)
+;陣痛激化
+SELECTCASE RAND(2)
+	CASE 0
+		PRINTFORMW %CALLNAME:ARG%「っ……ふぅ、だんだん強く……！」
+	CASEELSE
+		PRINTFORMW %CALLNAME:ARG%「もうすぐ、会えるのね……っ」
+ENDSELECT
+RETURN
+@妊娠口上_7_22(ARG,ARG:1)
+;いきみ
+SELECTCASE RAND(2)
+	CASE 0
+		PRINTFORMW %CALLNAME:ARG%「い、いきみます……ん――っ！」
+	CASEELSE
+		PRINTFORMW %CALLNAME:ARG%「頑張らなくちゃ……そーれっ！」
+ENDSELECT
+RETURN
+@妊娠口上_8_22(ARG,ARG:1)
+;破水
+SELECTCASE RAND(2)
+	CASE 0
+		PRINTFORMW %CALLNAME:ARG%「あら……破水したのね。落ち着いて、ね……」
+	CASEELSE
+		PRINTFORMW %CALLNAME:ARG%「っ……羊水……もうすぐ会えるのね。」
+ENDSELECT
+RETURN
+
+@妊娠口上_9_22(ARG,ARG:1)
+;多胎に気づく（驚き）
+TSTR:(FLAG:口上候補数++) = %CALLNAME:ARG%「まあ……!?　もう一人、いたのね……双子ちゃん……!」
+TSTR:(FLAG:口上候補数++) = %CALLNAME:ARG%「二人も授かってたなんて……ふふ、幸せ……」
+RETURN

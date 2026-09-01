@@ -1,0 +1,137 @@
+﻿@XCOM_ABLE1010(ARG)
+VARSET LOCAL
+LOCAL = ARG
+VARSET ARG
+;昼食をとれる場所（大学／オフィスの社員食堂）は @昼食場所か（COMMON.ERB）に一元化
+SIF !昼食場所か(CFLAG:MASTER:現在地区, CFLAG:MASTER:現在位置) || D:101 || TIME < 750 || TIME > 810
+	RETURN 0
+SIF GETBIT(CFLAG:LOCAL:食事,1)
+	RETURN 0
+SIF TCVAR:LOCAL:行為対象 && GETBIT(CFLAG:(TCVAR:ARG:行為対象):食事,1)
+	RETURN 0
+RETURN GLOBAL_COMABLE(1010)
+
+@XCOM1010(ARG)
+VARSET LOCAL
+PRINTL 
+PRINTFORML %"=" * 107%
+;お昼を食べる
+TFLAG:COM用変数 = 0
+
+;何で昼食を済ませるかを常に選ばせる（弁当は所持している分だけ／食堂は所持金が足りる時だけ）
+;食堂の呼び名は場所で変わる（大学＝学生食堂／オフィス＝社員食堂。@昼食場所名）
+;LOCAL:1 = 食堂を使えるか（所持金が代金以上）／LOCAL:2 = 代金（@昼食代 COMMON.ERB）
+LOCAL:2 = 昼食代()
+LOCAL:1 = (MONEY:ARG >= LOCAL:2)
+PRINTL お昼をどうしますか？
+SIF EQUIP:ARG:美味しそうなお弁当
+	PRINTFORML [1] - 美味しそうなお弁当を食べる（残り{EQUIP:ARG:美味しそうなお弁当}個）
+SIF EQUIP:ARG:普通のお弁当
+	PRINTFORML [2] - 普通のお弁当を食べる（残り{EQUIP:ARG:普通のお弁当}個）
+SIF EQUIP:ARG:やばそうなお弁当
+	PRINTFORML [3] - やばそうなお弁当を食べる（残り{EQUIP:ARG:やばそうなお弁当}個）
+SIF LOCAL:1
+	PRINTFORML [0] - %昼食場所名(0)%で食べる（%金額(LOCAL:2)%円）
+PRINTL [9] - 食べない（昼食を抜く）
+$BENTO_INPUT
+INPUT
+IF RESULT == 1 && EQUIP:ARG:美味しそうなお弁当
+	DOWNBASE:ARG:体力 -= 600
+	DOWNBASE:ARG:気力 -= 800
+	EQUIP:ARG:美味しそうなお弁当--
+	TFLAG:COM用変数 = 2
+ELSEIF RESULT == 2 && EQUIP:ARG:普通のお弁当
+	DOWNBASE:ARG:体力 -= 200
+	DOWNBASE:ARG:気力 -= 300
+	EQUIP:ARG:普通のお弁当--
+	TFLAG:COM用変数 = 3
+ELSEIF RESULT == 3 && EQUIP:ARG:やばそうなお弁当
+	DOWNBASE:ARG:体力 += 50
+	DOWNBASE:ARG:気力 += 100
+	EQUIP:ARG:やばそうなお弁当--
+	TFLAG:COM用変数 = 4
+ELSEIF RESULT == 0 && LOCAL:1
+	DOWNBASE:ARG:体力 -= 100
+	DOWNBASE:ARG:気力 -= 200
+	MONEY:ARG -= LOCAL:2
+ELSEIF RESULT == 9
+;昼食を抜く。時間も所持金も消費せずコマンド選択へ戻す
+;（M:101を立てて@COM_MESSAGE_1010の発火も抑える）
+	PRINTW 何も食べずに済ませることにした。
+	M:101 = 1
+	VARSET ARG
+	RETURN 0
+ELSE
+	CLEARLINE 1
+	GOTO BENTO_INPUT
+ENDIF
+SETBIT CFLAG:ARG:食事 , 1
+IF TCVAR:ARG:行為対象
+	IF !(TALENT:(TCVAR:ARG:行為対象):家族)
+;相手からの好意が50以上且つ愛情が1以上（又は好意が80以上）、又は、服従が10以上且つ肉欲が120以上
+		IF ((TA:(TCVAR:ARG:行為対象):ARG:0 >= 120) && (TA:(TCVAR:ARG:行為対象):ARG:2 >= 10)) | ((TA:(TCVAR:ARG:行為対象):ARG:3 >= 50) && ((TA:(TCVAR:ARG:行為対象):ARG:1 >= 1) | (TA:(TCVAR:ARG:行為対象):ARG:3 >= 80)))
+		ELSE
+;但し、確率でOK
+			A = RAND(900)
+			A = A * TA:ARG:(CFLAG:(TCVAR:ARG:行為対象):タイプ):5 / 100
+			IF !(A >420)
+				PRINTFORML %CALLNAME:(TCVAR:ARG:行為対象)%は一緒に食べたくないようだ・・・
+				B = RAND(100)
+				TA:ARG:(TCVAR:ARG:行為対象):4 += 14
+				CALL 支配度加算(ARG, -1)
+				IF B >= 50
+					PRINTFORML さらに逃げられてしまった
+					CALL 支配度加算(ARG, -1)
+					CALL EVENT_ESCAPE_ALL
+				ENDIF
+				CFLAG:MASTER:待機時間 += 15
+				VARSET ARG
+				M:101 = 0
+				RETURN 1
+			ENDIF
+		ENDIF
+	ENDIF
+
+	SETBIT CFLAG:(TCVAR:ARG:行為対象):食事 , 1
+	DOWNBASE:(TCVAR:ARG:行為対象):体力 -= 100
+	DOWNBASE:(TCVAR:ARG:行為対象):気力 -= 200
+	SOURCE:(TCVAR:ARG:行為対象):歓楽 = 400
+	EXP:ARG:会話経験 += 4
+	EXP:(TCVAR:ARG:行為対象):会話経験 += 4
+	SELECTCASE ABL:ARG:話術技能
+		CASE 0
+			TIMES SOURCE:(TCVAR:ARG:行為対象):歓楽 , 0.20
+		CASE 1
+			TIMES SOURCE:(TCVAR:ARG:行為対象):歓楽 , 0.40
+		CASE 2
+			TIMES SOURCE:(TCVAR:ARG:行為対象):歓楽 , 0.70
+		CASE 3
+			TIMES SOURCE:(TCVAR:ARG:行為対象):歓楽 , 1.00
+		CASE 4
+			TIMES SOURCE:(TCVAR:ARG:行為対象):歓楽 , 1.50
+		CASEELSE
+			TIMES SOURCE:(TCVAR:ARG:行為対象):歓楽 , 2.00
+	ENDSELECT
+SIF TFLAG:COM用変数 == 2
+	TIMES SOURCE:(TCVAR:ARG:行為対象):歓楽 , 2.00
+SIF TFLAG:COM用変数 == 4
+	TIMES SOURCE:(TCVAR:ARG:行為対象):歓楽 , 0.70
+	TFLAG:COM用変数 = 1
+;行為者にも同じ値をセット（好意があるので話しかけたと仮定）
+	SOURCE:ARG:歓楽 = SOURCE:(TCVAR:ARG:行為対象):歓楽
+;;;20120211 追加　会話成功時に欲情度＋７
+	TA:ARG:(TCVAR:ARG:行為対象):4 += 7
+	TA:(TCVAR:ARG:行為対象):ARG:4 += 7
+	TB:(CFLAG:ARG:現在地区):(CFLAG:ARG:現在位置):(TCVAR:ARG:行為対象) -= 1
+ENDIF
+
+CALL 支配度加算(ARG, 2)
+
+CFLAG:MASTER:待機時間 += 15
+
+M:101 = 0
+
+VARSET ARG
+RETURN 1
+
+

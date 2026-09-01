@@ -1,0 +1,443 @@
+﻿;================================================
+; 病院へ行く
+;  陣痛中 → 分娩のため病院へ（移動時間・費用あり。間に合わないと途中出産）
+;             多胎の小休止中（1人産んだ後）は急患搬送扱いで早く着き、費用は二重に取らない
+;  受付時間内（毎日9時〜17時） → 受付メニュー（妊婦健診／診察・治療／性病検査／中絶手術／薬の処方）
+;  受付時間外 → 救急外来（時間外料金5000円。診察・治療と切迫流産の急患対応のみ）
+;================================================
+@XCOM_ABLE1049(ARG)
+;救急外来があるため常時利用可（時間外の内容制限はXCOM1049側で行う）
+RETURN GLOBAL_COMABLE(1049)
+
+@XCOM1049(ARG)
+VARSET LOCAL
+PRINTL
+PRINTFORML %"=" * 107%
+IF CFLAG:MASTER:陣痛 > 0
+	;=== 分娩のため病院へ ===
+	;多胎で1人産んだ後（次の児を待つ小休止）は急患搬送となり、通常より早く着く。
+	;既に院内にいるなら移動そのものが無い＝途中出産の危険を負わない(2026-09-01)
+	IF 病院か(CFLAG:MASTER:現在地区, CFLAG:MASTER:現在位置)
+		PRINTW 陣痛が来た。ここは病院の中だ。あなたはすぐに分娩室へ通された。
+		LOCAL = 0
+	ELSEIF 分娩中(MASTER)
+		PRINTFORMW 産まれたばかりの子を抱いたまま、あなたは残る{CFLAG:MASTER:分娩残}人のために病院へ運ばれていった。
+		LOCAL = 15 + RAND(15)
+	ELSE
+		PRINTW 陣痛に耐えながら、あなたは急いで病院へ向かった。
+		;移動にかかる時間(分)。この間も陣痛は進むため、遅いと間に合わない
+		LOCAL = 40 + RAND(50)
+	ENDIF
+	IF CFLAG:MASTER:陣痛 + LOCAL >= 陣痛_満了(MASTER)
+		;間に合わず途中で出産
+		PRINTW ――しかし病院に着く前に、耐えきれない圧迫感が押し寄せた。間に合わない……！
+		CFLAG:MASTER:陣痛 = 陣痛_満了(MASTER)
+		CALL 出産(MASTER, 0)
+		;娩出後そのまま病院へ収容される（児が残っていれば以後は介助分娩になる）
+		CALL 病院_場所移動
+	ELSE
+		;無事到着、介助分娩（分娩費用は1回の分娩につき1度だけ）
+		CALL 病院_場所移動
+		PRINTW 無事に病院へ到着し、分娩室に通された。医師と助産師の介助のもとでお産に臨む。
+		IF !CFLAG:MASTER:分娩費用済
+			MONEY:MASTER = MAX(0, MONEY:MASTER - 50000)
+			CFLAG:MASTER:分娩費用済 = 1
+			PRINTFORMW 分娩費用として50,000円を支払った。（所持金：%金額(MONEY:MASTER)%円）
+		ENDIF
+		CALL 出産(MASTER, 1)
+	ENDIF
+	CFLAG:MASTER:待機時間 = LOCAL
+	RETURN 1
+ENDIF
+;=== 通常の来院 ===
+;病院までの移動にかかる時間(分)。院内での所要分を LOCAL:9 に加算していく。
+;自分の足で病院まで来ている場合は移動時間を取らない(2026-09-01)。
+;それまでは院内で使っても20〜40分引かれ、病院という場所へ行く意味が無かった。
+IF 病院か(CFLAG:MASTER:現在地区, CFLAG:MASTER:現在位置)
+	LOCAL:9 = 0
+ELSE
+	LOCAL:9 = 20 + RAND(20)
+ENDIF
+CALL 病院_場所移動
+;受付時間外は救急外来（当直対応・時間外料金5000円は1来院につき初回のみ徴収＝LOCAL:8）
+IF !病院受付中()
+	PRINTW 夜間出入口の明かりを頼りに、あなたは救急外来へやってきた。
+	$ER_MENU
+	DRAWLINE
+	PRINTL 【救急外来】受付時間外のため当直医の対応となります（時間外料金5,000円）
+	PRINTFORML 通常受付は毎日9時〜17時です。（所持金：%金額(MONEY:MASTER)%円）
+	;切迫流産の症状が出ている妊婦は急患として診てもらえる
+	SIF TALENT:MASTER:妊娠 && CFLAG:MASTER:妊娠自覚 >= 1 && CFLAG:MASTER:切迫流産度 > 0
+		PRINTL [1] - 急患・お腹の張りを診てもらう（3,000円〜＋時間外料金）
+	PRINTL [2] - 診察・治療（2,000円〜＋時間外料金）
+	PRINTL [0] - 帰る
+	$ER_INPUT
+	INPUT
+	IF RESULT == 0
+		CFLAG:MASTER:待機時間 = LOCAL:9
+		RETURN 1
+	ELSEIF RESULT == 1 && TALENT:MASTER:妊娠 && CFLAG:MASTER:妊娠自覚 >= 1 && CFLAG:MASTER:切迫流産度 > 0
+		CALL 病院_時間外料金(LOCAL:8)
+		LOCAL:8 = 1
+		CALL 病院_妊婦健診
+		LOCAL:9 += RESULT
+		GOTO ER_MENU
+	ELSEIF RESULT == 2
+		CALL 病院_時間外料金(LOCAL:8)
+		LOCAL:8 = 1
+		CALL 病院_診察治療
+		LOCAL:9 += RESULT
+		GOTO ER_MENU
+	ELSE
+		CLEARLINE 1
+		GOTO ER_INPUT
+	ENDIF
+ENDIF
+;=== 受付メニュー（受付時間内） ===
+PRINTW あなたは病院へやってきた。
+$HOSPITAL_MENU
+DRAWLINE
+PRINTL 受付時間：9時〜17時（毎日　※時間外は救急外来で対応します）
+PRINTFORML 【受付】どうなさいますか？（所持金：%金額(MONEY:MASTER)%円）
+;妊婦健診は妊娠を自覚（疑い含む）してから。未自覚の発覚は[2]診察・治療で
+SIF TALENT:MASTER:妊娠 && CFLAG:MASTER:妊娠自覚 >= 1 && (CFLAG:MASTER:妊娠日数 >= 7 || CFLAG:MASTER:切迫流産度 > 0)
+	PRINTL [1] - 妊婦健診（3,000円）
+PRINTL [2] - 診察・治療（2,000円〜）
+PRINTL [3] - 性病検査（5,000円）
+SIF TALENT:MASTER:妊娠 && CFLAG:MASTER:妊娠自覚 >= 1
+	PRINTL [4] - 中絶手術（要相談）
+PRINTL [5] - 薬の処方
+PRINTL [0] - 帰る
+$INPUT_LOOP
+INPUT
+IF RESULT == 0
+	CFLAG:MASTER:待機時間 = LOCAL:9
+	RETURN 1
+ELSEIF RESULT == 1 && TALENT:MASTER:妊娠 && CFLAG:MASTER:妊娠自覚 >= 1 && (CFLAG:MASTER:妊娠日数 >= 7 || CFLAG:MASTER:切迫流産度 > 0)
+	CALL 病院_妊婦健診
+	LOCAL:9 += RESULT
+	GOTO HOSPITAL_MENU
+ELSEIF RESULT == 2
+	CALL 病院_診察治療
+	LOCAL:9 += RESULT
+	GOTO HOSPITAL_MENU
+ELSEIF RESULT == 3
+	CALL 病院_性病検査
+	LOCAL:9 += RESULT
+	GOTO HOSPITAL_MENU
+ELSEIF RESULT == 4 && TALENT:MASTER:妊娠 && CFLAG:MASTER:妊娠自覚 >= 1
+	CALL 病院_中絶手術
+	LOCAL:9 += RESULT
+	GOTO HOSPITAL_MENU
+ELSEIF RESULT == 5
+	CALL 病院_処方
+	LOCAL:9 += RESULT
+	GOTO HOSPITAL_MENU
+ELSE
+	CLEARLINE 1
+	GOTO INPUT_LOOP
+ENDIF
+
+;------------------------------------------------
+;@病院か(ARG,ARG:1)
+;  ARG 地区 / ARG:1 位置。RETURN 1=病院
+;  繁華街(2,13)と住宅街(0,12)の2院。大学(地区1)に病院は無い（@警察署か と同型）。
+;  判定が PREGNANCY.ERB / @病院_場所移動 に散っていたのをここへ集約(2026-09-01)
+;------------------------------------------------
+@病院か(ARG,ARG:1)
+#FUNCTION
+SELECTCASE ARG
+	CASE 0
+		SIF ARG:1 == 12
+			RETURNF 1
+	CASE 2
+		SIF ARG:1 == 13
+			RETURNF 1
+ENDSELECT
+RETURNF 0
+
+;------------------------------------------------
+;現在位置を病院へ移動（ゾーン2は場所13、それ以外は駅前商店街の病院＝ゾーン0場所12）
+;既に院内にいるなら何もしない（呼び出し側が移動時間を0にする条件と対）
+;------------------------------------------------
+@病院_場所移動
+SIF 病院か(CFLAG:MASTER:現在地区, CFLAG:MASTER:現在位置)
+	RETURN
+IF CFLAG:MASTER:現在地区 == 2
+	CFLAG:MASTER:現在位置 = 13
+ELSE
+	CFLAG:MASTER:現在地区 = 0
+	CFLAG:MASTER:現在位置 = 12
+ENDIF
+RETURN
+
+;------------------------------------------------
+;救急外来の時間外料金（5000円。1来院につき初回のみ徴収。ARG=徴収済みなら1）
+;------------------------------------------------
+@病院_時間外料金(ARG)
+SIF ARG
+	RETURN 0
+MONEY:MASTER = MAX(0, MONEY:MASTER - 5000)
+PRINTFORMW 時間外料金として5,000円を支払った。（所持金：%金額(MONEY:MASTER)%円）
+RETURN 0
+
+;------------------------------------------------
+;妊婦健診・切迫流産の診察（所要60分）
+;------------------------------------------------
+@病院_妊婦健診
+PRINTW あなたは産婦人科を受診した。
+MONEY:MASTER = MAX(0, MONEY:MASTER - 3000)
+PRINTFORMW 健診料として3,000円を支払った。（所持金：%金額(MONEY:MASTER)%円）
+;妊娠に気づいていない（または疑いのみの）場合、まず検査で妊娠が確定する
+IF CFLAG:MASTER:妊娠自覚 < 2
+	PRINTW 医師：「では、検査をしましょうか。」
+	PRINTW 医師：「……妊娠されていますよ。」
+	CFLAG:MASTER:妊娠自覚 = 2
+	CALL 妊娠口上(3, MASTER, CFLAG:MASTER:父親)
+ENDIF
+;健診（出産予定日の判明・多胎告知）は妊娠日数7以降
+IF CFLAG:MASTER:妊娠日数 >= 7
+	CFLAG:MASTER:健診済 = 1
+	LOCAL = 出産予定日数(MASTER) - CFLAG:MASTER:妊娠日数
+	;切迫流産がないときだけ「順調」を告げる
+	IF CFLAG:MASTER:切迫流産度 <= 0
+		IF LOCAL > 0
+			PRINTFORMW 医師：「順調ですよ。出産予定日まで、あと約{LOCAL}日ですね。」
+		ELSE
+			PRINTW 医師：「もう、いつ生まれてもおかしくありませんよ。」
+		ENDIF
+	ENDIF
+	;多胎の告知
+	SIF CFLAG:MASTER:胎児数 == 2
+		PRINTW 医師：「それと……エコーに赤ちゃんが二人写っています。双子ですよ。」
+	SIF CFLAG:MASTER:胎児数 >= 3
+		PRINTFORMW 医師：「それと……お腹の赤ちゃんは{CFLAG:MASTER:胎児数}人。多胎妊娠ですね。」
+ENDIF
+;切迫流産の診察・安静指導（切迫流産度を大きく軽減）
+IF CFLAG:MASTER:切迫流産度 > 0
+	IF CFLAG:MASTER:切迫流産度 >= 90
+		PRINTW 医師：「切迫流産の状態です。入院とまではいきませんが、しばらく絶対に安静にしてください。」
+	ELSEIF CFLAG:MASTER:切迫流産度 >= 60
+		PRINTW 医師：「少し出血がありますね。張り止めを出しておきます。無理をせず休んでください。」
+	ELSE
+		PRINTW 医師：「今のところ大きな心配はありませんが、念のため無理はしないように。」
+	ENDIF
+	MONEY:MASTER = MAX(0, MONEY:MASTER - 2000)
+	PRINTFORMW 処置・投薬として2,000円を支払った。（所持金：%金額(MONEY:MASTER)%円）
+	;安静指導・投薬で切迫流産度を大きく下げる（最大20まで軽減）
+	CFLAG:MASTER:切迫流産度 = MIN(CFLAG:MASTER:切迫流産度, 20)
+ENDIF
+RETURN 60
+
+;------------------------------------------------
+;診察・治療（所要30分〜。診察料2000円）
+; 妊娠の発覚／風邪の治療／性病の示唆／体調所見／点滴（体力・気力回復）／異常なし告知
+;------------------------------------------------
+@病院_診察治療
+#DIM 分
+#DIM 所見
+分 = 30
+所見 = 0
+PRINTW 診察室に通され、医師の問診を受けた。
+MONEY:MASTER = MAX(0, MONEY:MASTER - 2000)
+PRINTFORMW 診察料として2,000円を支払った。（所持金：%金額(MONEY:MASTER)%円）
+;妊娠の発覚（自覚がないまま日数が進んでいる場合や、切迫流産の症状が出ている場合、尿検査で判明）
+;着床成立で妊娠日数=1。日数7以降なら尿検査で検出できる（健診メニューの表示条件と同じ）
+IF TALENT:MASTER:妊娠 && (CFLAG:MASTER:妊娠日数 >= 7 || CFLAG:MASTER:切迫流産度 > 0) && CFLAG:MASTER:妊娠自覚 == 0
+	所見 = 1
+	PRINTW 医師：「……念のため、尿検査をしておきましょうか。」
+	PRINTW 医師：「……妊娠されていますよ。」
+	CFLAG:MASTER:妊娠自覚 = 2
+	CALL 妊娠口上(3, MASTER, CFLAG:MASTER:父親)
+ENDIF
+;風邪の治療（よく効く薬で2日分回復）
+IF 風邪中(MASTER)
+	所見 = 1
+	PRINTW 医師：「風邪ですね。よく効く薬を出しておきます。」
+	MONEY:MASTER = MAX(0, MONEY:MASTER - 2000)
+	PRINTFORMW 処方料として2,000円を支払った。（所持金：%金額(MONEY:MASTER)%円）
+	CFLAG:MASTER:風邪日数 = MAX(0, CFLAG:MASTER:風邪日数 - 2)
+	IF CFLAG:MASTER:風邪日数 == 0
+		CLEARBIT CFLAG:MASTER:病気,0
+		CFLAG:MASTER:風邪免疫 = 7
+		PRINTW 薬がよく効いて、体がすっと楽になった。風邪はもう大丈夫そうだ。
+	ELSE
+		CFLAG:MASTER:風邪薬効 = 1
+		PRINTW 薬のおかげで、だいぶ楽になった気がする。
+	ENDIF
+ENDIF
+;性病の示唆（症状が出ているのに未検査。確定診断は別メニューの性病検査で）
+IF 性病持ち(MASTER) && CFLAG:MASTER:性病日数 >= 4 && CFLAG:MASTER:性病自覚 == 0
+	所見 = 1
+	PRINTW 医師：「気になる症状ですね……一度、性感染症の検査をお勧めします。」
+ENDIF
+;体調所見（疲労・ストレスを医師が指摘。閾値は風邪発症判定と同じ70%）
+IF BASE:MASTER:疲労 >= MAXBASE:MASTER:疲労 * 70 / 100
+	所見 = 1
+	PRINTW 医師：「かなり疲労が溜まっていますね。しっかり休んでください。」
+ENDIF
+IF BASE:MASTER:ストレス >= MAXBASE:MASTER:ストレス * 70 / 100
+	所見 = 1
+	PRINTW 医師：「ストレスも強いようです。気晴らしも大事ですよ。」
+ENDIF
+;点滴の提案（体力か気力が6割を切っているとき）
+IF BASE:MASTER:体力 < MAXBASE:MASTER:体力 * 6 / 10 || BASE:MASTER:気力 < MAXBASE:MASTER:気力 * 6 / 10
+	所見 = 1
+	PRINTL 医師：「だいぶお疲れのようですね。点滴をしていきますか？」
+	PRINTL [1] - 点滴を受ける（4,000円・60分）
+	PRINTL [0] - やめておく
+	$INPUT_TENTEKI
+	INPUT
+	IF RESULT == 1
+		MONEY:MASTER = MAX(0, MONEY:MASTER - 4000)
+		BASE:MASTER:体力 = MIN(MAXBASE:MASTER:体力, BASE:MASTER:体力 + MAXBASE:MASTER:体力 * 40 / 100)
+		BASE:MASTER:気力 = MIN(MAXBASE:MASTER:気力, BASE:MASTER:気力 + MAXBASE:MASTER:気力 * 35 / 100)
+		BASE:MASTER:疲労 = MAX(0, BASE:MASTER:疲労 - 4000)
+		BASE:MASTER:ストレス = MAX(0, BASE:MASTER:ストレス - 2000)
+		分 += 60
+		PRINTFORMW ベッドで点滴を受けた。体がずいぶん楽になった。（所持金：%金額(MONEY:MASTER)%円）
+	ELSEIF RESULT == 0
+		PRINTW あなたは点滴を断った。
+	ELSE
+		CLEARLINE 1
+		GOTO INPUT_TENTEKI
+	ENDIF
+ENDIF
+;所見がひとつもなければ、医師が異常なしを告げる
+SIF 所見 == 0
+	PRINTW 医師：「特に異常はありませんね。健康そのものですよ。」
+RETURN 分
+
+;------------------------------------------------
+;性病検査（5000円・30分）。陽性なら治療の提案（15000円・+30分）
+;------------------------------------------------
+@病院_性病検査
+#DIM 分
+分 = 30
+MONEY:MASTER = MAX(0, MONEY:MASTER - 5000)
+PRINTFORMW 検査料として5,000円を支払った。（所持金：%金額(MONEY:MASTER)%円）
+PRINTW 検査を受け、しばらく待合室で結果を待った。
+IF 性病持ち(MASTER)
+	PRINTW 医師：「……残念ですが、性感染症への感染が確認されました。」
+	CFLAG:MASTER:性病自覚 = 1
+	PRINTL 医師：「放っておいて治るものではありません。早めに治療しましょう。」
+	PRINTL [1] - 治療を受ける（15,000円）
+	PRINTL [0] - 今日はやめておく
+	$INPUT_CHIRYO
+	INPUT
+	IF RESULT == 1
+		IF MONEY:MASTER < 15000
+			PRINTW 医師：「……申し訳ありませんが、費用をご用意いただいてからになります。」
+		ELSE
+			MONEY:MASTER -= 15000
+			PRINTFORMW 治療費として15,000円を支払った。（所持金：%金額(MONEY:MASTER)%円）
+			CLEARBIT CFLAG:MASTER:病気,1
+			CFLAG:MASTER:性病日数 = 0
+			CFLAG:MASTER:性病自覚 = 0
+			分 += 30
+			PRINTW 抗生剤の処置を受けた。医師によれば、これで完治するとのことだ。
+		ENDIF
+	ELSEIF RESULT == 0
+		PRINTW あなたは治療を先送りにした。……本当にいいのだろうか。
+	ELSE
+		CLEARLINE 1
+		GOTO INPUT_CHIRYO
+	ENDIF
+ELSE
+	PRINTW 医師：「問題ありませんでしたよ。ご安心ください。」
+ENDIF
+RETURN 分
+
+;------------------------------------------------
+;中絶手術（妊娠自覚後のみ。進行度55%まで・費用は進行度に応じ20000〜40000円）
+; 術後は既存の@妊娠中断（体型回復・回復期設定込み）＋体力/気力消耗
+;------------------------------------------------
+@病院_中絶手術
+#DIM 進行率
+#DIM 費用
+進行率 = CFLAG:MASTER:妊娠日数 * 100 / 出産予定日数(MASTER)
+IF 進行率 > 55
+	PRINTW 医師：「……申し訳ありません。ここまで育ったお腹の赤ちゃんの手術は、当院ではお受けできません。」
+	RETURN 0
+ENDIF
+;費用は進行度に応じて20000〜40000円（100円単位に丸め）
+費用 = 20000 + 進行率 * 20000 / 55
+費用 = 費用 / 100 * 100
+PRINTFORML 医師：「中絶手術ですね……。費用は%金額(費用)%円です。体への負担も小さくありません。本当によろしいですか？」
+PRINTL [1] - 手術を受ける
+PRINTL [0] - やめる
+$INPUT_OPE
+INPUT
+IF RESULT == 0
+	PRINTW あなたは黙って首を横に振った。
+	RETURN 0
+ELSEIF RESULT == 1
+	IF MONEY:MASTER < 費用
+		PRINTW 医師：「申し訳ありませんが、費用をご用意いただいてからになります。」
+		RETURN 0
+	ENDIF
+	MONEY:MASTER -= 費用
+	PRINTFORMW 手術費用として%金額(費用)%円を支払った。（所持金：%金額(MONEY:MASTER)%円）
+	;口上は妊娠情報（父親）がクリアされる前に出す
+	CALL 妊娠口上(18, MASTER, CFLAG:MASTER:父親)
+	PRINTW 手術台に横たわると、麻酔で意識が遠のいていった……。
+	PRINTW ……気がつくと、処置は終わっていた。お腹の中にあった気配が、消えている。
+	CFLAG:MASTER:中絶回数 += 1
+	CALL 妊娠中断(MASTER)
+	;手術で子宮・膣内が洗浄され、溜まっていた精液も除去される
+	CALL 膣内精液_全排出(MASTER)
+	;術後の回復期（最低3日）と消耗（体力は衰弱ライン500を割らないよう下限600）
+	CFLAG:MASTER:産後回復 = MAX(CFLAG:MASTER:産後回復, 3)
+	BASE:MASTER:体力 = MAX(600, BASE:MASTER:体力 - MAXBASE:MASTER:体力 / 3)
+	BASE:MASTER:気力 = MAX(0, BASE:MASTER:気力 - MAXBASE:MASTER:気力 / 3)
+	BASE:MASTER:ストレス = MIN(MAXBASE:MASTER:ストレス, BASE:MASTER:ストレス + MAXBASE:MASTER:ストレス * 30 / 100)
+	PRINTW 医師：「処置は無事に終わりました。しばらくは安静にしてくださいね。」
+	RETURN 240
+ELSE
+	CLEARLINE 1
+	GOTO INPUT_OPE
+ENDIF
+
+;------------------------------------------------
+;薬の処方（低用量ピル/アフターピル/排卵誘発剤/風邪薬。価格は薬屋と同じ）
+;------------------------------------------------
+@病院_処方
+#DIM 分
+VARSET LOCAL
+分 = 0
+$SHOHOU_LOOP
+PRINTL 医師：「お薬の処方ですね。どれにしますか？」
+PRINTFORML [156] - %ITEMNAME:156%（%金額(ITEMPRICE:156)%円）　所持{EQUIP:MASTER:156}個
+PRINTFORML [157] - %ITEMNAME:157%（%金額(ITEMPRICE:157)%円）　所持{EQUIP:MASTER:157}個
+PRINTFORML [158] - %ITEMNAME:158%（%金額(ITEMPRICE:158)%円）　所持{EQUIP:MASTER:158}個
+PRINTFORML [159] - %ITEMNAME:159%（%金額(ITEMPRICE:159)%円）　所持{EQUIP:MASTER:159}個
+PRINTL [0] - 終わる
+$SHOHOU_INPUT
+INPUT
+IF RESULT == 0
+	RETURN 分
+ELSEIF RESULT == 156 || RESULT == 157 || RESULT == 158 || RESULT == 159
+	LOCAL:3 = RESULT
+	IF MONEY:MASTER < ITEMPRICE:(LOCAL:3)
+		PRINTW お金が足りません
+		GOTO SHOHOU_LOOP
+	ENDIF
+	PRINTFORML いくつ処方してもらいますか？(1〜{MONEY:MASTER / ITEMPRICE:(LOCAL:3)} 0はキャンセル)
+	$SHOHOU_KAZU
+	INPUT
+	IF RESULT == 0
+		GOTO SHOHOU_LOOP
+	ELSEIF RESULT > 0 && ITEMPRICE:(LOCAL:3) * RESULT <= MONEY:MASTER
+		MONEY:MASTER -= ITEMPRICE:(LOCAL:3) * RESULT
+		EQUIP:MASTER:(LOCAL:3) += RESULT
+		PRINTFORMW %ITEMNAME:(LOCAL:3)%を{RESULT}個処方してもらった。（所持金：%金額(MONEY:MASTER)%円）
+		分 = 10
+		GOTO SHOHOU_LOOP
+	ELSE
+		CLEARLINE 1
+		GOTO SHOHOU_KAZU
+	ENDIF
+ELSE
+	CLEARLINE 1
+	GOTO SHOHOU_INPUT
+ENDIF

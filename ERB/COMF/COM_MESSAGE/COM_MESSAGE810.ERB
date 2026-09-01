@@ -1,0 +1,525 @@
+﻿
+;===============================================================================
+;上半身系コマンド
+;　共通：主人公体力1000以下or主人公気力500以下or主人公興奮度500以上＋痴漢興奮度500以上で行動変化
+;===============================================================================
+;--------------------------------------------------------------------------
+;胸を揉む（絶壁だと実行不可能、とか面白いでしょうかw）
+;--------------------------------------------------------------------------
+@COM_MESSAGE_810
+
+PRINTFORML ＜胸を揉む＞
+PRINTFORM 痴漢の手が
+;上半身下着あり
+IF TEQUIP:MASTER:上半身下着
+	IF (BASE:MASTER:体力 <= 1000 || BASE:MASTER:気力 <= 500 || BASE:MASTER:興奮度 >= 500) && BASE:(TCVAR:MASTER:行為対象):興奮度 >= 500
+		PRINTFORM 下着の中に潜り込み、
+	ELSE
+		PRINTFORM 、下着の上から
+	ENDIF
+;上半身上着あり
+ELSEIF TEQUIP:MASTER:上半身上着
+	IF (BASE:MASTER:体力 <= 1000 || BASE:MASTER:気力 <= 500 || BASE:MASTER:興奮度 >= 500) && BASE:(TCVAR:MASTER:行為対象):興奮度 >= 500
+		PRINTFORM 服の中に潜り込み、
+	ELSE
+		PRINTFORM 、服の上から
+	ENDIF
+ENDIF
+PRINTFORM %CALLNAME:MASTER%の
+;絶壁 or (オトコ＋並乳)
+IF TALENT:MASTER:バストサイズ == -2 || (TALENT:MASTER:性別 == 2 && TALENT:MASTER:バストサイズ == 0)
+	PRINTFORML 平坦な胸を撫で回す。
+ELSE
+	;巨乳 or 爆乳
+	IF TALENT:MASTER:バストサイズ >= 1
+		PRINTFORM 豊乳
+
+	ELSE
+		SIF TALENT:MASTER:バストサイズ == 1
+			PRINTFORM 小振りの
+		PRINTFORM 乳房
+	ENDIF
+	PRINTFORML を鷲掴みにする。
+ENDIF
+PRINTFORM そのいやらしい動きに、%CALLNAME:MASTER%
+;PALAM欲情Lv3以上
+IF PALAM:MASTER:欲情 >= PALAMLV:3
+	PRINTFORMW は快感を感じてしまっている。
+;PALAM欲情Lv1以上
+ELSEIF PALAM:MASTER:欲情 >= PALAMLV:1
+	PRINTFORMW の呼吸が少しずつ荒くなって行く…
+ELSE
+	PRINTFORMW は不快感しか感じなかった。
+ENDIF
+;--------------------------------------------------------------------------
+;乳首を摘む
+;--------------------------------------------------------------------------
+@COM_MESSAGE_811
+
+PRINTFORML ＜乳首を摘む＞
+PRINTFORM 痴漢の
+;上半身下着あり
+IF TEQUIP:MASTER:上半身下着
+	PRINTFORM 手が下着の下に潜り込み、その指が
+;上半身上着あり
+ELSEIF TEQUIP:MASTER:上半身上着
+	PRINTFORM 手が服の中に潜り込み、その指が
+ELSE
+	PRINTFORM 指が、
+ENDIF
+PRINTFORM %CALLNAME:MASTER%の
+;絶壁 or (オトコ＋並乳)
+IF TALENT:MASTER:バストサイズ == -2 || (TALENT:MASTER:性別 == 2 && TALENT:MASTER:バストサイズ == 0)
+	PRINTFORM 平坦な胸の中心にある
+;巨乳 or 爆乳
+ELSEIF TALENT:MASTER:バストサイズ >= 1
+	PRINTFORM 豊乳の頂にある
+ELSE
+	SIF TALENT:MASTER:バストサイズ == 1
+		PRINTFORM 小振りの
+	PRINTFORM 乳房の中心にある
+ENDIF
+;PALAM欲情Lv4以上
+IF PALAM:MASTER:欲情 >= PALAMLV:4
+	PRINTFORM 硬く勃起した
+;PALAM欲情Lv2以上
+ELSEIF PALAM:MASTER:欲情 >= PALAMLV:2
+	PRINTFORM 硬くなりつつある
+ELSE
+	PRINTFORM まだ柔らかい
+ENDIF
+PRINTFORML 乳首を摘み上げる。
+PRINTFORM そのまま捏ねるようにしごかれ、%CALLNAME:MASTER%
+;PALAM欲情Lv3以上
+IF PALAM:MASTER:欲情 >= PALAMLV:3
+	PRINTFORM は思わず
+	;女性器あり
+	SIF TALENT:MASTER:性別 & 1
+		PRINTFORM 可愛らしい
+	PRINTFORMW 声を上げた。
+;PALAM欲情Lv1以上
+ELSEIF PALAM:MASTER:欲情 >= PALAMLV:1
+	PRINTFORMW の呼吸が少しずつ荒くなって行く…
+ELSE
+	PRINTFORMW は不快感に身悶えた。
+ENDIF
+;--------------------------------------------------------------------------
+;乳首ローター
+;--------------------------------------------------------------------------
+@COM_MESSAGE_812
+
+PRINTFORML ＜乳首ローター＞
+;上半身上着あり
+IF TEQUIP:MASTER:上半身上着
+	PRINTFORM 服の中に潜り込んだ
+ENDIF
+PRINTFORML 痴漢の手には、振動するローターが握られている。
+PRINTFORM それを
+;上半身下着なし or PALAM欲情Lv3以上
+IF TEQUIP:MASTER:上半身下着 == 0 || PALAM:MASTER:欲情 >= PALAMLV:3
+	PRINTFORM 直接
+;上半身下着あり
+ELSEIF TEQUIP:MASTER:上半身下着
+	PRINTFORM 下着越しに
+ENDIF
+;PALAM欲情Lv4以上
+IF PALAM:MASTER:欲情 >= PALAMLV:4
+	PRINTFORM 硬く勃起した
+;PALAM欲情Lv2以上
+ELSEIF PALAM:MASTER:欲情 >= PALAMLV:2
+	PRINTFORM 硬くなりつつある
+ELSE
+	PRINTFORM まだ柔らかい
+ENDIF
+PRINTFORM 乳首に押し当てられ、%CALLNAME:MASTER%
+;PALAM欲情Lv3以上
+IF PALAM:MASTER:欲情 >= PALAMLV:3
+	PRINTFORM は思わず
+	;女性器あり
+	SIF TALENT:MASTER:性別 & 1
+		PRINTFORM 可愛らしい
+	PRINTFORMW 声を上げた。
+;PALAM欲情Lv1以上
+ELSEIF PALAM:MASTER:欲情 >= PALAMLV:1
+	PRINTFORMW の呼吸が少しずつ荒くなって行く…
+ELSE
+	PRINTFORMW は不快感に眉を顰めた。
+ENDIF
+
+
+;===============================================================================
+;下半身系コマンド
+;===============================================================================
+;--------------------------------------------------------------------------
+;お尻を触る
+;--------------------------------------------------------------------------
+@COM_MESSAGE_813
+
+PRINTFORML ＜お尻を触る＞
+PRINTFORM 痴漢が慣れた様子で
+;PALAM欲情Lv3未満
+SIF PALAM:MASTER:欲情 < PALAMLV:3
+	PRINTFORM 、
+;スカート類
+IF TEQUIP:MASTER:下半身上着 <= 274 && TEQUIP:MASTER:下半身上着 != 0
+	IF (BASE:MASTER:体力 <= 1000 || BASE:MASTER:気力 <= 500 || BASE:MASTER:興奮度 >= 500) && BASE:(TCVAR:MASTER:行為対象):興奮度 >= 500
+		PRINTFORM スカートを捲り上げ、
+		;下半身下着あり
+		IF TEQUIP:MASTER:下半身下着
+			;PALAM潤滑Lv2以上＋女性器あり
+			IF PALAM:MASTER:潤滑 >= PALAMLV:2 && TALENT:MASTER:性別 & 1
+				;PALAM潤滑Lv4以上
+				SIF PALAM:MASTER:潤滑 >= PALAMLV:4
+					PRINTFORM ぐしょぐしょに
+				PRINTFORM 濡れた
+			ENDIF
+			;PALAM欲情Lv3以上
+			IF PALAM:MASTER:欲情 >= PALAMLV:3
+				PRINTFORM 下着の中に手を潜り込ませて、
+			ELSE
+				PRINTFORM 下着の上から
+			ENDIF
+		ELSE
+			PRINTFORM 直接
+		ENDIF
+	ELSE
+		PRINTFORM スカート越しに
+	ENDIF
+;ズボン類
+ELSEIF TEQUIP:MASTER:下半身上着 >= 275
+	IF (BASE:MASTER:体力 <= 1000 || BASE:MASTER:気力 <= 500 || BASE:MASTER:興奮度 >= 500) && BASE:(TCVAR:MASTER:行為対象):興奮度 >= 500
+		PRINTFORM %ITEMNAME:(TEQUIP:MASTER:下半身下着)%の中に手を潜り込ませ、
+	ELSE
+		PRINTFORM %ITEMNAME:(TEQUIP:MASTER:下半身下着)%の上から
+	ENDIF
+;下半身下着あり
+ELSEIF TEQUIP:MASTER:下半身下着
+	IF (BASE:MASTER:体力 <= 1000 || BASE:MASTER:気力 <= 500 || BASE:MASTER:興奮度 >= 500) && BASE:(TCVAR:MASTER:行為対象):興奮度 >= 500
+		PRINTFORM 下着の中に手を潜り込ませ、
+	ELSE
+		PRINTFORM 下着の上から
+	ENDIF
+ENDIF
+PRINTFORML %CALLNAME:MASTER%のお尻を撫で回す。
+PRINTFORM その動きは次第に大胆さを増し、%CALLNAME:MASTER%
+;PALAM欲情Lv4以上
+IF PALAM:MASTER:欲情 >= PALAMLV:4
+	PRINTFORMW は快楽に身をくねらせた。
+;PALAM欲情Lv2以上
+ELSEIF PALAM:MASTER:欲情 >= PALAMLV:2
+	PRINTFORMW の性感を高めて行く…
+ELSE
+	PRINTFORMW は不快感に眉を顰めた。
+ENDIF
+;--------------------------------------------------------------------------
+;股間を触る
+;--------------------------------------------------------------------------
+@COM_MESSAGE_814
+
+PRINTFORML ＜股間を触る＞
+PRINTFORM 痴漢が慣れた様子で
+;PALAM欲情Lv3未満
+SIF PALAM:MASTER:欲情 < PALAMLV:3
+	PRINTFORM 、
+;スカート類
+IF TEQUIP:MASTER:下半身上着 <= 274 && TEQUIP:MASTER:下半身上着 != 0
+	IF (BASE:MASTER:体力 <= 1000 || BASE:MASTER:気力 <= 500 || BASE:MASTER:興奮度 >= 500) && BASE:(TCVAR:MASTER:行為対象):興奮度 >= 500
+		PRINTFORM スカートを捲り上げ、
+		;下半身下着あり
+		IF TEQUIP:MASTER:下半身下着
+			;PALAM潤滑Lv2以上＋女性器あり
+			IF PALAM:MASTER:潤滑 >= PALAMLV:2 && TALENT:MASTER:性別 & 1
+				;PALAM潤滑Lv4以上
+				SIF PALAM:MASTER:潤滑 >= PALAMLV:4
+					PRINTFORM ぐしょぐしょに
+				PRINTFORM 濡れた
+			ENDIF
+			;痴漢興奮度800以上
+			IF BASE:(TCVAR:MASTER:行為対象):興奮度 >= 800
+				PRINTFORM 下着の中に手を潜り込ませて、
+			ELSE
+				PRINTFORM 下着の上から
+			ENDIF
+		ELSE
+			PRINTFORM 直接
+		ENDIF
+	ELSE
+		PRINTFORM スカート越しに
+	ENDIF
+;ズボン類
+ELSEIF TEQUIP:MASTER:下半身上着 >= 275
+	IF (BASE:MASTER:体力 <= 1000 || BASE:MASTER:気力 <= 500 || BASE:MASTER:興奮度 >= 500) && BASE:(TCVAR:MASTER:行為対象):興奮度 >= 500
+		PRINTFORM %ITEMNAME:(TEQUIP:MASTER:下半身下着)%の中に手を潜り込ませ、
+	ELSE
+		PRINTFORM %ITEMNAME:(TEQUIP:MASTER:下半身下着)%の上から
+	ENDIF
+;下半身下着あり
+ELSEIF TEQUIP:MASTER:下半身下着
+	IF (BASE:MASTER:体力 <= 1000 || BASE:MASTER:気力 <= 500 || BASE:MASTER:興奮度 >= 500) && BASE:(TCVAR:MASTER:行為対象):興奮度 >= 500
+		PRINTFORM 下着の中に手を潜り込ませ、
+	ELSE
+		PRINTFORM 下着の上から
+	ENDIF
+ENDIF
+PRINTFORM %CALLNAME:MASTER%の
+;男性器あり
+IF TALENT:MASTER:性別 & 2
+	;PALAM欲情Lv3以上
+	SIF PALAM:MASTER:欲情 >= PALAMLV:3
+		PRINTFORM すっかり勃起した
+	PRINTFORM ペニス
+ELSE
+	;PALAM欲情Lv3以上
+	SIF PALAM:MASTER:欲情 >= PALAMLV:3
+		PRINTFORM 発情している
+	;小柄体型以下＋貧乳以下
+	IF TALENT:MASTER:体型 <= -1 && TALENT:MASTER:バストサイズ <= -1
+		PRINTFORM ワレメ
+	ELSE
+		PRINTFORM 秘唇
+	ENDIF
+ENDIF
+PRINTFORML を愛撫する。
+PRINTFORM 敏感な部位に加えられる刺激に、%CALLNAME:MASTER%
+;PALAM欲情Lv4以上
+IF PALAM:MASTER:欲情 >= PALAMLV:4
+	PRINTFORMW は肢体をくねらせた。
+;PALAM欲情Lv2以上
+ELSEIF PALAM:MASTER:欲情 >= PALAMLV:2
+	PRINTFORMW の性感は徐々に高められて行く…
+ELSE
+	PRINTFORMW は不快感しか感じていない…
+ENDIF
+;--------------------------------------------------------------------------
+;バイブを弄る
+;　女性器あり＋ズボン類を装備していない＋事前にバイブ装備時のみ実行可能
+;--------------------------------------------------------------------------
+@COM_MESSAGE_815
+IF T:102 == 0
+	PRINTFORML ＜バイブを弄る＞
+	PRINTFORM %CALLNAME:MASTER%が身に着けていたバイブを、
+	;スカート類
+	SIF TEQUIP:MASTER:下半身上着 <= 274 && TEQUIP:MASTER:下半身上着 != 0
+		PRINTFORM スカートの中に潜り込んだ
+	PRINTFORM 痴漢の手が
+	;下半身下着あり
+	IF TEQUIP:MASTER:下半身下着
+		IF (BASE:MASTER:体力 <= 1000 || BASE:MASTER:気力 <= 500 || BASE:MASTER:興奮度 >= 500) && BASE:(TCVAR:MASTER:行為対象):興奮度 >= 500
+			PRINTFORM 、下着の中にまで入り込んで
+		ELSE
+			PRINTFORM 、下着越しに
+		ENDIF
+	ENDIF
+	PRINTFORML 掴む。
+	PRINTFORM それに気付いた%CALLNAME:MASTER%が身を固くする間さえなく、
+	;PALAM潤滑Lv4以上
+	IF PALAM:MASTER:潤滑 >= PALAMLV:4
+		PRINTFORM お漏らしでもしたかのような有様の
+	;PALAM潤滑Lv2以上
+	ELSEIF PALAM:MASTER:潤滑 >= PALAMLV:2
+		PRINTFORM 愛液でぬめる
+	ELSE
+		PRINTFORM まだあまり濡れていない
+	ENDIF
+	PRINTFORML 秘処からわずかにバイブが引き出され、直後、勢いよく突き込まれた。
+	PRINTFORM 力強い抽送の感覚に、%CALLNAME:MASTER%
+	;PALAM欲情Lv4以上
+	IF PALAM:MASTER:欲情 >= PALAMLV:4
+		PRINTFORMW は膝をガクガクと震わせている…
+	;PALAM欲情Lv2以上
+	ELSEIF PALAM:MASTER:欲情 >= PALAMLV:2
+		PRINTFORMW の体は徐々に反応を強めていっている…
+	ELSE
+		PRINTFORMW は苦痛しか感じていない…
+	ENDIF
+ENDIF
+;--------------------------------------------------------------------------
+;アナルバイブを弄る
+;　女性器あり＋ズボン類を装備していない＋事前にアナルバイブ装備時のみ実行可能
+;--------------------------------------------------------------------------
+@COM_MESSAGE_816
+IF T:102 == 0
+	PRINTFORML ＜アナルバイブを弄る＞
+	PRINTFORM %CALLNAME:MASTER%の尻穴に挿入されているバイブを、
+	;スカート類
+	SIF TEQUIP:MASTER:下半身上着 <= 274 && TEQUIP:MASTER:下半身上着 != 0
+		PRINTFORM スカートの中に潜り込んだ
+	PRINTFORM 痴漢の手が
+	;下半身下着あり
+	IF TEQUIP:MASTER:下半身下着
+		IF (BASE:MASTER:体力 <= 1000 || BASE:MASTER:気力 <= 500 || BASE:MASTER:興奮度 >= 500) && BASE:(TCVAR:MASTER:行為対象):興奮度 >= 500
+			PRINTFORM 、下着の中にまで入り込んで
+		ELSE
+			PRINTFORM 、下着越しに
+		ENDIF
+	ENDIF
+	PRINTFORML 掴む。
+	PRINTFORM それに気付いた%CALLNAME:MASTER%が身を固くする間さえなく、
+	;PALAM潤滑Lv4以上＋女性器あり
+	IF PALAM:MASTER:潤滑 >= PALAMLV:4 && TALENT:MASTER:性別 & 1
+		PRINTFORM お漏らしでもしたかのような有様の
+	;PALAM潤滑Lv2以上
+	ELSEIF PALAM:MASTER:潤滑 >= PALAMLV:2
+		;女性器あり
+		SIF TALENT:MASTER:性別 & 1
+			PRINTFORM 淫蜜と
+		PRINTFORM 腸液でぬめる
+	ELSE
+		PRINTFORM 乾いたままの
+	ENDIF
+	PRINTFORML アナルからずるりとバイブが引き出され、直後、勢いよく突き込まれた。
+	PRINTFORM 力強い抽送の感覚に、%CALLNAME:MASTER%
+	;PALAM欲情Lv4以上
+	IF PALAM:MASTER:欲情 >= PALAMLV:4
+		PRINTFORMW は膝をガクガクと震わせている…
+	;PALAM欲情Lv2以上
+	ELSEIF PALAM:MASTER:欲情 >= PALAMLV:2
+		PRINTFORMW の体は徐々に反応を強めていっている…
+	ELSE
+		PRINTFORMW は苦痛しか感じていない…
+	ENDIF
+ENDIF
+;--------------------------------------------------------------------------
+;下着をずらす
+;--------------------------------------------------------------------------
+@COM_MESSAGE_817(ARG)
+IF T:102 == 0
+	IF T:104
+		ARG = (TCVAR:1:行為対象)
+	ELSE
+		ARG = 1
+	ENDIF
+	PRINTFORML ＜下着をずらす＞
+	PRINTFORM %CALLNAME:ARG%が慣れた様子で
+;PALAM欲情Lv3未満
+	SIF PALAM:(TCVAR:ARG:行為対象):欲情 < PALAMLV:3
+		PRINTFORM 、
+;スカート類
+	IF TEQUIP:(TCVAR:ARG:行為対象):下半身上着 <= 274 && TEQUIP:(TCVAR:ARG:行為対象):下半身上着 != 0
+		PRINTFORM スカートを捲り上げ、
+	;PALAM潤滑Lv2以上＋女性器あり
+		IF PALAM:(TCVAR:ARG:行為対象):潤滑 >= PALAMLV:2 && TALENT:(TCVAR:ARG:行為対象):性別 & 1
+		;PALAM潤滑Lv4以上
+			SIF PALAM:(TCVAR:ARG:行為対象):潤滑 >= PALAMLV:4
+				PRINTFORM ぐしょぐしょに
+			PRINTFORM 濡れた
+		ENDIF
+	;痴漢興奮度800以上
+		IF BASE:(TCVAR:(TCVAR:ARG:行為対象):行為対象):興奮度 >= 800
+			PRINTFORM 下着の中に手を潜り込ませながら、
+		ELSE
+			PRINTFORM 下着に手を掛け、
+		ENDIF
+;ズボン類
+	ELSEIF TEQUIP:(TCVAR:ARG:行為対象):下半身上着 >= 275
+		PRINTFORM %ITEMNAME:(TEQUIP:(TCVAR:ARG:行為対象):下半身下着)%をずらし、下着に手をかけ、
+;下半身下着あり
+	ELSEIF TEQUIP:(TCVAR:ARG:行為対象):下半身下着
+		IF (BASE:(TCVAR:ARG:行為対象):体力 <= 1000 || BASE:(TCVAR:ARG:行為対象):気力 <= 500 || BASE:(TCVAR:ARG:行為対象):興奮度 >= 500) && BASE:(TCVAR:(TCVAR:ARG:行為対象):行為対象):興奮度 >= 500
+			PRINTFORM 下着の中に手を潜り込ませながら、
+		ELSE
+			PRINTFORM 下着に手を掛け、
+		ENDIF
+	ENDIF
+	PRINTFORM %CALLNAME:(TCVAR:ARG:行為対象)%の
+;男性器あり
+	IF TALENT:(TCVAR:ARG:行為対象):性別 & 2
+	;PALAM欲情Lv3以上
+		SIF PALAM:(TCVAR:ARG:行為対象):欲情 >= PALAMLV:3
+			PRINTFORM すっかり勃起した
+		PRINTFORM ペニス
+	ELSE
+	;PALAM欲情Lv3以上
+		SIF PALAM:(TCVAR:ARG:行為対象):欲情 >= PALAMLV:3
+			PRINTFORM 発情している
+	;小柄体型以下＋貧乳以下
+		IF TALENT:(TCVAR:ARG:行為対象):体型 <= -1 && TALENT:(TCVAR:ARG:行為対象):バストサイズ <= -1
+			PRINTFORM ワレメ
+		ELSE
+			PRINTFORM 秘唇
+		ENDIF
+	ENDIF
+	PRINTFORML を露出させる。
+	PRINTFORM これから起こるであろう事を想像し、%CALLNAME:(TCVAR:ARG:行為対象)%
+	IF T:101 >= 1
+		PRINTFORMW は%CALLNAME:ARG%をキッと睨んだ。
+;PALAM欲情Lv4以上
+	ELSEIF PALAM:(TCVAR:ARG:行為対象):欲情 >= PALAMLV:4
+		PRINTFORMW は肢体を左右に振った。
+;PALAM欲情Lv2以上
+	ELSEIF PALAM:(TCVAR:ARG:行為対象):欲情 >= PALAMLV:2
+		PRINTFORMW の不安と感覚は徐々に高められて行く…
+	ELSE
+		PRINTFORMW は不安を覚えていた…
+	ENDIF
+ENDIF
+;--------------------------------------------------------------------------
+;挿入
+;　女性器あり＋下着無しまたは下着ずらされてる場合可能
+;--------------------------------------------------------------------------
+@COM_MESSAGE_818(ARG)
+
+IF T:102 == 0
+	IF T:104
+		ARG = (TCVAR:1:行為対象)
+	ELSE
+		ARG = 1
+	ENDIF
+	PRINTFORML ＜挿入＞
+	IF !GETBIT(TALENT:ARG:2,1)
+		PRINTFORM %CALLNAME:ARG%はもっていたペニスバンドを素早く装着し、
+	ELSE
+		PRINTFORM %CALLNAME:ARG%の勃起したペニスを
+	ENDIF
+	PRINTFORM %CALLNAME:(TCVAR:ARG:行為対象)%の膣にあてがい、
+	IF ((BASE:(TCVAR:ARG:行為対象):体力 <= 1000 || BASE:(TCVAR:ARG:行為対象):気力 <= 500 || BASE:(TCVAR:ARG:行為対象):興奮度 >= 500) && BASE:ARG:興奮度 >= 500) || T:101 >= 2
+		PRINTFORM 一気に
+	ELSE
+		PRINTFORM ゆっくりと
+	ENDIF
+	PRINTFORM 進入してきた。
+;処女
+	PRINTFORM %CALLNAME:(TCVAR:ARG:行為対象)%は
+	IF TALENT:(TCVAR:ARG:行為対象):処女 == 1
+		PRINTFORM 破瓜の恐怖を苦痛に顔を歪め、
+	ELSE
+		PRINTFORM 行為に感じながらも
+	ENDIF
+	PRINTFORMW 膝をガクガクと震わせている…
+ENDIF
+
+;--------------------------------------------------------------------------
+;アナル挿入
+;　女性器あり＋下着無しまたは下着ずらされてる場合可能
+;--------------------------------------------------------------------------
+@COM_MESSAGE_819(ARG)
+
+IF T:102 == 0
+	IF T:104
+		ARG = (TCVAR:1:行為対象)
+	ELSE
+		ARG = 1
+	ENDIF
+	PRINTFORML ＜アナル挿入＞
+	IF !GETBIT(TALENT:ARG:2,1)
+		PRINTFORM %CALLNAME:ARG%はもっていたペニスバンドを素早く装着し、
+	ELSE
+		PRINTFORM %CALLNAME:ARG%の勃起したペニスを
+	ENDIF
+	PRINTFORM %CALLNAME:(TCVAR:ARG:行為対象)%のアナルにあてがい
+	IF ((BASE:(TCVAR:ARG:行為対象):体力 <= 1000 || BASE:(TCVAR:ARG:行為対象):気力 <= 500 || BASE:(TCVAR:ARG:行為対象):興奮度 >= 500) && BASE:ARG:興奮度 >= 500) || T:101 >= 2
+		PRINTFORM 一気に
+	ELSE
+		PRINTFORM ゆっくりと
+	ENDIF
+	PRINTFORM 進入してきた。
+;処女
+	PRINTFORM %CALLNAME:(TCVAR:ARG:行為対象)%は
+	IF (BASE:(TCVAR:ARG:行為対象):体力 <= 1000 || BASE:(TCVAR:ARG:行為対象):気力 <= 500 || BASE:(TCVAR:ARG:行為対象):興奮度 >= 500) && BASE:ARG:興奮度 >= 500
+		PRINTFORM 少し声を漏らしながらも
+	ELSE
+		PRINTFORM 苦痛に顔を歪め、
+	ENDIF
+	PRINTFORMW 膝をガクガクと震わせている…
+ENDIF
+

@@ -1,0 +1,315 @@
+﻿;================================================================
+; バー（地区2・位置55、裏通り接続。2026-07-21追加）
+;  ・営業20時〜翌3時（営業時間.ERB）。閉店中はCOMF1000の移動ガードで入店不可。
+;  ・スタッフ＝Chara067「霧島 響」（マスター・カウンター越しに一対一で相手をする）
+;              Chara069「桐生 冴子」（常連の女性客・街の噂を教えてくれる）
+;  ・遊び方: 居酒屋が「大勢と出会う場」なのに対し、こちらは静かに一人で飲む場。
+;    通うほど（CFLAG:3517 来店回数）マスターとの会話が深くなり、
+;    好意・来店回数・時間帯の条件が揃うと閉店後に誘われる（＝アフター）。
+;  ・酒の値段・強さ・注文処理は 酒場.ERB に集約（居酒屋と共通）。酔い度は 酔い.ERB。
+;  ・バイト職業20のカウンター勤務は COMF1005＋@酒場勤務抽選/@酒場勤務描写（酒場.ERB）。
+;  ・Hシーン本体は@ソープH_おまかせ（ソープランド.ERB、XCOM2820＋SOURCE_CHECKS）を流用。
+;  ・使用フラグ: CFLAG:3517 バー来店回数（累計・永続。CSV未登録の生番号運用）
+;                TCVAR:638 酒場アフター済（当日1回制限。BEGIN TRAINで自動クリア）
+;================================================================
+
+;================================================================
+;@バーアフター可(ARG)
+;  ARG = マスターの登録番号。閉店後に誘われる条件を満たすか(1/0)を返す #FUNCTION。
+;================================================================
+@バーアフター可(ARG)
+#FUNCTION
+;当日1回まで
+SIF TCVAR:MASTER:酒場アフター済
+	RETURNF 0
+;閉店間際（1時〜3時）のみ
+SIF TIME < 1500 && TIME >= 180
+	RETURNF 0
+;通い詰めていること
+SIF CFLAG:MASTER:3517 < 5
+	RETURNF 0
+;マスターに好かれていること
+SIF TA:ARG:MASTER:3 < 40
+	RETURNF 0
+RETURNF 1
+
+;================================================================
+;@バーアフター条件文(ARG)
+;  未解禁のアフターに添える条件テキスト（@ホストアフター条件文と同型）。
+;================================================================
+@バーアフター条件文(ARG)
+#FUNCTIONS
+SIF TCVAR:MASTER:酒場アフター済
+	RETURNF "今夜はもう機会がない"
+SIF TIME < 1500 && TIME >= 180
+	RETURNF "要：閉店間際（１時以降）"
+SIF CFLAG:MASTER:3517 < 5
+	RETURNF "要：５回以上通う"
+RETURNF "要：マスターに気に入られる"
+
+;================================================================
+;@バー受付
+;  バー(2,55)到着時のフック（ROOM_IN_OUT.ERB @到着時処理から呼ばれる）。
+;================================================================
+@バー受付
+#DIM マスター
+SIF CFLAG:MASTER:現在地区 != 2 || CFLAG:MASTER:現在位置 != 55
+	RETURN
+;イベント文脈からの到着では何もしない（通常コマンド文脈のみ）
+SIF TCVAR:MASTER:イベント
+	RETURN
+マスター = GETCHARA(67)
+PRINTL
+PRINTFORML %"=" * 107%
+;従業員（バイト職業20）は客用の受付を出さない（勤務はCOMF1005「アルバイト」から）
+IF CFLAG:MASTER:職業 == 20
+	IF マスター >= 0
+		PRINTFORMW 重い扉を押すと、%CALLNAME:マスター%がグラスを磨く手を止めずに小さく頷いた。
+	ELSE
+		PRINTFORMW 重い扉を押して、あなたはカウンターの内側へ入った。
+	ENDIF
+	RETURN
+ENDIF
+CFLAG:MASTER:3517 += 1
+IF マスター < 0
+	PRINTL 薄暗い店内。カウンターの向こうには誰もおらず、あなたは所在なく席に着いた。
+	RETURN
+ENDIF
+;来店回数で出迎えが変わる
+IF CFLAG:MASTER:3517 >= 10 && TA:マスター:MASTER:3 >= 40
+	PRINTFORML 扉を押すと、%CALLNAME:マスター%は何も聞かずにグラスを一つ、カウンターへ置いた。
+	PRINTL 「……お帰りなさい。今夜も、いつもので？」
+ELSEIF CFLAG:MASTER:3517 >= 3
+	PRINTFORML 低く流れるピアノ。%CALLNAME:マスター%が「いらっしゃい」と静かに会釈した。
+ELSE
+	PRINTL 重い木の扉を押すと、外の喧噪が嘘のように遠のいた。
+	PRINTFORML カウンターの内側で、%CALLNAME:マスター%が磨いていたグラスを置く。
+	PRINTL 「いらっしゃいませ。……お好きな席へどうぞ」
+ENDIF
+CALL バーメニュー(マスター)
+RETURN
+
+;================================================================
+;@バーメニュー(ARG)
+;  ARG = マスターの登録番号（-1の場合は@バー受付で弾いている）。
+;================================================================
+@バーメニュー(ARG)
+#DIM マスター
+#DIM 常連
+マスター = ARG
+$BAR_MENU_INPUT
+常連 = GETCHARA(69)
+;常連はこの店にいる時だけ話しかけられる
+SIF 常連 >= 0 && (CFLAG:常連:現在地区 != 2 || CFLAG:常連:現在位置 != 55)
+	常連 = -1
+PRINTL
+PRINTFORML ＜バー／{TIME / 60}時{TIME % 60}分／所持金%金額(MONEY:MASTER)%円／%酔い段階_名(MASTER)%／来店{CFLAG:MASTER:3517}回＞
+PRINTL [0] - 一杯頼む
+PRINTL [1] - マスターと話す
+IF 常連 >= 0
+	PRINTFORML [2] - %CALLNAME:常連%に話しかける
+ELSE
+	SETCOLOR 96 , 96, 96
+	PRINTL 　　　常連客に話しかける（今夜は来ていない）
+	RESETCOLOR
+ENDIF
+IF バーアフター可(マスター)
+	PRINTL [3] - 閉店まで残る
+ELSE
+	SETCOLOR 96 , 96, 96
+	PRINTFORML 　　　閉店まで残る（%バーアフター条件文(マスター)%）
+	RESETCOLOR
+ENDIF
+;介抱は常連客のみが対象（マスターは店側なので世話の対象にしない）
+IF 常連 >= 0 && 酔い段階(常連) >= 3 && !TCVAR:MASTER:当日介抱済
+	PRINTFORML [4] - %CALLNAME:常連%を介抱する
+ELSE
+	SETCOLOR 96 , 96, 96
+	PRINTL 　　　酔い潰れた客を介抱する（今は必要なさそうだ）
+	RESETCOLOR
+ENDIF
+PRINTL [5] - 店を出る
+INPUT
+SIF RESULT < 0 || RESULT > 5
+	GOTO BAR_MENU_INPUT
+SIF RESULT == 2 && 常連 < 0
+	GOTO BAR_MENU_INPUT
+SIF RESULT == 3 && !バーアフター可(マスター)
+	GOTO BAR_MENU_INPUT
+SIF RESULT == 4 && (常連 < 0 || 酔い段階(常連) < 3 || TCVAR:MASTER:当日介抱済)
+	GOTO BAR_MENU_INPUT
+SELECTCASE RESULT
+	CASE 0
+		CALL バー_酒選択(マスター)
+	CASE 1
+		CALL バー_マスターと話す(マスター)
+	CASE 2
+		CALL バー_常連と話す(常連)
+	CASE 3
+		CALL バーアフター(マスター)
+		RETURN
+	CASE 4
+		CALL 酒場_介抱(常連)
+	CASEELSE
+		PRINTFORMW %CALLNAME:マスター%は「お気をつけて」とだけ言い、扉が閉まるまで頭を下げていた。
+		RETURN
+ENDSELECT
+GOTO BAR_MENU_INPUT
+
+;================================================================
+;@バー_酒選択(ARG)
+;  ARG = マスター。バーで扱う酒＝5ウイスキー／6カクテル／7ワイン、および8ソフトドリンク。
+;================================================================
+@バー_酒選択(ARG)
+#DIM マスター
+#DIM 選択
+マスター = ARG
+PRINTL
+PRINTL 何を頼みますか？
+;[0]〜[2] が酒番号5〜7に対応（@酒場_メニュー表示の採番規則）
+CALL 酒場_メニュー表示(5, 7)
+PRINTFORML [3] - %酒_名(8)%（%金額(酒_値段(8))%円）
+PRINTL [4] - やめておく
+$BAR_SAKE_INPUT
+INPUT
+SIF RESULT < 0 || RESULT > 4
+	GOTO BAR_SAKE_INPUT
+;CALLするとRESULTが戻り値で上書きされるため、選択値を退避しておく
+選択 = RESULT
+IF 選択 == 4
+	PRINTL メニューを閉じ、注文はしなかった。
+	RETURN
+ENDIF
+IF 選択 == 3
+	CALL 酒場_注文(MASTER, 8, マスター)
+ELSE
+	CALL 酒場_注文(MASTER, 選択 + 5, マスター)
+ENDIF
+;静かな店で飲む一杯はよく効く（ストレスが落ちる）
+IF RESULT
+	DOWNBASE:MASTER:ストレス += 250
+ENDIF
+RETURN
+
+;================================================================
+;@バー_マスターと話す(ARG)
+;  ARG = マスター。来店回数と好意で会話の深さが変わる（身の上話→常連認定）。
+;================================================================
+@バー_マスターと話す(ARG)
+#DIM マスター
+マスター = ARG
+CFLAG:MASTER:待機時間 += 20
+EXP:MASTER:会話経験 += 2
+TA:MASTER:マスター:3 += 3
+TA:マスター:MASTER:3 += 3
+PRINTL
+IF CFLAG:MASTER:3517 >= 10 && TA:マスター:MASTER:3 >= 40
+	PRINTFORML %CALLNAME:マスター%は珍しく自分の話をした。この店を持つまでのこと、そして辞めた仕事のこと。
+	PRINTL 「……こんな話、誰にでもするわけじゃないんですよ」
+	PRINTFORMW グラスの底で琥珀が揺れる。ふたりの間の空気が、少しだけ変わった気がした。
+	DOWNBASE:MASTER:ストレス += 450
+	TA:MASTER:マスター:1 += 2
+	TA:マスター:MASTER:1 += 2
+ELSEIF CFLAG:MASTER:3517 >= 3
+	PRINTFORML カウンター越しの%CALLNAME:マスター%は、余計なことを聞かずに相槌だけを返してくれる。
+	PRINTFORMW 話しているうちに、自分でも整理のついていなかった感情が形になっていった。
+	DOWNBASE:MASTER:ストレス += 300
+ELSE
+	PRINTFORML 当たり障りのない話題を振ると、%CALLNAME:マスター%は穏やかに応じてくれた。
+	PRINTFORMW 詮索されない距離感が、今夜はありがたかった。
+	DOWNBASE:MASTER:ストレス += 150
+ENDIF
+RETURN
+
+;================================================================
+;@バー_常連と話す(ARG)
+;  ARG = 常連客。街の噂＝この街にいる誰かの近況を教えてくれる。
+;================================================================
+@バー_常連と話す(ARG)
+#DIM 常連
+#DIM 噂の主
+#DIM 候補, 20
+#DIM 件数
+常連 = ARG
+CFLAG:MASTER:待機時間 += 15
+EXP:MASTER:会話経験 += 1
+TA:MASTER:常連:3 += 3
+TA:常連:MASTER:3 += 3
+DOWNBASE:MASTER:ストレス += 150
+;噂の対象＝自分と常連以外で、面識のある（好意か肉欲が動いている）相手
+件数 = 0
+FOR LOCAL, 0, CHARANUM
+	SIF LOCAL == MASTER || LOCAL == 常連
+		CONTINUE
+	SIF TA:MASTER:LOCAL:3 <= 0 && TA:MASTER:LOCAL:0 <= 0
+		CONTINUE
+	SIF 件数 >= 20
+		BREAK
+	候補:件数 = LOCAL
+	件数 ++
+NEXT
+PRINTL
+PRINTFORML グラスを傾けながら、%CALLNAME:常連%はこの街の噂を面白そうに話してくれた。
+IF !件数
+	PRINTFORMW 知らない名前ばかりだったが、それでも夜の時間はゆっくりと流れていった。
+	RETURN
+ENDIF
+噂の主 = 候補:(RAND(件数))
+PRINTFORML 「そういえば、%CALLNAME:噂の主%さんって知ってます？　最近よく見かけるんですけど」
+IF TA:噂の主:MASTER:3 >= 40
+	PRINTFORMW 「あなたのこと、ずいぶん気に入ってるみたいでしたよ」──思わぬ話に、頬が熱くなる。
+	TA:MASTER:噂の主:3 += 2
+ELSEIF TA:噂の主:MASTER:6 >= 10
+	PRINTFORMW 「……ああいう人とは、あまり関わらない方がいいかもしれませんね」
+ELSE
+	PRINTFORMW 他愛のない噂話。それでも、知らない一面を聞けたのは悪くなかった。
+ENDIF
+RETURN
+
+;================================================================
+;@バーアフター(ARG)
+;  ARG = マスター。閉店作業に付き合い、そのまま誘われる。
+;  場所移動・関係更新はH呼び出しの前に済ませる（先払い規約。ホストクラブ.ERBと同じ）。
+;================================================================
+@バーアフター(ARG)
+#DIM マスター
+#DIM 操作
+マスター = ARG
+操作 = 0
+TCVAR:MASTER:酒場アフター済 = 1
+CFLAG:MASTER:待機時間 += 30
+PRINTL
+PRINTFORMW 最後の客が出ていき、%CALLNAME:マスター%は看板の灯を落とした。
+PRINTFORML 「……もう一杯だけ、私の奢りで付き合ってもらえませんか」
+PRINTL 二人きりの店内。差し出されたグラスに、断る理由は見つからなかった。
+PRINTL どうしますか？
+PRINTL [0] - 受け取る（自分で操作する）
+PRINTL [1] - 受け取る（おまかせ）
+PRINTL [2] - 帰る
+$BAR_AFTER_INPUT
+INPUT
+SIF RESULT != 0 && RESULT != 1 && RESULT != 2
+	GOTO BAR_AFTER_INPUT
+IF RESULT == 2
+	PRINTFORMW 首を振ると、%CALLNAME:マスター%は「そうですよね」と穏やかに笑い、扉を開けてくれた。
+	RETURN
+ENDIF
+SIF RESULT == 0
+	操作 = 1
+;酒の勢いも手伝って（マスターに注がれた一杯）
+CALL 飲酒(MASTER, 150)
+TA:MASTER:マスター:1 += 5
+TA:マスター:MASTER:3 += 5
+TA:MASTER:マスター:4 += 10
+TA:マスター:MASTER:4 += 10
+PRINTFORMW グラスを受け取った手を、%CALLNAME:マスター%の指が包み込んだ。もう、店の灯りは消えている。
+IF 操作
+	;イベント4（コマンド選択式）へ合流。終了は997行為を終えるに任せる
+	CALL 援交操作モード開始(マスター)
+	RETURN
+ENDIF
+CALL ソープH_おまかせ(マスター, MASTER)
+CFLAG:MASTER:待機時間 += 90
+PRINTFORML 事が済むと、%CALLNAME:マスター%はいつもの静かな声に戻っていた。
+PRINTFORMW 「……次にいらしたときも、同じようにお迎えします。それだけは、変わりません」
+RETURN

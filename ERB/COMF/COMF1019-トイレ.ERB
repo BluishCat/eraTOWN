@@ -1,0 +1,23 @@
+﻿;[トイレ]
+;トイレのある場所で用を足すコマンド。覗きイベント（EVENT_覗き.ERB 場面3）の受け皿。
+
+@XCOM_ABLE1019(ARG)
+;トイレのある場所でのみ実行可
+; 大学のトイレ（地区1/位置10）、公園（地区0/位置11・地区2/位置17）
+SIF !((CFLAG:MASTER:現在地区 == 1 && CFLAG:MASTER:現在位置 == 10) | (CFLAG:MASTER:現在地区 == 0 && CFLAG:MASTER:現在位置 == 11) | (CFLAG:MASTER:現在地区 == 2 && CFLAG:MASTER:現在位置 == 17))
+	RETURN 0
+;大学のトイレは平日の6時〜18時のみ（汚れを落とす COMF1009 に準拠）
+SIF CFLAG:MASTER:現在地区 == 1 && CFLAG:MASTER:現在位置 == 10 && (D:101 || TIME < 360 || TIME > 1080)
+	RETURN 0
+RETURN GLOBAL_COMABLE(1019)
+
+@XCOM1019(ARG)
+PRINTL
+PRINTFORML %"=" * 107%
+PRINTL トイレ
+PRINTFORMW %CALLNAME:MASTER%は用を足した。
+;所要時間・気力の微回復
+CFLAG:MASTER:待機時間 = 5
+DOWNBASE:MASTER:気力 -= (MAXBASE:MASTER:気力 / 20)
+M:101 = 0
+RETURN 1

@@ -1,0 +1,79 @@
+﻿;================================================
+; 母親（キャラ番号 11）の妊娠・出産口上
+; 状況：1危険日 2妊娠中 3発覚 4陣痛開始 5出産 6陣痛激化 7いきみ 8破水
+;================================================
+
+;@妊娠口上_1_11(ARG,ARG:1)
+;;危険日の中出し
+;PRINTFORMW %CALLNAME:ARG%「（危険日の中出しの台詞）」
+;RETURN
+;@妊娠口上_2_11(ARG,ARG:1)
+;;妊娠中の中出し
+;PRINTFORMW %CALLNAME:ARG%「（妊娠中の中出しの台詞）」
+;RETURN
+@妊娠口上_3_11(ARG,ARG:1)
+;妊娠発覚
+SELECTCASE RAND(3)
+	CASE 0
+		PRINTFORMW %CALLNAME:ARG%「あら……また、授かったのねぇ」
+	CASE 1
+		PRINTFORMW %CALLNAME:ARG%「ふふ、この感じ……久しぶりだわ。」
+	CASEELSE
+		PRINTFORMW %CALLNAME:ARG%「あなたに、弟か妹ができるみたいよ。」
+ENDSELECT
+RETURN
+@妊娠口上_4_11(ARG,ARG:1)
+;陣痛・破水
+SELECTCASE RAND(3)
+	CASE 0
+		PRINTFORMW %CALLNAME:ARG%「ふぅ……来たわね。慣れたものよ……っ、ぅ」
+	CASE 1
+		PRINTFORMW %CALLNAME:ARG%「っ……大丈夫、何度も経験してるもの……」
+	CASEELSE
+		PRINTFORMW %CALLNAME:ARG%「ん……そろそろ、産まれそうねぇ……っ」
+ENDSELECT
+RETURN
+@妊娠口上_5_11(ARG,ARG:1)
+;出産
+SELECTCASE RAND(3)
+	CASE 0
+		PRINTFORMW %CALLNAME:ARG%「ふふ……元気な子。おかえりなさい」
+	CASE 1
+		PRINTFORMW %CALLNAME:ARG%「はぁ……何度でも、愛おしいものねぇ……」
+	CASEELSE
+		PRINTFORMW %CALLNAME:ARG%「よしよし……よく生まれてきたわね。」
+ENDSELECT
+RETURN
+@妊娠口上_6_11(ARG,ARG:1)
+;陣痛激化
+SELECTCASE RAND(2)
+	CASE 0
+		PRINTFORMW %CALLNAME:ARG%「ふぅ……そろそろ、本番ね……っ」
+	CASEELSE
+		PRINTFORMW %CALLNAME:ARG%「ん……この波は、大きいわ……っ」
+ENDSELECT
+RETURN
+@妊娠口上_7_11(ARG,ARG:1)
+;いきみ
+SELECTCASE RAND(2)
+	CASE 0
+		PRINTFORMW %CALLNAME:ARG%「さあ……いきむわよ……っ、ふんっ！」
+	CASEELSE
+		PRINTFORMW %CALLNAME:ARG%「もう少し……そーれ……っ！」
+ENDSELECT
+RETURN
+@妊娠口上_8_11(ARG,ARG:1)
+;破水
+SELECTCASE RAND(2)
+	CASE 0
+		PRINTFORMW %CALLNAME:ARG%「あら、破水したわね。いよいよよ。」
+	CASEELSE
+		PRINTFORMW %CALLNAME:ARG%「ふぅ……羊水が……慣れたものね。」
+ENDSELECT
+RETURN
+
+@妊娠口上_9_11(ARG,ARG:1)
+;多胎に気づく（驚き）
+TSTR:(FLAG:口上候補数++) = %CALLNAME:ARG%「あら……まあ、双子だったのねぇ。ふふ……」
+TSTR:(FLAG:口上候補数++) = %CALLNAME:ARG%「もう一人……久しぶりに驚いたわ」
+RETURN

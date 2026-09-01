@@ -1,0 +1,104 @@
+﻿;================================================
+; アダルトSHOP店員（キャラ番号 6）の汎用口上
+; 状況：1声かけ 2愛撫 3膣挿入 4アナル挿入 5絶頂 6口内/顔射 7抵抗 8甘え 9日常
+;================================================
+
+@汎用口上_1_6(ARG,ARG:1)
+SELECTCASE RAND(3)
+	CASE 0
+		PRINTFORMW %CALLNAME:ARG%「いらっしゃいませ。何かお探しで？」
+	CASE 1
+		PRINTFORMW %CALLNAME:ARG%「はい、御用でしょうか。」
+	CASEELSE
+		PRINTFORMW %CALLNAME:ARG%「当店へようこそ。」
+ENDSELECT
+RETURN
+@汎用口上_8_6(ARG,ARG:1)
+SELECTCASE RAND(3)
+	CASE 0
+		PRINTFORMW %CALLNAME:ARG%「ふふ、良いお客様だ。」
+	CASE 1
+		PRINTFORMW %CALLNAME:ARG%「またのご来店、お待ちしてますよ。」
+	CASEELSE
+		PRINTFORMW %CALLNAME:ARG%「あなたにはお得な情報を教えましょうか。」
+ENDSELECT
+RETURN
+@汎用口上_9_6(ARG,ARG:1)
+SELECTCASE RAND(3)
+	CASE 0
+		PRINTFORMW %CALLNAME:ARG%「今日は客足が少ないな……。」
+	CASE 1
+		PRINTFORMW %CALLNAME:ARG%「新商品の検品でもするか。」
+	CASEELSE
+		PRINTFORMW %CALLNAME:ARG%「そろそろ品出しの時間だな。」
+ENDSELECT
+RETURN
+
+;================================================
+; 性的状況の口上（男性・受け手時。2/4/5/7のみ）※KSTR方式
+;================================================
+;----- 2 愛撫される -----
+@汎用口上_2_6(ARG,ARG:1)
+IF LOVE_CHECK(ARG, ARG:1)
+	TSTR:(FLAG:口上候補数++) = %CALLNAME:ARG%「んっ……お客様の手……心地よい、ですね……」
+ELSEIF TA:ARG:(ARG:1):6 > 500
+	TSTR:(FLAG:口上候補数++) = %CALLNAME:ARG%「お、お客様……困ります……っ」
+ELSEIF ABL:ARG:従順 >= 3
+	TSTR:(FLAG:口上候補数++) = %CALLNAME:ARG%「はい……どうぞ、ご自由に……」
+ELSE
+	TSTR:(FLAG:口上候補数++) = %CALLNAME:ARG%「あ……そのような所は……っ」
+ENDIF
+IF GETPALAMLV(PALAM:ARG:欲情, 5)
+	TSTR:(FLAG:口上候補数++) = %CALLNAME:ARG%「くっ……このように、乱れて……失礼を……」
+ENDIF
+IF TALENT:ARG:羞恥心 > 0
+	TSTR:(FLAG:口上候補数++) = %CALLNAME:ARG%「ご覧に、ならないで……」
+ENDIF
+RETURN
+;----- 4 アナル挿入される -----
+@汎用口上_4_6(ARG,ARG:1)
+IF EXP:ARG:Ａ性交経験 <= 1
+	TSTR:(FLAG:口上候補数++) = %CALLNAME:ARG%「そ、そちらに挿れるのですか……！？」
+ENDIF
+IF LOVE_CHECK(ARG, ARG:1)
+	TSTR:(FLAG:口上候補数++) = %CALLNAME:ARG%「お客様のためなら……お尻でも……」
+ELSEIF TA:ARG:(ARG:1):6 > 500
+	TSTR:(FLAG:口上候補数++) = %CALLNAME:ARG%「おやめください……っ！」
+ELSEIF ABL:ARG:従順 >= 3
+	TSTR:(FLAG:口上候補数++) = %CALLNAME:ARG%「はい……お尻も、どうぞ……」
+ELSE
+	TSTR:(FLAG:口上候補数++) = %CALLNAME:ARG%「こわい、です……ゆっくり……」
+ENDIF
+IF GETPALAMLV(PALAM:ARG:欲情, 5)
+	TSTR:(FLAG:口上候補数++) = %CALLNAME:ARG%「うぁっ、お尻で感じるなど……失礼を……」
+ELSE
+	TSTR:(FLAG:口上候補数++) = %CALLNAME:ARG%「んくっ……いっぱいで……」
+ENDIF
+RETURN
+;----- 5 絶頂 -----
+@汎用口上_5_6(ARG,ARG:1)
+IF LOVE_CHECK(ARG, ARG:1)
+	TSTR:(FLAG:口上候補数++) = %CALLNAME:ARG%「達します……お客様と……っ！」
+ELSEIF ABL:ARG:従順 >= 3
+	TSTR:(FLAG:口上候補数++) = %CALLNAME:ARG%「達する許しを……っ！」
+ELSE
+	TSTR:(FLAG:口上候補数++) = %CALLNAME:ARG%「い、いけません……出て……っ！」
+ENDIF
+IF TALENT:ARG:羞恥心 > 0
+	TSTR:(FLAG:口上候補数++) = %CALLNAME:ARG%「見ないで……達する顔など……」
+ELSEIF TALENT:ARG:快感応答 < 0
+	TSTR:(FLAG:口上候補数++) = %CALLNAME:ARG%「これは……くっ、あぁっ！」
+ENDIF
+RETURN
+;----- 7 行為を拒む・抵抗する -----
+@汎用口上_7_6(ARG,ARG:1)
+IF TA:ARG:(ARG:1):6 > 500
+	TSTR:(FLAG:口上候補数++) = %CALLNAME:ARG%「おやめくださいっ……！　困ります……！」
+ELSEIF TALENT:ARG:抵抗
+	TSTR:(FLAG:口上候補数++) = %CALLNAME:ARG%「いけません……っ、おやめを……！」
+ELSEIF TALENT:ARG:羞恥心 > 0
+	TSTR:(FLAG:口上候補数++) = %CALLNAME:ARG%「く……お恥ずかしい……」
+ELSE
+	TSTR:(FLAG:口上候補数++) = %CALLNAME:ARG%「どうか、お許しを……」
+ENDIF
+RETURN

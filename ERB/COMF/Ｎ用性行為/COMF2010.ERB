@@ -1,0 +1,199 @@
+﻿@XCOM_ABLE2010(ARG)
+VARSET LOCAL
+LOCAL = ARG
+VARSET ARG
+SIF !TCVAR:LOCAL:行為対象
+	RETURN 0
+;相手が縄装着時は不可
+SIF TEQUIP:(TCVAR:LOCAL:行為対象):縄
+	RETURN 0
+SIF !CAN_COM2010(LOCAL,TCVAR:LOCAL:行為対象)
+	RETURN 0
+
+RETURN GLOBAL_COMABLE(2010)
+;-------------------------------------------------
+;自慰させる
+;-------------------------------------------------
+@XCOM2010(ARG)
+VARSET LOCAL
+
+PRINTL 
+PRINTFORML %"=" * 107%
+PRINTFORML 自慰させる(%CALLNAME:ARG%,%CALLNAME:(TCVAR:ARG:行為対象)%)
+SIF ARG == MASTER || TCVAR:ARG:行為対象 == MASTER
+	CALL 汎用口上(2, TCVAR:ARG:行為対象, ARG)
+;-------------------------------------------------
+;ソース追加処理
+;-------------------------------------------------
+;消費体力、気力
+DOWNBASE:(TCVAR:ARG:行為対象):体力 += 5
+DOWNBASE:(TCVAR:ARG:行為対象):気力 += 50
+SIF !(TEQUIP:(TCVAR:ARG:行為対象):下半身下着 == 373)
+	SOURCE:(TCVAR:ARG:行為対象):快Ｃ = 80
+SOURCE:(TCVAR:ARG:行為対象):快Ｂ = 80
+SOURCE:(TCVAR:ARG:行為対象):性行動 = 100
+SOURCE:(TCVAR:ARG:行為対象):恐怖 = 200
+SOURCE:(TCVAR:ARG:行為対象):露出 = 400
+SOURCE:(TCVAR:ARG:行為対象):屈従 = 500
+SOURCE:(TCVAR:ARG:行為対象):逸脱 = 300
+SOURCE:(TCVAR:ARG:行為対象):反感 = 250
+
+;経験があればＶやＡもいじる
+SIF EXP:(TCVAR:ARG:行為対象):Ｖ経験
+	SOURCE:(TCVAR:ARG:行為対象):快Ｖ = 80
+SIF EXP:(TCVAR:ARG:行為対象):Ａ経験
+	SOURCE:(TCVAR:ARG:行為対象):快Ａ = 80
+
+[SKIPSTART]
+;バイブ
+IF (TEQUIP:(TCVAR:ARG:行為対象):膣 == 1) && (TALENT:(TCVAR:ARG:行為対象):性別 == 0)
+	SOURCE:(TCVAR:ARG:行為対象):快Ｖ += 80
+	SOURCE:(TCVAR:ARG:行為対象):屈従 += 100
+	SOURCE:(TCVAR:ARG:行為対象):反感 += 100
+	TIMES SOURCE:(TCVAR:ARG:行為対象):快Ｃ , 0.70
+	TIMES SOURCE:(TCVAR:ARG:行為対象):快Ｂ , 0.70
+ENDIF
+;アナルバイブ
+IF TEQUIP:(TCVAR:ARG:行為対象):アナル == (60 | 61 | 62)
+	SOURCE:(TCVAR:ARG:行為対象):快Ａ += 80
+	SOURCE:(TCVAR:ARG:行為対象):屈従 += 150
+	SOURCE:(TCVAR:ARG:行為対象):反感 += 150
+	TIMES SOURCE:(TCVAR:ARG:行為対象):快Ｃ , 0.70
+	TIMES SOURCE:(TCVAR:ARG:行為対象):快Ｂ , 0.70
+ENDIF
+;シャワー
+;;;IF TEQUIP:(TCVAR:ARG:行為対象):32
+;;;	SOURCE:(TCVAR:ARG:行為対象):快Ｃ += 50
+;;;	SOURCE:(TCVAR:ARG:行為対象):露出 += 100
+;;;	SOURCE:(TCVAR:ARG:行為対象):屈従 += 50
+;;;	SOURCE:(TCVAR:ARG:行為対象):反感 += 80
+;;;ENDIF
+;ビデオ
+;;;IF TEQUIP:(TCVAR:ARG:行為対象):28
+;;;	SOURCE:(TCVAR:ARG:行為対象):液体 += 50
+;;;	SOURCE:(TCVAR:ARG:行為対象):欲情 += 100
+;;;	SOURCE:(TCVAR:ARG:行為対象):反感 += 200
+;;;ENDIF
+[SKIPEND]
+;-------------------------------------------------
+;特殊ソース処理
+;-------------------------------------------------
+;抑圧、抵抗持ちには、抑鬱ソース追加
+SIF TALENT:(TCVAR:ARG:行為対象):自己愛 < 0 || TALENT:(TCVAR:ARG:行為対象):抵抗
+	SOURCE:(TCVAR:ARG:行為対象):鬱屈 += 400
+;-------------------------------------------------
+;汚れの処理
+;-------------------------------------------------
+;奴隷の指⇔奴隷のＢの汚れが移動
+STAIN:(TCVAR:ARG:行為対象):1 |= STAIN:(TCVAR:ARG:行為対象):5
+STAIN:(TCVAR:ARG:行為対象):5 |= STAIN:(TCVAR:ARG:行為対象):1
+
+IF TALENT:(TCVAR:ARG:行為対象):性別 == 0
+	;奴隷の指⇔奴隷のＶの汚れが移動
+	STAIN:(TCVAR:ARG:行為対象):1 |= STAIN:(TCVAR:ARG:行為対象):3
+	STAIN:(TCVAR:ARG:行為対象):3 |= STAIN:(TCVAR:ARG:行為対象):1
+ENDIF
+;;;[SKIPSTART]
+;シャワーオナニーの場合汚れをリセット、潤滑更に半分。
+;;;IF TEQUIP:(TCVAR:ARG:行為対象):32 == 1
+;;;	STAIN:(TCVAR:ARG:行為対象):1 = 0
+;;;	STAIN:(TCVAR:ARG:行為対象):2 = 2
+;;;	STAIN:(TCVAR:ARG:行為対象):3 = 1
+;;;	STAIN:(TCVAR:ARG:行為対象):4 = 8
+;;;	PALAM:(TCVAR:ARG:行為対象):4 /= 2
+;;;ENDIF
+;;;[SKIPEND]
+;-------------------------------------------------
+;経験の処理
+;-------------------------------------------------
+;ビデオ撮影時は経験にプラス
+;IF TEQUIP:(TCVAR:ARG:行為対象):ビデオ撮影
+;	EXP:(TCVAR:ARG:行為対象):自慰経験 += 2
+;	EXP:(TCVAR:ARG:行為対象):調教自慰経験 += 2
+;ELSE
+	EXP:(TCVAR:ARG:行為対象):自慰経験 += 1
+	EXP:(TCVAR:ARG:行為対象):調教自慰経験 += 1
+;ENDIF
+;公開オナニー時は異常経験付加
+;IF TEQUIP:(TCVAR:ARG:行為対象):ビデオ撮影 && !GETBIT(CFLAG:3,0)
+;	EXP:(TCVAR:ARG:行為対象):異常経験 ++
+;	SETBIT CFLAG:3,0
+;ENDIF
+CALL HETEROSEX_EXP(ARG,TCVAR:ARG:行為対象,4)
+
+CFLAG:ARG:待機時間 += 2
+
+VARSET ARG
+
+RETURN 1
+
+
+@CAN_COM2010(ARG,ARG:1)
+#FUNCTION
+;;;VARSET LOCAL
+;-------------------------------------------------
+;実行できるかの判定
+;-------------------------------------------------
+;すべての命令に共通の要素を考慮
+;(従順が高いと命令に従いやすいなど)
+A = 0
+A = COM_ORDER(ARG,ARG:1)
+;ABL:欲望
+IF ABL:(ARG:1):欲望
+	A += ABL:(ARG:1):欲望 * 3
+ENDIF
+;ABL:露出癖
+IF ABL:(ARG:1):露出癖
+	A += ABL:(ARG:1):露出癖 * 4
+ENDIF
+;ABL:自慰中毒
+IF ABL:(ARG:1):自慰中毒
+	A += ABL:(ARG:1):自慰中毒 * 3
+ENDIF
+IF MARK:(ARG:1):快楽刻印
+	A += MARK:(ARG:1):快楽刻印 * 3
+ENDIF
+;自制心
+IF TALENT:(ARG:1):自制心
+	A -= 5
+ENDIF
+;恥じらい
+IF TALENT:(ARG:1):羞恥心 > 0
+	A -= 5
+ENDIF
+;恥薄い
+IF TALENT:(ARG:1):羞恥心 < 0
+	A += 2
+ENDIF
+;自慰しやすい
+IF TALENT:(ARG:1):自慰しやすい
+	A += 5
+ENDIF
+;快感に素直
+IF TALENT:(ARG:1):快感応答 > 0
+	A += 5
+ENDIF
+;快感の否定（淫乱、娼婦で無効）
+IF TALENT:(ARG:1):快感応答 < 0 && !TALENT:(ARG:1):淫乱
+	A -= 5
+ENDIF
+;媚薬
+IF TEQUIP:(ARG:1):媚薬
+	A += 8
+ENDIF
+[SKIPSTART]
+;難易度上昇
+;公開で10、バイブで5、アナルバイブで5、シャワーで3
+;;;SIF TEQUIP:(ARG:1):ビデオ撮影
+;;;	A -= 10
+;;;SIF TEQUIP:(ARG:1):シャワー
+;;;	A -= 3
+SIF TEQUIP:(ARG:1):膣 == 1
+	A -= 5
+SIF TEQUIP:(ARG:1):アナル == (60 | 61 | 62)
+	A -= 5
+[SKIPEND]
+;実行できない
+SIF A < 33
+	RETURNF 0
+RETURNF 1

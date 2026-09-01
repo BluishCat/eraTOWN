@@ -1,0 +1,41 @@
+﻿;=================================================
+; キャバ嬢の勤務コマンド「店に出る」（身分システム：cflag:仕事==8。旧「水商売」を改称）
+; 勤務地はキャバクラ（地区2・位置19、19時〜翌1時営業）。営業中のみ勤務可。
+; ソープ嬢(cflag:仕事==9)の勤務はCOMF1054-店に出る(ソープ嬢).ERB。
+; 歩合制のため月給・勤怠評価はなし。1回の実入りは大きいが消耗も大きい。
+;=================================================
+@XCOM_ABLE1053(ARG)
+SIF !COM_PLACE_OK(1053) || !COM_TIME_OK(1053)
+	RETURN 0
+RETURN GLOBAL_COMABLE(1053)
+
+@XCOM1053(ARG)
+VARSET LOCAL
+PRINTL
+PRINTFORML %"=" * 107%
+PRINTL 接客
+;2時間店に出て客の相手をする
+CFLAG:MASTER:待機時間 = 120
+DOWNBASE:ARG:体力 += CFLAG:ARG:待機時間 * 15 / 60
+DOWNBASE:ARG:気力 += CFLAG:ARG:待機時間 * 40 / 60
+DOWNBASE:ARG:疲労 -= CFLAG:ARG:待機時間 * 30 / 60
+DOWNBASE:ARG:ストレス -= CFLAG:ARG:待機時間 * 40 / 60
+;接客と会話の経験を積む（獲得表示はSOURCE_CHECK_2が行う）
+EXP:ARG:接客経験 += 3
+EXP:ARG:会話経験 += 2
+;報酬：話術技能+10%/LV・接客技能+5%/LVで補正した時給4000円相当の歩合。M:103に控え描写側で表示
+LOCAL:1 = 100 + ABL:ARG:話術技能 * 10 + ABL:ARG:接客技能 * 5
+LOCAL = CFLAG:ARG:待機時間 * 4000 / 60 * LOCAL:1 / 100
+MONEY:ARG += LOCAL
+M:103 = LOCAL
+M:101 = 0
+RETURN 1
+
+;接客結果の地の文（報酬表示。獲得経験はSOURCE_CHECK_2が自動表示する）
+@COM_MESSAGE_1053
+SIF M:101 == 1
+	RETURN 0
+PRINTL
+PRINTL あなたはドレスに身を包み、客のグラスに酒を注ぎながら華やかに話を弾ませた。
+PRINTFORML 今日の稼ぎ +%金額(M:103)%円
+M:101 = 1

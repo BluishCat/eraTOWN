@@ -1,0 +1,79 @@
+﻿;================================================
+; 赤田紫優（キャラ番号 2）の妊娠・出産口上
+; 状況：1危険日 2妊娠中 3発覚 4陣痛開始 5出産 6陣痛激化 7いきみ 8破水
+;================================================
+
+;@妊娠口上_1_2(ARG,ARG:1)
+;;危険日の中出し
+;PRINTFORMW %CALLNAME:ARG%「（危険日の中出しの台詞）」
+;RETURN
+;@妊娠口上_2_2(ARG,ARG:1)
+;;妊娠中の中出し
+;PRINTFORMW %CALLNAME:ARG%「（妊娠中の中出しの台詞）」
+;RETURN
+@妊娠口上_3_2(ARG,ARG:1)
+;妊娠発覚
+SELECTCASE RAND(3)
+	CASE 0
+		PRINTFORMW %CALLNAME:ARG%「……計算が合いません。まさか、わたしが妊娠……？」
+	CASE 1
+		PRINTFORMW %CALLNAME:ARG%「体調管理は完璧なはずが……これは、想定外です。」
+	CASEELSE
+		PRINTFORMW %CALLNAME:ARG%「記録を確認しても……ええ、間違いなく妊娠、ですね。」
+ENDSELECT
+RETURN
+@妊娠口上_4_2(ARG,ARG:1)
+;陣痛・破水
+SELECTCASE RAND(3)
+	CASE 0
+		PRINTFORMW %CALLNAME:ARG%「っ……規則的に、痛みが……。落ち着いて、深呼吸……！」
+	CASE 1
+		PRINTFORMW %CALLNAME:ARG%「データ通りの陣痛……なら、対処できます……っ」
+	CASEELSE
+		PRINTFORMW %CALLNAME:ARG%「くっ……冷静に、冷静に……ぅ、痛……！」
+ENDSELECT
+RETURN
+@妊娠口上_5_2(ARG,ARG:1)
+;出産
+SELECTCASE RAND(3)
+	CASE 0
+		PRINTFORMW %CALLNAME:ARG%「ぁ……無事に、産めたのですね……よかった……」
+	CASE 1
+		PRINTFORMW %CALLNAME:ARG%「記録更新、というべきでしょうか……ふふ。」
+	CASEELSE
+		PRINTFORMW %CALLNAME:ARG%「これが、命……理屈では、割り切れませんね……」
+ENDSELECT
+RETURN
+@妊娠口上_6_2(ARG,ARG:1)
+;陣痛激化
+SELECTCASE RAND(2)
+	CASE 0
+		PRINTFORMW %CALLNAME:ARG%「データ以上の痛み……想定を、超えています……！」
+	CASEELSE
+		PRINTFORMW %CALLNAME:ARG%「くっ……間隔が、正確に狭まって……ぅ！」
+ENDSELECT
+RETURN
+@妊娠口上_7_2(ARG,ARG:1)
+;いきみ
+SELECTCASE RAND(2)
+	CASE 0
+		PRINTFORMW %CALLNAME:ARG%「いきみます……っ、せーの……で……！」
+	CASEELSE
+		PRINTFORMW %CALLNAME:ARG%「規則に従い……今、いきみます……っ！」
+ENDSELECT
+RETURN
+@妊娠口上_8_2(ARG,ARG:1)
+;破水
+SELECTCASE RAND(2)
+	CASE 0
+		PRINTFORMW %CALLNAME:ARG%「……羊水、ですね。予定通りの、破水です。」
+	CASEELSE
+		PRINTFORMW %CALLNAME:ARG%「っ……これが破水。記録は……いえ、それどころでは……」
+ENDSELECT
+RETURN
+
+@妊娠口上_9_2(ARG,ARG:1)
+;多胎に気づく（驚き）
+TSTR:(FLAG:口上候補数++) = %CALLNAME:ARG%「まだ……!?　検査では一人だったはずなのに……計算が合いません……!」
+TSTR:(FLAG:口上候補数++) = %CALLNAME:ARG%「え……もう一人、いるのですか……!?　これは、想定外です……!」
+RETURN

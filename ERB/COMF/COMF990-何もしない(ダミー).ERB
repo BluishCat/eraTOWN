@@ -1,0 +1,15 @@
+﻿@XCOM_ABLE990(ARG)
+VARSET ARG
+RETURN 0
+
+@XCOM990(ARG)
+;何もしない(ダミー)。NPCの「何もしない」フォールバック用（旧991ダミーから移設）。
+;暇なNPCが毎ターン再抽選され続けないよう待機時間を進める。
+CFLAG:ARG:待機時間 += 10
+VARSET ARG
+
+RETURN 1
+
+;EM+EE engine auto-calls @COM990 via NEXTCOM=990 (no-arg system function)
+@COM990
+RETURN 1

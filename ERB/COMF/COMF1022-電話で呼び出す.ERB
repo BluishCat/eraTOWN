@@ -1,0 +1,104 @@
+﻿;[電話で呼び出す]（2026-07-16追加）
+;携帯電話（ITEM:903、家電屋で購入可）を所持していると、離れた場所にいる
+;恋人または高好意（200以上）のキャラを現在地へ呼び出せる。
+;到着後はそのまま会話イベント(3)が始まり、「デートに誘う」「告白する」に接続できる。
+;※NPC側の携帯所持は管理しない（不問）。
+;※TCVAR:目的位置で自律歩行させる方式はNPCのAI（就寝/授業）に上書きされるため、
+;　待機時間を消費して即時到着させる方式を採用。
+
+@XCOM_ABLE1022(ARG)
+VARSET LOCAL
+LOCAL = ARG
+VARSET ARG
+SIF !EQUIP:(LOCAL):携帯電話
+	RETURN 0
+;呼び出せる候補が1人もいなければ非表示
+FOR LOCAL:1,1,CHARANUM
+	SIF LOCAL:1 == LOCAL
+		CONTINUE
+	SIF 呼び出し可否(LOCAL, LOCAL:1)
+		RETURN GLOBAL_COMABLE(1022)
+NEXT
+RETURN 0
+
+;----------------------------------------------------------------
+;呼び出し候補判定
+; ARG=呼ぶ側(MASTER)、ARG:1=相手。RETURN 1=候補
+;----------------------------------------------------------------
+@呼び出し可否(ARG, ARG:1)
+#FUNCTION
+;恋人・セフレ・連絡先交換済みまたは好意200以上。家族も呼べる相手には含めない
+SIF TALENT:(ARG:1):家族
+	RETURNF 0
+;連絡先を交換していれば好意200未満でも候補に出す（実際に来るかは下の応答判定が決める）
+SIF !TALENT:(ARG:1):恋人 && !TA:(ARG:1):ARG:7 && !TA:(ARG:1):ARG:9 && TA:(ARG:1):ARG:3 < 200
+	RETURNF 0
+;睡眠中・衰弱中・イベント中・電車移動中は不可
+SIF CFLAG:(ARG:1):睡眠 || CFLAG:(ARG:1):衰弱 || TCVAR:(ARG:1):イベント || CFLAG:(ARG:1):乗車
+	RETURNF 0
+;同じ場所にいる相手は呼ぶ意味がない（声をかければよい）
+SIF CFLAG:(ARG:1):現在地区 == CFLAG:ARG:現在地区 && CFLAG:(ARG:1):現在位置 == CFLAG:ARG:現在位置
+	RETURNF 0
+RETURNF 1
+
+@XCOM1022(ARG)
+VARSET LOCAL
+PRINTL
+PRINTFORML %"=" * 107%
+;誰に電話をかけるか選択（COMF1020-声をかける と同型のUI）
+PRINTL 誰に電話をかけますか？
+FOR LOCAL,1,CHARANUM
+	SIF LOCAL == ARG
+		CONTINUE
+	SIF !呼び出し可否(ARG, LOCAL)
+		CONTINUE
+	PRINTFORML [{LOCAL,2}] - %CALLNAME:LOCAL%
+NEXT
+PRINTL [99] - やめる
+$INPUT_LOOP
+INPUT
+IF RESULT == 99
+	RETURN 0
+ELSEIF EXISTCSV(RESULT,0) && RESULT != ARG && 呼び出し可否(ARG, RESULT)
+	LOCAL:1 = RESULT
+ELSE
+	CLEARLINE 1
+	GOTO INPUT_LOOP
+ENDIF
+
+;平日の授業時間帯に大学（地区1）にいる相手は出られない
+IF !(D:101) && CFLAG:(LOCAL:1):現在地区 == 1 && ((TIME >= 510 && TIME < 750) || (TIME >= 810 && TIME < 960))
+	PRINTFORMW %CALLNAME:(LOCAL:1)%は授業中のようで、電話に出られなかった。
+	CFLAG:ARG:待機時間 += 10
+	RETURN 1
+ENDIF
+
+;応答判定: 恋人・セフレは常にOK（呼べば来るのがセフレ）。それ以外は好意・愛情、だめなら相性込みの確率（COMF996準拠）
+IF !TALENT:(LOCAL:1):恋人 && !TA:(LOCAL:1):ARG:7
+	IF (TA:(LOCAL:1):ARG:3 >= 200) && ((TA:(LOCAL:1):ARG:1 >= 1) | (TA:(LOCAL:1):ARG:3 >= 300))
+	ELSE
+		A = RAND(900)
+		;好意が高いほど応じる。連絡先だけの相手（好意が低い）でも相性次第で来ることはある
+		A = A * TA:ARG:(CFLAG:(LOCAL:1):タイプ):5 / 100 + (D:101 * 200) + TA:(LOCAL:1):ARG:3
+		IF !(A > 620)
+			PRINTFORMW %CALLNAME:(LOCAL:1)%に「ごめん、今日はちょっと……」と断られてしまった。
+			CFLAG:ARG:待機時間 += 10
+			RETURN 1
+		ENDIF
+	ENDIF
+ENDIF
+
+;相手が来るまでの時間を消費（距離に応じた概算。COMF1000のZONE_MOVE_TIME流用）
+LOCAL:2 = ZONE_MOVE_TIME(CFLAG:(LOCAL:1):現在地区, CFLAG:ARG:現在地区)
+PRINTFORML %CALLNAME:(LOCAL:1)%に電話をかけた。「今から行くね」
+PRINTFORMW しばらくして、%CALLNAME:(LOCAL:1)%がやって来た。（{LOCAL:2}分）
+CFLAG:ARG:待機時間 += LOCAL:2
+;即時到着（自律歩行はNPCのAIに上書きされるため使わない）
+TCVAR:(LOCAL:1):目的位置 = 0
+CFLAG:(LOCAL:1):現在地区 = CFLAG:ARG:現在地区
+CFLAG:(LOCAL:1):現在位置 = CFLAG:ARG:現在位置
+CFLAG:(LOCAL:1):待機時間 = 0
+;そのまま会話イベントへ（声をかけると同じ流れ）
+CALL 汎用口上(1, LOCAL:1, ARG)
+CALL EVENT_JOIN(ARG, LOCAL:1, 3)
+RETURN 1

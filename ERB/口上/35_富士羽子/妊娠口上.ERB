@@ -1,0 +1,79 @@
+﻿;================================================
+; 富士羽子（キャラ番号 35）の妊娠・出産口上
+; 状況：1危険日 2妊娠中 3発覚 4陣痛開始 5出産 6陣痛激化 7いきみ 8破水
+;================================================
+
+;@妊娠口上_1_35(ARG,ARG:1)
+;;危険日の中出し
+;PRINTFORMW %CALLNAME:ARG%「（危険日の中出しの台詞）」
+;RETURN
+;@妊娠口上_2_35(ARG,ARG:1)
+;;妊娠中の中出し
+;PRINTFORMW %CALLNAME:ARG%「（妊娠中の中出しの台詞）」
+;RETURN
+@妊娠口上_3_35(ARG,ARG:1)
+;妊娠発覚
+SELECTCASE RAND(3)
+	CASE 0
+		PRINTFORMW %CALLNAME:ARG%「え、わたし妊娠したの……？」
+	CASE 1
+		PRINTFORMW %CALLNAME:ARG%「うそ、ほんとに……？　どうしよう……」
+	CASEELSE
+		PRINTFORMW %CALLNAME:ARG%「えへ……なんだか、実感わかないな……」
+ENDSELECT
+RETURN
+@妊娠口上_4_35(ARG,ARG:1)
+;陣痛・破水
+SELECTCASE RAND(3)
+	CASE 0
+		PRINTFORMW %CALLNAME:ARG%「いたた……っ、お腹が……！」
+	CASE 1
+		PRINTFORMW %CALLNAME:ARG%「ふぇ……っ、痛いよぉ……」
+	CASEELSE
+		PRINTFORMW %CALLNAME:ARG%「はぁはぁ……もう少し、かな……っ」
+ENDSELECT
+RETURN
+@妊娠口上_5_35(ARG,ARG:1)
+;出産
+SELECTCASE RAND(3)
+	CASE 0
+		PRINTFORMW %CALLNAME:ARG%「はぁ……産めた……えへへ……」
+	CASE 1
+		PRINTFORMW %CALLNAME:ARG%「ちっちゃーい……可愛い……」
+	CASEELSE
+		PRINTFORMW %CALLNAME:ARG%「ふぅ……よかったぁ……」
+ENDSELECT
+RETURN
+@妊娠口上_6_35(ARG,ARG:1)
+;陣痛激化
+SELECTCASE RAND(2)
+	CASE 0
+		PRINTFORMW %CALLNAME:ARG%「いたた……っ、強くなってきた……！」
+	CASEELSE
+		PRINTFORMW %CALLNAME:ARG%「ふぇ……もう、いっぱいいっぱい……っ」
+ENDSELECT
+RETURN
+@妊娠口上_7_35(ARG,ARG:1)
+;いきみ
+SELECTCASE RAND(2)
+	CASE 0
+		PRINTFORMW %CALLNAME:ARG%「ふんっ……いくよ……っ！」
+	CASEELSE
+		PRINTFORMW %CALLNAME:ARG%「もう出そう……っ！」
+ENDSELECT
+RETURN
+@妊娠口上_8_35(ARG,ARG:1)
+;破水
+SELECTCASE RAND(2)
+	CASE 0
+		PRINTFORMW %CALLNAME:ARG%「ひゃっ！？　なんか出た……これ破水……！？」
+	CASEELSE
+		PRINTFORMW %CALLNAME:ARG%「うわ、濡れた……いよいよかぁ……」
+ENDSELECT
+RETURN
+
+@妊娠口上_9_35(ARG,ARG:1)
+;多胎に気づく（驚き）
+TSTR:(FLAG:口上候補数++) = %CALLNAME:ARG%「え、まだ!?　双子だったの……!?」
+TSTR:(FLAG:口上候補数++) = %CALLNAME:ARG%「もう一人……うそぉ……!」
+RETURN

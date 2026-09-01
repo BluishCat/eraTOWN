@@ -1,0 +1,79 @@
+﻿;================================================
+; 羽瀬川朱美（キャラ番号 24）の妊娠・出産口上
+; 状況：1危険日 2妊娠中 3発覚 4陣痛開始 5出産 6陣痛激化 7いきみ 8破水
+;================================================
+
+;@妊娠口上_1_24(ARG,ARG:1)
+;;危険日の中出し
+;PRINTFORMW %CALLNAME:ARG%「（危険日の中出しの台詞）」
+;RETURN
+;@妊娠口上_2_24(ARG,ARG:1)
+;;妊娠中の中出し
+;PRINTFORMW %CALLNAME:ARG%「（妊娠中の中出しの台詞）」
+;RETURN
+@妊娠口上_3_24(ARG,ARG:1)
+;妊娠発覚
+SELECTCASE RAND(3)
+	CASE 0
+		PRINTFORMW %CALLNAME:ARG%「……わたし、身籠ったのね」
+	CASE 1
+		PRINTFORMW %CALLNAME:ARG%「ふふ、そう……母親になるのね。」
+	CASEELSE
+		PRINTFORMW %CALLNAME:ARG%「この体に、新しい命が……」
+ENDSELECT
+RETURN
+@妊娠口上_4_24(ARG,ARG:1)
+;陣痛・破水
+SELECTCASE RAND(3)
+	CASE 0
+		PRINTFORMW %CALLNAME:ARG%「っ……ふぅ、来たわ……落ち着いて、ゆっくり……」
+	CASE 1
+		PRINTFORMW %CALLNAME:ARG%「ん……っ、痛……。深呼吸、深呼吸……」
+	CASEELSE
+		PRINTFORMW %CALLNAME:ARG%「はぁ……もう少しね……頑張るわ……」
+ENDSELECT
+RETURN
+@妊娠口上_5_24(ARG,ARG:1)
+;出産
+SELECTCASE RAND(3)
+	CASE 0
+		PRINTFORMW %CALLNAME:ARG%「はぁ……無事に、産めたわ……」
+	CASE 1
+		PRINTFORMW %CALLNAME:ARG%「ふふ……小さくて、あたたかい……」
+	CASEELSE
+		PRINTFORMW %CALLNAME:ARG%「おかえりなさい……待っていたのよ。」
+ENDSELECT
+RETURN
+@妊娠口上_6_24(ARG,ARG:1)
+;陣痛激化
+SELECTCASE RAND(2)
+	CASE 0
+		PRINTFORMW %CALLNAME:ARG%「っ……ふぅ、波が大きくなって……」
+	CASEELSE
+		PRINTFORMW %CALLNAME:ARG%「ん……もう、すぐみたい……っ」
+ENDSELECT
+RETURN
+@妊娠口上_7_24(ARG,ARG:1)
+;いきみ
+SELECTCASE RAND(2)
+	CASE 0
+		PRINTFORMW %CALLNAME:ARG%「いきむわ……ふぅ、ん――っ！」
+	CASEELSE
+		PRINTFORMW %CALLNAME:ARG%「もう少し……そーれ……っ」
+ENDSELECT
+RETURN
+@妊娠口上_8_24(ARG,ARG:1)
+;破水
+SELECTCASE RAND(2)
+	CASE 0
+		PRINTFORMW %CALLNAME:ARG%「あ……っ、破水したわ。落ち着いて……」
+	CASEELSE
+		PRINTFORMW %CALLNAME:ARG%「ふぅ……羊水ね……いよいよね。」
+ENDSELECT
+RETURN
+
+@妊娠口上_9_24(ARG,ARG:1)
+;多胎に気づく（驚き）
+TSTR:(FLAG:口上候補数++) = %CALLNAME:ARG%「え……まだ……?　双子、だったのね……」
+TSTR:(FLAG:口上候補数++) = %CALLNAME:ARG%「もう一人……驚いたわ……」
+RETURN

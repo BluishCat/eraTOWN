@@ -1,0 +1,102 @@
+﻿@IN_ROOM
+SELECTCASE CFLAG:MASTER:現在地区
+	CASE 2
+		SELECTCASE CFLAG:MASTER:現在位置
+			CASE 1
+				CFLAG:MASTER:現在地区 = 1
+				CFLAG:MASTER:現在位置 = 1
+				CFLAG:MASTER:待機時間 += 1
+				IF (D:101) == 0
+					SELECTCASE TIME
+						CASE 480 TO 510
+							PRINTFORML 正門の所で%CALLNAME:(21 + CHARANUM - 71)%に声を掛けられた
+							PRINTL 「急げよ〜遅刻するぞ〜」
+							PRINTL さり気なく尻を触られた…
+							TA:(21 + CHARANUM - 71):1:0 += 3
+					ENDSELECT
+				ENDIF
+		ENDSELECT
+ENDSELECT
+
+
+@OUT_ROOM
+SELECTCASE CFLAG:MASTER:現在地区
+	CASE 1
+		SELECTCASE CFLAG:MASTER:現在位置
+			CASE 1
+				CFLAG:MASTER:現在地区 = 2
+				CFLAG:MASTER:現在位置 = 1
+				CFLAG:MASTER:待機時間 += 1
+		ENDSELECT
+ENDSELECT
+
+;=================================================
+; 移動系コマンドの到着フック（2026-07-16追加）
+; COMF1000-移動 の到着地点（遠距離到着/近距離直接移動）から呼ばれる共通入口。
+; 今後の「到着時に何か起きる」処理はここに集約する。
+;=================================================
+@到着時処理
+;容疑を抱えたまま人前に出た時の職務質問（警察署.ERB）。
+;逮捕されるとその場で一日が畳まれる＝以降の受付を動かしてはいけないので、先に通して打ち切る
+CALL 職務質問チェック
+SIF RESULT
+	RETURN
+;デートスポットイベント（デート.ERB）
+CALL デート到着イベント
+;ラブホテルの休憩受付
+CALL ラブホ受付
+;賃貸住居の入居受付・実家帰還（マンション.ERB）
+CALL 住居受付
+CALL 実家帰省受付
+;ソープランドの受付・体験勧誘（ソープランド.ERB）
+CALL ソープ受付
+;劇場の受付・観覧・体験勧誘（劇場.ERB）
+CALL 劇場受付
+;ホストクラブの受付・遊び・売掛の取り立て（ホストクラブ.ERB）
+CALL ホストクラブ受付
+;居酒屋の席案内・飲み（居酒屋.ERB）
+CALL 居酒屋受付
+;バーのカウンター（バー.ERB）
+CALL バー受付
+;裏路地の拾い物（追加イベント.ERB）
+CALL 裏路地_拾い物
+;質屋の借入・返済・質入れ（質屋.ERB）
+CALL 質屋受付
+;銭湯の番台・入浴料（銭湯.ERB）
+CALL 銭湯受付
+;映画館のもぎり・上映（映画館.ERB）
+CALL 映画館受付
+;警察署の窓口（被害届・出頭。警察署.ERB）
+CALL 警察署受付
+RETURN
+
+;=================================================
+; ラブホテル休憩受付（2026-07-16追加）
+; ラブホテル(地区2,位置22)到着時、当日料金が未払いなら支払いを選択させる。
+; TCVAR:ホテル利用権(622)=1 で当日使い放題（入浴可・宿泊料も免除）。
+; TCVARはBEGIN TRAIN(毎朝)で自動クリア＝翌朝には権利が切れる。
+; 料金3000円は既存の宿泊料（COMF1004-寝る）と同額。
+;=================================================
+@ラブホ受付
+SIF CFLAG:MASTER:現在地区 != 2 || CFLAG:MASTER:現在位置 != 22 || TCVAR:MASTER:ホテル利用権
+	RETURN
+IF MONEY:MASTER < 3000
+	PRINTFORML 受付で休憩料金（3,000円）を求められたが、手持ちが足りない……。
+	PRINTL 料金を払わないと部屋は使えないようだ。
+	RETURN
+ENDIF
+PRINTL 受付で休憩料金を求められた。
+PRINTL [0] - 料金を払う（3,000円。今日は使い放題）
+PRINTL [1] - 払わない
+$INPUT_LOOP_H
+INPUT
+SIF RESULT != 0 && RESULT != 1
+	GOTO INPUT_LOOP_H
+IF RESULT == 0
+	MONEY:MASTER -= 3000
+	TCVAR:MASTER:ホテル利用権 = 1
+	PRINTL 料金を払って部屋の鍵を受け取った。今日はこのホテルを自由に使える。
+ELSE
+	PRINTL ロビーで粘っていても、部屋もお風呂も使えないようだ。
+ENDIF
+RETURN

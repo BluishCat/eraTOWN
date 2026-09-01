@@ -1,0 +1,108 @@
+﻿;================================================================
+; キャバクラ接客後、指名客がホテルへ誘うイベント
+;  接客が気に入られた(成功)時に確率で発生。相手はキャバクラ客(Chara059「お客さん」)。
+;  Hシーンは店主援交(@NPC_ENKOU)と同型（XCOM2820ディスパッチのフル行為）。
+;  発生したターンは店主援交をスキップする（呼び出し側でM:102=1）。
+;
+;  戻り値(RESULT): シーンが成立(誘いに乗った)=1（操作モード成立含む） / 断られた=0
+;  ARG   = 客(行為者)
+;  ARG:1 = 相手(通常MASTER=プレイヤー)
+;================================================================
+@キャバクラ客ホテル(ARG,ARG:1)
+LOCAL:10 = 0
+;----------------------------------------------------------------
+;誘い
+;----------------------------------------------------------------
+PRINTL
+PRINTFORML %"=" * 107%
+PRINTFORMW 接客を終えて一息ついていると、先ほど指名してきた客が%CALLNAME:(ARG:1)%にそっと耳打ちしてきた。
+PRINTFORMW 「この後、少しだけ付き合ってくれないかな……もちろん、お礼はたっぷりするからさ」
+PRINTL 客にホテルへ誘われている。どうしますか？
+PRINTFORML [0] - 誘いに乗る（自分で操作する）
+PRINTFORML [1] - 誘いに乗る（おまかせ）
+PRINTFORML [2] - 断る
+$KYAKU_HOTEL_INPUT
+INPUT
+SIF RESULT != 0 && RESULT != 1 && RESULT != 2
+	GOTO KYAKU_HOTEL_INPUT
+IF RESULT == 2
+	PRINTFORMW %CALLNAME:(ARG:1)%は当たり障りなく誘いを断り、客を見送った。
+	RETURN 0
+ENDIF
+SIF RESULT == 0
+	LOCAL:10 = 1
+PRINTFORMW %CALLNAME:ARG%に伴われ、%CALLNAME:(ARG:1)%は店を抜けて近くのラブホテルへと向かった。
+;----------------------------------------------------------------
+;Hシーン本体（NPC_ENKOUの本番ブロックと同型）
+;----------------------------------------------------------------
+CFLAG:(ARG:1):現在地区 = 2
+CFLAG:(ARG:1):現在位置 = 22
+;操作モード（[0]選択時）
+IF LOCAL:10
+	;先払い（従来の事後処理と同額）
+	MONEY:(ARG:1) += 20000
+	BASE:(ARG:1):評判 -= 70
+	TB:2:22:(ARG:1) -= 3
+	CFLAG:(ARG:1):会話 = 1
+	CALL 援交操作モード開始(ARG)
+	;RETURN 1 必須: 呼び出し元(bite14)が M:102=1 を立て、同ターンの店主援交を抑止する
+	RETURN 1
+ENDIF
+TCVAR:(ARG:1):目的位置 = 0
+TCVAR:(ARG:1):目的地区 = 0
+I:15 = CFLAG:(ARG:1):待機時間
+CFLAG:(ARG:1):待機時間 = 0
+I:13 = TCVAR:MASTER:イベント
+TCVAR:MASTER:イベント = 0
+IF TCVAR:MASTER:行為対象
+	I:14 = TCVAR:(TCVAR:MASTER:行為対象):イベント
+	TCVAR:(TCVAR:MASTER:行為対象):イベント = 0
+ENDIF
+J:116 = 1
+TFLAG:Ｎイベント = 8
+TFLAG:行為者 = ARG
+FOR G,0,5
+	TCVAR:ARG:行為対象 = ARG:1
+	TCVAR:(ARG:1):行為対象 = ARG
+	CFLAG:ARG:受能動 = 1
+	CFLAG:(ARG:1):受能動 = 2
+;Hはコマンド実行時のARG変数に代入
+	H = ARG
+	CALL XCOM2820(ARG,0)
+	TCVAR:ARG:行為対象 = ARG:1
+	CALL SOURCE_CHECKS(ARG)
+	TFLAG:行為者 = ARG
+	SIF ARG:1 == 1 && !TFLAG:移動中
+		PRINTW
+NEXT
+TEQUIP:(ARG:1):膣 = 0
+TEQUIP:(ARG:1):アナル = 0
+FOR G,0,10
+	TCVAR:ARG:行為対象 = ARG:1
+	TCVAR:(ARG:1):行為対象 = ARG
+	CFLAG:ARG:受能動 = 1
+	CFLAG:(ARG:1):受能動 = 2
+;Hはコマンド実行時のARG変数に代入
+	H = ARG
+	CALL XCOM2820(ARG,1)
+	TCVAR:ARG:行為対象 = ARG:1
+	CALL SOURCE_CHECKS(ARG)
+	TFLAG:行為者 = ARG
+	SIF ARG:1 == 1 && !TFLAG:移動中
+		PRINTW
+NEXT
+PRINTFORMW %CALLNAME:ARG%　→　%CALLNAME:(ARG:1)%　行為終了
+TCVAR:MASTER:イベント = I:13
+IF TCVAR:MASTER:行為対象
+	TCVAR:(TCVAR:MASTER:行為対象):イベント = I:14
+ENDIF
+CFLAG:(ARG:1):会話 = 1
+CALL EVENT_ESCAPE_NPC(ARG,ARG:1)
+TFLAG:Ｎイベント = 0
+J:116 = 0
+CFLAG:(ARG:1):待機時間 = I:15
+CFLAG:(ARG:1):待機時間 += 90
+MONEY:(ARG:1) += 20000
+BASE:(ARG:1):評判 -= 70
+TB:(CFLAG:(ARG:1):現在地区):(CFLAG:(ARG:1):現在位置):(ARG:1) -= 3
+RETURN 1

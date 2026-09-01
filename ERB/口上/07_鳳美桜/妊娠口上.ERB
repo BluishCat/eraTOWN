@@ -1,0 +1,79 @@
+﻿;================================================
+; 鳳美桜（キャラ番号 7）の妊娠・出産口上
+; 状況：1危険日 2妊娠中 3発覚 4陣痛開始 5出産 6陣痛激化 7いきみ 8破水
+;================================================
+
+;@妊娠口上_1_7(ARG,ARG:1)
+;;危険日の中出し
+;PRINTFORMW %CALLNAME:ARG%「（危険日の中出しの台詞）」
+;RETURN
+;@妊娠口上_2_7(ARG,ARG:1)
+;;妊娠中の中出し
+;PRINTFORMW %CALLNAME:ARG%「（妊娠中の中出しの台詞）」
+;RETURN
+@妊娠口上_3_7(ARG,ARG:1)
+;妊娠発覚
+SELECTCASE RAND(3)
+	CASE 0
+		PRINTFORMW %CALLNAME:ARG%「あら……わたくし、身籠っているのかしら……？」
+	CASE 1
+		PRINTFORMW %CALLNAME:ARG%「近頃、体が火照って……もしや、と思いましたの。」
+	CASEELSE
+		PRINTFORMW %CALLNAME:ARG%「ふふ……新しい命が、宿ったのですね。」
+ENDSELECT
+RETURN
+@妊娠口上_4_7(ARG,ARG:1)
+;陣痛・破水
+SELECTCASE RAND(3)
+	CASE 0
+		PRINTFORMW %CALLNAME:ARG%「ぅ……っ、来ましたわ……お腹が、痛……っ」
+	CASE 1
+		PRINTFORMW %CALLNAME:ARG%「はしたない声を……出しては、いけませんのに……っ」
+	CASEELSE
+		PRINTFORMW %CALLNAME:ARG%「ぐ……っ、こ、こんなに痛いものなの……！？」
+ENDSELECT
+RETURN
+@妊娠口上_5_7(ARG,ARG:1)
+;出産
+SELECTCASE RAND(3)
+	CASE 0
+		PRINTFORMW %CALLNAME:ARG%「ふぅ……よく頑張りましたわね、この子……」
+	CASE 1
+		PRINTFORMW %CALLNAME:ARG%「まあ……なんて、愛おしい……」
+	CASEELSE
+		PRINTFORMW %CALLNAME:ARG%「はぁ……無事で、ようございました……」
+ENDSELECT
+RETURN
+@妊娠口上_6_7(ARG,ARG:1)
+;陣痛激化
+SELECTCASE RAND(2)
+	CASE 0
+		PRINTFORMW %CALLNAME:ARG%「ぐ……っ、さ、さっきより……ずっと……！」
+	CASEELSE
+		PRINTFORMW %CALLNAME:ARG%「はしたなくても……声が、出てしまいますわ……っ」
+ENDSELECT
+RETURN
+@妊娠口上_7_7(ARG,ARG:1)
+;いきみ
+SELECTCASE RAND(2)
+	CASE 0
+		PRINTFORMW %CALLNAME:ARG%「い、いきみますわ……っ、ん――……！」
+	CASEELSE
+		PRINTFORMW %CALLNAME:ARG%「も、もう……こらえきれません……っ！」
+ENDSELECT
+RETURN
+@妊娠口上_8_7(ARG,ARG:1)
+;破水
+SELECTCASE RAND(2)
+	CASE 0
+		PRINTFORMW %CALLNAME:ARG%「きゃ……っ！　な、なにか溢れて……は、破水ですの！？」
+	CASEELSE
+		PRINTFORMW %CALLNAME:ARG%「まあ……はしたない……これが、破水……」
+ENDSELECT
+RETURN
+
+@妊娠口上_9_7(ARG,ARG:1)
+;多胎に気づく（驚き）
+TSTR:(FLAG:口上候補数++) = %CALLNAME:ARG%「まあ……!?　まだ、お腹に……!?　双子でしたの……!?」
+TSTR:(FLAG:口上候補数++) = %CALLNAME:ARG%「な、なんてこと……もう一人だなんて……!」
+RETURN

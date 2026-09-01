@@ -1,0 +1,51 @@
+﻿@COM_MESSAGE_1003
+SIF M:101 == 1
+	RETURN 0
+VARSET LOCAL
+;--------------------------------------------------------------------------
+;のんびりする
+;--------------------------------------------------------------------------
+PRINTFORML ＜のんびりする＞
+IF IS_MASTER_HOME()
+	;自宅
+	LOCAL = RAND:6
+	IF LOCAL == 0
+		PRINTFORM 漫画を読むなどして
+	ELSEIF LOCAL == 1
+		PRINTFORM 雑誌を読むなどして
+	ELSEIF LOCAL == 2
+		PRINTFORM ＴＶを見るなどして
+	ELSEIF LOCAL == 3
+		PRINTFORM 撮り溜めたビデオを見て
+	ELSE
+		PRINTFORM のんびりと
+	ENDIF
+ELSEIF GETBIT(DA:(CFLAG:MASTER:現在地区):(CFLAG:MASTER:現在位置),3) || IS_PRIVATE_PLACE(CFLAG:MASTER:現在地区,CFLAG:MASTER:現在位置)
+	;屋内施設（店・施設・ホテル・寮など）
+	LOCAL = RAND:4
+	IF LOCAL == 0
+		PRINTFORM スマホをいじるなどして
+	ELSEIF LOCAL == 1
+		PRINTFORM うとうとしながら
+	ELSEIF LOCAL == 2
+		PRINTFORM ぼんやりと考え事をしながら
+	ELSE
+		PRINTFORM のんびりと
+	ENDIF
+ELSE
+	;屋外
+	LOCAL = RAND:5
+	IF LOCAL == 0
+		PRINTFORM スマホをいじるなどして
+	ELSEIF LOCAL == 1
+		PRINTFORM 行き交う人を眺めるなどして
+	ELSEIF LOCAL == 2
+		PRINTFORM 景色を眺めるなどして
+	ELSEIF LOCAL == 3
+		PRINTFORM 空を見上げてぼんやりと
+	ELSE
+		PRINTFORM のんびりと
+	ENDIF
+ENDIF
+PRINTFORMW 時間を過ごした。
+M:101 = 1

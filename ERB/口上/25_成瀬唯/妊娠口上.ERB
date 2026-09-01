@@ -1,0 +1,79 @@
+﻿;================================================
+; 成瀬唯（キャラ番号 25）の妊娠・出産口上
+; 状況：1危険日 2妊娠中 3発覚 4陣痛開始 5出産 6陣痛激化 7いきみ 8破水
+;================================================
+
+;@妊娠口上_1_25(ARG,ARG:1)
+;;危険日の中出し
+;PRINTFORMW %CALLNAME:ARG%「（危険日の中出しの台詞）」
+;RETURN
+;@妊娠口上_2_25(ARG,ARG:1)
+;;妊娠中の中出し
+;PRINTFORMW %CALLNAME:ARG%「（妊娠中の中出しの台詞）」
+;RETURN
+@妊娠口上_3_25(ARG,ARG:1)
+;妊娠発覚
+SELECTCASE RAND(3)
+	CASE 0
+		PRINTFORMW %CALLNAME:ARG%「あたしが妊娠……！？　マジか……！」
+	CASE 1
+		PRINTFORMW %CALLNAME:ARG%「なんか調子悪いと思ったら……そういうことか！」
+	CASEELSE
+		PRINTFORMW %CALLNAME:ARG%「へへ、あたしも母ちゃんになるのか！」
+ENDSELECT
+RETURN
+@妊娠口上_4_25(ARG,ARG:1)
+;陣痛・破水
+SELECTCASE RAND(3)
+	CASE 0
+		PRINTFORMW %CALLNAME:ARG%「ぐ……っ、この痛み、リングより……キツい……！」
+	CASE 1
+		PRINTFORMW %CALLNAME:ARG%「うおおっ……気合いだ、気合いっ……！」
+	CASEELSE
+		PRINTFORMW %CALLNAME:ARG%「はぁはぁ……あたしは、負けねぇ……！」
+ENDSELECT
+RETURN
+@妊娠口上_5_25(ARG,ARG:1)
+;出産
+SELECTCASE RAND(3)
+	CASE 0
+		PRINTFORMW %CALLNAME:ARG%「はぁ……勝った……いや、産んだ……！」
+	CASE 1
+		PRINTFORMW %CALLNAME:ARG%「っしゃ！　無事に産まれたぞ！」
+	CASEELSE
+		PRINTFORMW %CALLNAME:ARG%「へへ……ちっちゃいファイターの誕生だ！」
+ENDSELECT
+RETURN
+@妊娠口上_6_25(ARG,ARG:1)
+;陣痛激化
+SELECTCASE RAND(2)
+	CASE 0
+		PRINTFORMW %CALLNAME:ARG%「ぐおお……効いてきた……！」
+	CASEELSE
+		PRINTFORMW %CALLNAME:ARG%「はぁはぁ……ここが正念場か……！」
+ENDSELECT
+RETURN
+@妊娠口上_7_25(ARG,ARG:1)
+;いきみ
+SELECTCASE RAND(2)
+	CASE 0
+		PRINTFORMW %CALLNAME:ARG%「でぇい……！　いくぞぉ……！」
+	CASEELSE
+		PRINTFORMW %CALLNAME:ARG%「気合いだぁ……そーれっ！」
+ENDSELECT
+RETURN
+@妊娠口上_8_25(ARG,ARG:1)
+;破水
+SELECTCASE RAND(2)
+	CASE 0
+		PRINTFORMW %CALLNAME:ARG%「うおっ！？　なんか出た……破水か！　ゴングだな！」
+	CASEELSE
+		PRINTFORMW %CALLNAME:ARG%「おっと、濡れた……よし、いよいよだ！」
+ENDSELECT
+RETURN
+
+@妊娠口上_9_25(ARG,ARG:1)
+;多胎に気づく（驚き）
+TSTR:(FLAG:口上候補数++) = %CALLNAME:ARG%「なにっ!?　まだいるのか!?　双子とか最高だな……!」
+TSTR:(FLAG:口上候補数++) = %CALLNAME:ARG%「タッグかよ!?　二人まとめて産んでやる……!」
+RETURN

@@ -1,0 +1,81 @@
+﻿;=================================================
+; 転職コマンド「仕事を辞める」（身分システム・案2。2026-07-20追加）
+; 自宅でのみ使用可（場所条件はCOM_PROFILE.ERB @COM_PLACE_OK）。
+; 対象は辞めて身分が変わる職のみ（COM_JOB_MASK=0xE6。教師・会社員・キャバ嬢・ソープ嬢・ダンサー）。
+; 辞めた後はフリーター(仕事==6)か専業主婦・家事手伝い(仕事==7)を選ぶ。
+; 職場で別の職の面接を受けて乗り換える場合はCOMF1055「面接を受ける」（退職手続き不要）。
+; 復帰には面接のやり直しが必要な不可逆コマンドなので、
+;  ・コマンド欄では日常行動と分けた「進路」カテゴリに置く（USERCOM.ERB @COM_CATEGORY）
+;  ・[0]をキャンセルにし、退職前に最終確認を挟む（中絶手術COMF1049と同じ並び）
+;=================================================
+
+;現在の職に戻るための面接条件を一文で返す（合格判定の実体はCOMF1055側。ここは表示専用）
+@退職_復職条件文
+#FUNCTIONS
+SELECTCASE CFLAG:MASTER:仕事
+	CASE 1
+		RETURNF "大学で教員採用の面接を受け直すことになる（学力がかなり要る）"
+	CASE 5
+		RETURNF "オフィスビルで中途採用の面接を受け直すことになる（学力が要る）"
+	CASE 8
+		RETURNF "キャバクラで面接を受け直すことになる（容姿が要る）"
+	CASE 9
+		RETURNF "ソープランドで面接を受け直すことになる（容姿が要る）"
+	CASE 10
+		RETURNF "劇場で支配人の面接を受け直すことになる（容姿と身のこなしが要る）"
+ENDSELECT
+RETURNF "同じ職に就くには面接を受け直すことになる"
+
+@XCOM_ABLE1056(ARG)
+SIF !COM_PLACE_OK(1056)
+	RETURN 0
+RETURN GLOBAL_COMABLE(1056)
+
+@XCOM1056(ARG)
+#DIM 選択
+PRINTL
+PRINTFORML %"=" * 107%
+PRINTL 部屋で腰を落ち着けて、今の仕事を続けるかどうか考え込んだ。
+SETCOLOR 255,140,140
+PRINTFORML ※%身分名()%を辞めると、収入とその仕事のコマンドが無くなる。
+PRINTFORML 　やり直すには%退職_復職条件文()%。
+RESETCOLOR
+PRINTL 仕事を辞めてどうしますか？
+PRINTL [1] - 辞めて気ままに生きる（フリーター）
+PRINTL [2] - 辞めて家のことに専念する（専業主婦・家事手伝い）
+PRINTL [0] - やめる（今の仕事を続ける）
+$YAMERU_INPUT
+INPUT
+SIF RESULT != 0 && RESULT != 1 && RESULT != 2
+	GOTO YAMERU_INPUT
+IF RESULT == 0
+	PRINTW もう少しだけ、今の仕事を頑張ってみることにした。
+	RETURN 1
+ENDIF
+選択 = RESULT
+;最終確認（誤操作で職を失わないよう、ここでも[0]をキャンセルにする）
+PRINTFORML 本当に%身分名()%を辞めますか？
+PRINTL [1] - はい、辞める
+PRINTL [0] - いいえ
+$YAMERU_CONFIRM
+INPUT
+SIF RESULT != 0 && RESULT != 1
+	GOTO YAMERU_CONFIRM
+IF RESULT == 0
+	PRINTW もう少しだけ、今の仕事を頑張ってみることにした。
+	RETURN 1
+ENDIF
+;退職（素質160学生/161学年/162教師を整理し、勤怠をリセット。年齢は据え置き）
+TALENT:MASTER:160 = 0
+TALENT:MASTER:161 = 0
+TALENT:MASTER:162 = 0
+IF 選択 == 1
+	CFLAG:MASTER:仕事 = 6
+	PRINTW 退職の手続きを済ませた。明日からは気ままなフリーター生活だ。
+ELSE
+	CFLAG:MASTER:仕事 = 7
+	PRINTW 退職の手続きを済ませた。明日からは家のことに専念しよう。
+ENDIF
+CFLAG:MASTER:出席 = 0
+CFLAG:MASTER:欠席日数 = 0
+RETURN 1

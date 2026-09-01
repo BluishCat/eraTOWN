@@ -1,0 +1,66 @@
+﻿;媚薬
+@XCOM_ABLE150(ARG)
+VARSET LOCAL
+LOCAL = ARG
+VARSET ARG
+;行為対象が0だと使えない
+SIF !TCVAR:LOCAL:行為対象
+	RETURN 0
+;あなた専用
+SIF LOCAL != 1
+	RETURN 0
+;行為者が媚薬を持っていないと使えない
+SIF EQUIP:LOCAL:媚薬 == 0
+	RETURN 0
+RETURN GLOBAL_COMABLE(150)
+
+;-------------------------------------------------
+;媚薬
+;-------------------------------------------------
+@XCOM150(ARG)
+VARSET LOCAL
+PRINTL 
+PRINTFORML %"=" * 107%
+PRINTFORML 媚薬(%CALLNAME:ARG%)
+SIF ARG == MASTER || TCVAR:ARG:行為対象 == MASTER
+	CALL 汎用口上(2, TCVAR:ARG:行為対象, ARG)
+;-------------------------------------------------
+;ソース追加処理
+;-------------------------------------------------
+;消費体力、気力
+
+;調教者が調合知識を持っていれば消費を抑えられる
+IF TALENT:PLAYER:調合知識
+	DOWNBASE:(TCVAR:ARG:行為対象):体力 += 150
+	DOWNBASE:(TCVAR:ARG:行為対象):気力 += 150
+ELSE
+	DOWNBASE:(TCVAR:ARG:行為対象):体力 += 300
+	DOWNBASE:(TCVAR:ARG:行為対象):気力 += 300
+ENDIF
+
+;媚薬効果で欲情のアップが2倍になるので実際には+5000
+SOURCE:(TCVAR:ARG:行為対象):欲情 = 2500
+SOURCE:ARG:達成 = 100
+SOURCE:ARG:逸脱 = 800
+SOURCE:(TCVAR:ARG:行為対象):屈従 = 100
+SOURCE:(TCVAR:ARG:行為対象):反感 = 200
+;-------------------------------------------------
+;特殊ソース処理
+;-------------------------------------------------
+;抑圧、抵抗持ちには、抑鬱ソース追加
+SIF TALENT:(TCVAR:ARG:行為対象):自己愛 < 0 || TALENT:(TCVAR:ARG:行為対象):抵抗
+	SOURCE:(TCVAR:ARG:行為対象):鬱屈 += 30
+;-------------------------------------------------
+;経験の処理
+;-------------------------------------------------
+CALL HETEROSEX_EXP(ARG,TCVAR:ARG:行為対象,1)
+CFLAG:ARG:待機時間 += 2
+;媚薬
+TEQUIP:(TCVAR:ARG:行為対象):媚薬 += 120
+EQUIP:ARG:媚薬--
+
+EXP:ARG:道具使用経験 ++
+
+VARSET ARG
+RETURN 1
+

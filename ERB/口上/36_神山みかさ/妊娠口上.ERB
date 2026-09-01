@@ -1,0 +1,79 @@
+﻿;================================================
+; 神山みかさ（キャラ番号 36）の妊娠・出産口上
+; 状況：1危険日 2妊娠中 3発覚 4陣痛開始 5出産 6陣痛激化 7いきみ 8破水
+;================================================
+
+;@妊娠口上_1_36(ARG,ARG:1)
+;;危険日の中出し
+;PRINTFORMW %CALLNAME:ARG%「（危険日の中出しの台詞）」
+;RETURN
+;@妊娠口上_2_36(ARG,ARG:1)
+;;妊娠中の中出し
+;PRINTFORMW %CALLNAME:ARG%「（妊娠中の中出しの台詞）」
+;RETURN
+@妊娠口上_3_36(ARG,ARG:1)
+;妊娠発覚
+SELECTCASE RAND(3)
+	CASE 0
+		PRINTFORMW %CALLNAME:ARG%「……わたくし、新しい命を授かったのですね」
+	CASE 1
+		PRINTFORMW %CALLNAME:ARG%「ご縁が、実を結んだのですね……ありがたや。」
+	CASEELSE
+		PRINTFORMW %CALLNAME:ARG%「ふふ……お腹の子に、ご加護がありますように。」
+ENDSELECT
+RETURN
+@妊娠口上_4_36(ARG,ARG:1)
+;陣痛・破水
+SELECTCASE RAND(3)
+	CASE 0
+		PRINTFORMW %CALLNAME:ARG%「っ……ふぅ、その時が来たようです……」
+	CASE 1
+		PRINTFORMW %CALLNAME:ARG%「ん……っ、これも、産みの苦しみ……耐えます……」
+	CASEELSE
+		PRINTFORMW %CALLNAME:ARG%「はぁ……もう少しで、この世に……っ」
+ENDSELECT
+RETURN
+@妊娠口上_5_36(ARG,ARG:1)
+;出産
+SELECTCASE RAND(3)
+	CASE 0
+		PRINTFORMW %CALLNAME:ARG%「はぁ……よくぞ、この世に……ありがたや……」
+	CASE 1
+		PRINTFORMW %CALLNAME:ARG%「無事の誕生……神様に、感謝を……」
+	CASEELSE
+		PRINTFORMW %CALLNAME:ARG%「ふふ……小さな御霊……大切にいたします。」
+ENDSELECT
+RETURN
+@妊娠口上_6_36(ARG,ARG:1)
+;陣痛激化
+SELECTCASE RAND(2)
+	CASE 0
+		PRINTFORMW %CALLNAME:ARG%「っ……産みの苦しみ、いよいよ……」
+	CASEELSE
+		PRINTFORMW %CALLNAME:ARG%「ふぅ……この試練、耐えます……っ」
+ENDSELECT
+RETURN
+@妊娠口上_7_36(ARG,ARG:1)
+;いきみ
+SELECTCASE RAND(2)
+	CASE 0
+		PRINTFORMW %CALLNAME:ARG%「いきみます……ん――っ！」
+	CASEELSE
+		PRINTFORMW %CALLNAME:ARG%「南無……そーれっ……！」
+ENDSELECT
+RETURN
+@妊娠口上_8_36(ARG,ARG:1)
+;破水
+SELECTCASE RAND(2)
+	CASE 0
+		PRINTFORMW %CALLNAME:ARG%「……羊水が。いよいよ、その時ですね。」
+	CASEELSE
+		PRINTFORMW %CALLNAME:ARG%「っ……破水……新しい命が、近づいています……」
+ENDSELECT
+RETURN
+
+@妊娠口上_9_36(ARG,ARG:1)
+;多胎に気づく（驚き）
+TSTR:(FLAG:口上候補数++) = %CALLNAME:ARG%「……二つの御霊……双子を、授かっていたのですね……!」
+TSTR:(FLAG:口上候補数++) = %CALLNAME:ARG%「まだ……!?　なんと、二人も……ありがたや……!」
+RETURN

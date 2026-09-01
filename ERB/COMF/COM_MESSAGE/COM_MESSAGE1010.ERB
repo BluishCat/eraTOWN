@@ -1,0 +1,31 @@
+﻿@COM_MESSAGE_1010
+SIF M:101 == 1
+	RETURN 0
+;--------------------------------------------------------------------------
+;昼食を食べる
+;　体力小回復。所持金消費（弁当代や学食の費用として）。
+;　弁当の方が安い気もしますが、こまけえことは（ry　の理論でスルーしてますw
+;--------------------------------------------------------------------------
+;TFLAG:COM用変数 0 一人で,1 他の人と一緒に
+;場所の呼び名（学生食堂／購買部／社員食堂・食堂の席／中庭／休憩スペース）は @昼食場所名（COMMON.ERB）が現在地で切り替える
+PRINTFORML ＜昼食を食べる＞
+SELECTCASE TFLAG:COM用変数
+	CASE 0
+		PRINTFORMW %昼食場所名(0)%に行って昼食を摂った。
+	CASE 1
+		PRINTFORMW %昼食場所名(1)%で%CALLNAME:(TCVAR:MASTER:行為対象)%と共に昼食を摂った。
+	CASE 2
+		PRINTW お弁当を美味しそうに食べた
+	CASE 3
+		PRINTW お弁当を食べた
+	CASE 4
+		PRINTW お弁当を我慢して食べた…
+ENDSELECT
+;媚薬使用中 or PALAM欲情Lv3以上
+IF TEQUIP:MASTER:媚薬 || PALAM:MASTER:欲情 >= PALAMLV:3
+	;媚薬使用中
+	SIF TEQUIP:MASTER:媚薬
+		PRINTFORM 媚薬の効果で
+	PRINTFORMW 火照る体を持て余している様子を、周囲は怪訝な目で見ている…
+ENDIF
+M:101 = 1

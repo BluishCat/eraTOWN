@@ -1,0 +1,68 @@
+﻿;================================================
+; Ｇスポットを突く（膣結合中のみ）
+;  膣で生身結合しているときだけ選べる、浅い膣前壁を狙う抽送。
+;  快Ｖ・情愛が大きく、苦痛はほぼ無い。
+;================================================
+@XCOM_ABLE18(ARG)
+VARSET LOCAL
+LOCAL = ARG
+VARSET ARG
+SIF !TCVAR:LOCAL:行為対象
+	RETURN 0
+;膣で生身結合中のみ（攻め＝膣挿入 / 受け＝膣被挿入）
+SIF TCVAR:LOCAL:挿入 != 1 && 生身被挿入部位(LOCAL) != 1
+	RETURN 0
+RETURN GLOBAL_COMABLE(18)
+
+;-------------------------------------------------
+;Ｇスポットを突く
+;-------------------------------------------------
+@XCOM18(ARG)
+#DIM 相手
+#DIM 攻
+VARSET LOCAL
+相手 = TCVAR:ARG:行為対象
+攻 = TCVAR:ARG:挿入 == 1
+PRINTL
+PRINTFORML %"=" * 107%
+PRINTFORML Ｇスポットを突く(%CALLNAME:ARG%)
+IF ARG == MASTER || 相手 == MASTER
+	IF 攻
+		PRINTFORML %CALLNAME:ARG%は角度を変え、%CALLNAME:相手%の弱い一点を先端で執拗にこすり上げた。
+	ELSE
+		PRINTFORML %CALLNAME:ARG%は自ら腰を揺すり、感じる一点に先端を導いた。
+	ENDIF
+	CALL 汎用口上(3, 相手, ARG)
+ENDIF
+;-------------------------------------------------
+;ソース追加処理
+;-------------------------------------------------
+IF 攻
+	;ARGが攻め：相手(受け)の膣に強い快感と情愛
+	DOWNBASE:ARG:体力 += 20
+	DOWNBASE:ARG:気力 += 35
+	SOURCE:ARG:性行動 = 60
+	SOURCE:ARG:快Ｃ = 200
+	SOURCE:ARG:欲情 = 40
+	SOURCE:相手:快Ｖ = 380
+	SOURCE:相手:情愛 = 80
+	SOURCE:相手:欲情 = 60
+	SOURCE:相手:性行動 = 30
+ELSE
+	;ARGが受け：ARG自身の膣に強い快感と情愛
+	DOWNBASE:ARG:体力 += 15
+	DOWNBASE:ARG:気力 += 35
+	SOURCE:ARG:性行動 = 40
+	SOURCE:ARG:快Ｖ = 380
+	SOURCE:ARG:情愛 = 80
+	SOURCE:ARG:欲情 = 60
+	SOURCE:相手:快Ｃ = 150
+	SOURCE:相手:性行動 = 30
+ENDIF
+;-------------------------------------------------
+;経験の処理
+;-------------------------------------------------
+CALL HETEROSEX_EXP(ARG, 相手, 3)
+CFLAG:ARG:待機時間 += 3
+VARSET ARG
+RETURN 1

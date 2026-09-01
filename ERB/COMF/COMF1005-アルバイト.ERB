@@ -1,0 +1,198 @@
+﻿@XCOM_ABLE1005(ARG)
+VARSET LOCAL
+LOCAL = ARG
+VARSET ARG
+SIF !GETBIT(DA:(CFLAG:LOCAL:現在地区):(CFLAG:LOCAL:現在位置),8)
+	RETURN 0
+SIF !CFLAG:LOCAL:職業 || CFLAG:LOCAL:現在地区 != JOB_AREA(CFLAG:LOCAL:職業) || CFLAG:LOCAL:現在位置 != JOB_PLACE(CFLAG:LOCAL:職業)
+	RETURN 0
+;営業時間外は勤務できない
+SIF !営業中(CFLAG:LOCAL:現在地区, CFLAG:LOCAL:現在位置)
+	RETURN 0
+
+RETURN GLOBAL_COMABLE(1005)
+
+@XCOM1005(ARG)
+VARSET LOCAL
+PRINTL 
+PRINTFORML %"=" * 107%
+PRINTL アルバイト
+;アルバイト
+;勤務の1単位は職業ごと（@JOB_勤務時間。既定は2時間シフト、劇場だけ1ステージ＝60分）
+CFLAG:ARG:待機時間 = JOB_勤務時間(CFLAG:ARG:職業)
+;消耗は勤務時間に比例（120分基準。既定の店は従来の150/200/300/400と同値）
+DOWNBASE:ARG:体力 += CFLAG:ARG:待機時間 * 150 / 120
+DOWNBASE:ARG:気力 += CFLAG:ARG:待機時間 * 200 / 120
+DOWNBASE:ARG:疲労 -= CFLAG:ARG:待機時間 * 300 / 120
+DOWNBASE:ARG:ストレス -= CFLAG:ARG:待機時間 * 400 / 120
+
+;技能が高いほど時給が上がる（接客技能+10%/LV、職業に応じた関連技能+5%/LV）
+LOCAL:1 = 100 + ABL:ARG:接客技能 * 10 + ABL:ARG:(JOB_SKILL(CFLAG:ARG:職業)) * 5
+LOCAL = CFLAG:ARG:待機時間 * 1000 / 60 * LOCAL:1 / 100
+MONEY:ARG += LOCAL
+;給料額はM:103に控え、接客描写の後（COM_MESSAGE_1005）で獲得経験と共に表示する
+M:103 = LOCAL
+CALL 支配度加算(ARG, 5)
+;アダルトショップは接客内容をここで抽選してSOURCE（快感・露出）を仕込む
+;（SOURCE→PALAM・経験の変換は描写(COM_MESSAGE)より先に走るため、描写側でSOURCEを足しても反映されない）
+M:104 = 0
+SIF CFLAG:ARG:職業 == 13
+	CALL アダルトショップ接客抽選(ARG)
+;居酒屋（職業19）・バー（職業20）は勤務中のできごとを抽選し、飲酒とSOURCEを仕込む（酒場.ERB）
+M:107 = 0
+SIF CFLAG:ARG:職業 == 19 || CFLAG:ARG:職業 == 20
+	CALL 酒場勤務抽選(ARG)
+;映画館（職業21）は勤務中のできごとを抽選しSOURCEを仕込む（映画館.ERB。M:107は酒場が使用中のためM:108）
+M:108 = 0
+SIF CFLAG:ARG:職業 == 21
+	CALL 映画館勤務抽選(ARG)
+;劇場（職業18）は演目の選択とショーの成否を抽選しSOURCE（露出・逸脱）と経験を仕込む（劇場.ERB）
+IF CFLAG:ARG:職業 == 18
+	;第2引数0＝キャンセル不可（バイトは勤務そのもの。身分ダンサーのCOMF1057だけが取りやめられる）
+	CALL 劇場ショー抽選(ARG, 0)
+	;劇場は時給ではなく「1ステージいくら」の歩合。勤務が60分になっても基本給が半減しないよう、
+	;従来の2時間ぶん相当（2000円）を1ステージの基本給として据え置き、演目倍率を掛ける。
+	;（LOCALは上で計算済みの時給ぶん。差分だけ追加で支払う。LOCAL:1は技能補正％）
+	LOCAL:2 = 2000 * LOCAL:1 / 100 * 劇場演目_報酬倍率(M:106) / 100
+	MONEY:ARG += LOCAL:2 - LOCAL
+	M:103 = LOCAL:2
+ENDIF
+VARSET ARG
+M:101 = 0
+;客ホテル発生フラグ（この接客で客に誘われたら店主援交をスキップ）をクリア
+M:102 = 0
+;妊娠中の激しい労働は進行段階に応じて切迫流産・早産・破水を招きうる（接客描写の後に判定する予約）
+CALL 妊娠中リスク予約(MASTER, 12)
+RETURN 1
+
+;アルバイトで得た経験の加算（ARG=職業番号、対象はMASTER）
+;職種別テーブル（2時間勤務あたり）。獲得表示と技能昇格判定は行動後のSOURCE_CHECK_2が行う
+@JOB_EXP_GAIN(ARG)
+SELECTCASE ARG
+	;ファミレス：接客+2 会話+1 料理+1 清掃+1
+	CASE 1
+		CALL バイト経験加算(78, 2)
+		CALL バイト経験加算(71, 1)
+		CALL バイト経験加算(76, 1)
+		CALL バイト経験加算(70, 1)
+	;喫茶店：接客+2 会話+1 料理+1
+	CASE 2
+		CALL バイト経験加算(78, 2)
+		CALL バイト経験加算(71, 1)
+		CALL バイト経験加算(76, 1)
+	;コンビニ・カラオケ屋：接客+2 会話+1 清掃+1
+	CASE 3, 5, 15
+		CALL バイト経験加算(78, 2)
+		CALL バイト経験加算(71, 1)
+		CALL バイト経験加算(70, 1)
+	;ハンバーガー屋：接客+2 料理+1 清掃+1
+	CASE 4
+		CALL バイト経験加算(78, 2)
+		CALL バイト経験加算(76, 1)
+		CALL バイト経験加算(70, 1)
+	;ゲームセンター・スーパー：接客+2 清掃+1
+	CASE 6, 12
+		CALL バイト経験加算(78, 2)
+		CALL バイト経験加算(70, 1)
+	;服屋：接客+2 会話+2
+	CASE 7
+		CALL バイト経験加算(78, 2)
+		CALL バイト経験加算(71, 2)
+	;薬屋：接客+2 学習+1
+	CASE 8, 16
+		CALL バイト経験加算(78, 2)
+		CALL バイト経験加算(75, 1)
+	;本屋：接客+1 学習+2 清掃+1
+	CASE 9, 17
+		CALL バイト経験加算(78, 1)
+		CALL バイト経験加算(75, 2)
+		CALL バイト経験加算(70, 1)
+	;スポーツジム：接客+1 運動+2 清掃+1
+	CASE 10
+		CALL バイト経験加算(78, 1)
+		CALL バイト経験加算(77, 2)
+		CALL バイト経験加算(70, 1)
+	;アクセサリーショップ・アダルトショップ：接客+2 会話+1
+	CASE 11, 13
+		CALL バイト経験加算(78, 2)
+		CALL バイト経験加算(71, 1)
+	;キャバクラ：接客+3 会話+2
+	CASE 14
+		CALL バイト経験加算(78, 3)
+		CALL バイト経験加算(71, 2)
+	;劇場（ダンサー）：ダンス経験・接客経験・露出SOURCEは@劇場ショー抽選（XCOM段階）で加算済みのため、ここでは何もしない（二重加算防止）
+	CASE 18
+	;居酒屋：接客+3 会話+2 料理+1（飲酒経験は飲まされたときに@飲酒が加算する）
+	CASE 19
+		CALL バイト経験加算(78, 3)
+		CALL バイト経験加算(71, 2)
+		CALL バイト経験加算(76, 1)
+	;バー：接客+2 会話+3
+	CASE 20
+		CALL バイト経験加算(78, 2)
+		CALL バイト経験加算(71, 3)
+	;映画館（もぎり・売店）：接客+2 会話+1（清掃は@映画館勤務抽選が場内清掃を引いたときに加算）
+	CASE 21
+		CALL バイト経験加算(78, 2)
+		CALL バイト経験加算(71, 1)
+ENDSELECT
+
+;経験をMASTERに加算（ARG=経験番号、ARG:1=加算量）
+;獲得表示はSOURCE_CHECK_2のEXPスナップショット差分表示に任せる（独自表示は二重になるため行わない）
+@バイト経験加算(ARG, ARG:1)
+EXP:MASTER:ARG += ARG:1
+
+;アダルトショップの接客内容を抽選し、シーンに応じたSOURCE・経験を仕込む（ARG=キャラ登録番号）
+;分岐条件・確率は旧COM_MESSAGE1005内の抽選と同一。描写はM:104を見て分岐する
+;M:104: 1=バイブ 2=アナルバイブ 3=ニプルキャップ 4=クリキャップ 5=ローター 6=乳首ローター 10=淫具解説 20=撮影会
+;SOURCEの量感は自慰(COMF1007: 快80/露出500/逸脱300)を基準に設定
+@アダルトショップ接客抽選(ARG)
+VARSET LOCAL
+LOCAL = RAND:3
+;露出癖Lv2以上 or 恥薄い なら淫具実演がありうる
+IF LOCAL == 0 && (ABL:ARG:露出癖 >= 2 || TALENT:ARG:羞恥心 == -1)
+	;淫具実演（衆目に晒しながら淫具を使う）
+	LOCAL = RAND:6
+	;バイブ（Ｖ経験1以上＋処女ではない＋女性器あり）
+	IF LOCAL == 0 && EXP:ARG:Ｖ経験 >= 1 && TALENT:ARG:処女 == 0 && TALENT:ARG:性別 & 1
+		M:104 = 1
+		SOURCE:ARG:快Ｖ = 120
+	;アナルバイブ（Ａ経験1以上）
+	ELSEIF LOCAL == 1 && EXP:ARG:Ａ経験 >= 1
+		M:104 = 2
+		SOURCE:ARG:快Ａ = 120
+	;ニプルキャップ
+	ELSEIF LOCAL == 2
+		M:104 = 3
+		SOURCE:ARG:快Ｂ = 100
+	;クリキャップ（女性器あり）
+	ELSEIF LOCAL == 3 && TALENT:ARG:性別 & 1
+		M:104 = 4
+		SOURCE:ARG:快Ｃ = 100
+	;ローター（女性器あり）
+	ELSEIF LOCAL == 4 && TALENT:ARG:性別 & 1
+		M:104 = 5
+		SOURCE:ARG:快Ｃ = 120
+	;乳首ローター
+	ELSE
+		M:104 = 6
+		SOURCE:ARG:快Ｂ = 120
+	ENDIF
+	;衆目の中での実演（快感経験Ｃ/Ｖ/Ａ/ＢはSOURCE_EXPが快ソースから自動加算）
+	SOURCE:ARG:露出 = 400
+	SOURCE:ARG:逸脱 = 200
+	EXP:ARG:道具使用経験 += 2
+	EXP:ARG:異常経験 += 1
+;淫具解説（恥ずかしい説明をさせられる）
+ELSEIF LOCAL == 1
+	M:104 = 10
+	SOURCE:ARG:露出 = 50
+;撮影会（カメラの前で肌を晒す）
+ELSE
+	M:104 = 20
+	SOURCE:ARG:露出 = 300
+	SOURCE:ARG:逸脱 = 100
+	EXP:ARG:被写経験 += 2
+ENDIF
+
+

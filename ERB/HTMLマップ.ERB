@@ -1,0 +1,419 @@
+﻿;=================================================
+; HTMLマップ描画（erablue_resort のマップ描画方式を参考に移植）
+; ・各ゾーンの地形を @MAP_AA_{地区} が AA 文字列配列として返す
+;   （地形=全角 ■□─│ 等、部屋=半角2桁数字。名前は凡例で PLACE_NAME から生成）
+; ・@DRAW_MAP が AA を1文字ずつ解析し、部屋数字を色付き <button> に変換して
+;   RESULTS に HTML 文字列を構築する（現在地=真っ赤 / 移動可=黄 / 不可=グレー）
+;=================================================
+
+;-------------------------------------------------
+; 色名→HTMLカラーコード（erablue @カラーパレット_HTML の縮小版）
+;-------------------------------------------------
+@カラーパレット_HTML(ARGS)
+#FUNCTIONS
+SELECTCASE ARGS
+	CASE "真っ赤"
+		RETURNF "FF3030"
+	CASE "黄"
+		RETURNF "FFD900"
+	CASE "緑"
+		RETURNF "70C070"
+	CASE "水色"
+		RETURNF "78DCFF"
+	CASE "グレーアウト"
+		RETURNF "666666"
+	CASE "閉店"
+		RETURNF "996666"
+	CASEELSE
+		RETURNF "C0C0C0"
+ENDSELECT
+
+;-------------------------------------------------
+; 部屋番号2桁化（例: 3→"03" / 12→"12"）
+;-------------------------------------------------
+@二桁(ARG)
+#FUNCTIONS
+RETURNF @"\@ARG > 9 ? %TOSTR(ARG)% # 0%TOSTR(ARG)%\@"
+
+;-------------------------------------------------
+; 区切り見出し「─── 名前 ────…」のHTML断片を返す
+; ARGS=見出し名 / ARG=表示幅（半角換算）
+; ※USERCOM.ERB の @COM_SEPARATOR は PRINTFORML 用で文字列を返さないため流用できない。
+;   桁計算（幅 - 線の長さ ぶんを埋める）の考え方だけ揃えてある。
+;-------------------------------------------------
+@マップ見出し(ARGS, ARGS:1, ARG)
+#FUNCTIONS
+#DIMS 線
+#DIMS 埋め
+#DIMS 色
+#DIM 残
+線 '= @"─── %ARGS% "
+;「─」は全角＝半角2桁ぶんなので、残り桁数の半分だけ並べる
+残 = (ARG - STRLENS(線)) / 2
+SIF 残 < 0
+	残 = 0
+埋め '= "─" * 残
+色 '= @"%カラーパレット_HTML(ARGS:1)%"
+RETURNF @"<font color='#%色%'>%線%%埋め%</font><br>"
+
+;-------------------------------------------------
+; 1部屋分のHTML断片を RESULTS に返す
+; ARG=地区 / ARG:1=部屋番号 / ARGS=表示文字列（2桁など）
+;-------------------------------------------------
+@DRAW_MAP_ROOM(ARG, ARG:1, ARGS)
+#DIMS NM
+;ホバー時に場所名をバルーン表示するための title 用文字列
+NM '= @"%PLACE_NAME(ARG, ARG:1)%"
+;閉店中はホバーで営業時間が分かるようにする（勤務先の開店準備中は開店前と明示）
+IF 開店準備中(ARG, ARG:1)
+	NM '= @"%NM%（開店前・%営業時間表示(ARG, ARG:1)%）"
+ELSEIF !営業中(ARG, ARG:1)
+	NM '= @"%NM%（閉店中・%営業時間表示(ARG, ARG:1)%）"
+ENDIF
+IF ARG:1 == CFLAG:MASTER:現在位置
+	;現在地：真っ赤（クリック不可の地の文）
+	RESULTS '= @"<font color='#%カラーパレット_HTML("真っ赤")%'>%ARGS%</font>"
+ELSEIF !入店可(ARG, ARG:1)
+	;閉店中：暗赤ボタン（クリックすると閉店メッセージで営業時間が分かる）
+	RESULTS '= @"<font color='#%カラーパレット_HTML("閉店")%'><button value='{ARG:1}' title='%NM%'>%ARGS%</button></font>"
+ELSE
+	;自分の縄張りは太字にする（色は移動可否の表示で使い切っているため。縄張り.ERB）
+	;※関数呼び出しはRESULTを書き換えるので、必ずCAN_MOVEより前に済ませること
+	SIF 場所支配者(ARG, ARG:1) == MASTER
+		ARGS '= @"<b>%ARGS%</b>"
+	CALLFORM CAN_MOVE_{ARG}(CFLAG:MASTER:現在位置, ARG:1)
+	IF RESULT
+		;隣接：黄ボタン（1歩で移動）
+		RESULTS '= @"<font color='#%カラーパレット_HTML("黄")%'><button value='{ARG:1}' title='%NM%'>%ARGS%</button></font>"
+	ELSE
+		;非隣接：水色ボタン（目的地に設定して自動経路で移動）
+		RESULTS '= @"<font color='#%カラーパレット_HTML("水色")%'><button value='{ARG:1}' title='%NM%'>%ARGS%</button></font>"
+	ENDIF
+ENDIF
+
+;-------------------------------------------------
+; 道セルの罫線文字を返す（ARG=接続ビット 1=上/2=下/4=右/8=左）
+;-------------------------------------------------
+@経路グリフ(ARG)
+#FUNCTIONS
+SELECTCASE ARG
+	CASE 1, 2, 3
+		RETURNF "│"
+	CASE 4, 8, 12
+		RETURNF "─"
+	CASE 5
+		RETURNF "└"
+	CASE 9
+		RETURNF "┘"
+	CASE 6
+		RETURNF "┌"
+	CASE 10
+		RETURNF "┐"
+	CASE 7
+		RETURNF "├"
+	CASE 11
+		RETURNF "┤"
+	CASE 13
+		RETURNF "┴"
+	CASE 14
+		RETURNF "┬"
+	CASE 15
+		RETURNF "┼"
+	CASEELSE
+		RETURNF "・"
+ENDSELECT
+
+;-------------------------------------------------
+; そのセルが「道」か（1=道□ / 2=線路＝）。0=壁、100+n=部屋。
+; **線は道を表す**という原則の判定に使う。部屋どうしが隣り合っているだけの箇所を
+; 線でつながないためのもの（例：繁華街の縦一列に並ぶ店は、各々が横の道に接しているだけで
+; 上下の店とは行き来できない ＝ @CAN_MOVE_n 上は繋がっていない）。
+;-------------------------------------------------
+@道セルか(ARG)
+#FUNCTION
+RETURNF (ARG == 1 || ARG == 2)
+
+;-------------------------------------------------
+; マップHTMLを RESULTS に構築（ARG=地区）。成功で RETURN 1
+;-------------------------------------------------
+@DRAW_MAP(ARG, ARG:1, ARG:2, ARG:3)
+;ARG   = 地区
+;ARG:1 = 表示モード（0=両方[既定] / 1=地図グリッドのみ / 2=文字凡例のみ）
+;ARG:2 = マス目拡大（0=既定の2倍 / 1=等倍コンパクト）
+;ARG:3 = 凡例の表示幅（半角換算。0ならコマンド欄と同じ PRINTCPERLINE()*PRINTCLENGTH()）
+;AA（■壁/□道/＝線路/2桁部屋番号）をセル解析し、壁＝空白・道＝罫線（─│└┼等）の
+;「路線図」風に描く。部屋は従来通り色付き番号ボタン。
+;※EmueraのHTML_PRINTに部分的な文字拡大機能は無いため、拡大はセル間に
+;  接続列（─）と接続行（│）を挿入して面積を約4倍にする方式
+#DIMS AA, 40
+#DIMS OUT
+#DIMS CH
+#DIM CELL, 40, 24
+#DIM LN
+#DIM PX
+#DIM COL
+#DIM RSTART
+#DIM NROW
+#DIM MAXCOL
+#DIM SC
+#DIM VV
+#DIM BB
+#DIM HASV
+#DIM 幅
+VARSET AA
+VARSET CELL
+OUT '= ""
+SC = ARG:2
+SIF SC == 0
+	SC = 2
+;凡例の表示幅。既定はコマンド欄と同じ桁数（@COM_SEPARATOR と同じ基準）
+幅 = ARG:3
+SIF 幅 <= 0
+	幅 = PRINTCPERLINE() * PRINTCLENGTH()
+;AA取得（未定義ゾーンなら失敗）
+TRYCCALLFORM MAP_AA_{ARG}(AA)
+CATCH
+	RESULTS '= ""
+	RETURN 0
+ENDCATCH
+
+;----- セル解析（0=壁・空白 / 1=道□ / 2=線路＝ / 100+n=部屋n）-----
+;RSTART〜NROW-1 = 道か部屋を含む行の範囲（全壁の外周行はトリムして詰める）
+RSTART = -1
+NROW = 0
+MAXCOL = 0
+FOR LN, 0, VARSIZE("AA")
+	SIF AA:LN == ""
+		CONTINUE
+	PX = 0
+	COL = 0
+	HASV = 0
+	WHILE PX < STRLENSU(AA:LN)
+		;CELL配列（40×24）の列上限ガード
+		SIF COL >= 24
+			BREAK
+		CH '= SUBSTRINGU(AA:LN, PX, 1)
+		IF ISNUMERIC(CH)
+			CELL:LN:COL = 100 + TOINT(SUBSTRINGU(AA:LN, PX, 2))
+			HASV = 1
+			PX += 2
+		ELSEIF CH == "□"
+			CELL:LN:COL = 1
+			HASV = 1
+			PX += 1
+		ELSEIF CH == "＝"
+			CELL:LN:COL = 2
+			HASV = 1
+			PX += 1
+		ELSE
+			;■その他の地形は空白扱い
+			CELL:LN:COL = 0
+			PX += 1
+		ENDIF
+		COL ++
+	WEND
+	SIF COL > MAXCOL
+		MAXCOL = COL
+	IF HASV
+		SIF RSTART < 0
+			RSTART = LN
+		NROW = LN + 1
+	ENDIF
+NEXT
+SIF RSTART < 0
+	RSTART = 0
+
+;----- グリッド描画（壁は描かず、道を罫線でつなぐ）-----
+IF ARG:1 != 2
+	FOR LN, RSTART, NROW
+		;本体行：部屋ボタン／罫線／空白
+		FOR COL, 0, MAXCOL
+			VV = CELL:LN:COL
+			IF VV >= 100
+				CALL DRAW_MAP_ROOM(ARG, VV - 100, 二桁(VV - 100))
+				OUT '= @"%OUT%%RESULTS%"
+			ELSEIF VV == 2
+				OUT '= @"%OUT%＝"
+			ELSEIF VV == 1
+				;上下左右の接続をビット化（1=上/2=下/4=右/8=左）して罫線を選ぶ
+				BB = 0
+				SIF LN > 0 && CELL:(LN - 1):COL
+					BB += 1
+				SIF LN + 1 < NROW && CELL:(LN + 1):COL
+					BB += 2
+				SIF COL + 1 < MAXCOL && CELL:LN:(COL + 1)
+					BB += 4
+				SIF COL > 0 && CELL:LN:(COL - 1)
+					BB += 8
+				OUT '= @"%OUT%%経路グリフ(BB)%"
+			ELSE
+				OUT '= @"%OUT%　"
+			ENDIF
+			;拡大時：右隣セルとの間の列。接続していれば横線でつなぐ
+			;（線＝道なので、少なくとも片側が道□／線路＝のときだけ引く。部屋どうしは繋がない）
+			IF SC > 1
+				IF VV && COL + 1 < MAXCOL && CELL:LN:(COL + 1) && (道セルか(VV) || 道セルか(CELL:LN:(COL + 1)))
+					IF VV == 2 || CELL:LN:(COL + 1) == 2
+						OUT '= @"%OUT%＝"
+					ELSE
+						OUT '= @"%OUT%─"
+					ENDIF
+				ELSE
+					OUT '= @"%OUT%　"
+				ENDIF
+			ENDIF
+		NEXT
+		OUT '= @"%OUT%<br>"
+		;拡大時：下の行との間の行。接続していれば縦線でつなぐ（横線と同じく片側は道であること）
+		IF SC > 1 && LN + 1 < NROW
+			FOR COL, 0, MAXCOL
+				IF CELL:LN:COL && CELL:(LN + 1):COL && (道セルか(CELL:LN:COL) || 道セルか(CELL:(LN + 1):COL))
+					OUT '= @"%OUT%│　"
+				ELSE
+					OUT '= @"%OUT%　　"
+				ENDIF
+			NEXT
+			OUT '= @"%OUT%<br>"
+		ENDIF
+	NEXT
+ENDIF
+
+;----- 場所一覧（「1歩で行ける場所」／「その他の場所」の2セクション・列揃え）-----
+IF ARG:1 != 1
+	;両方表示のときだけグリッドと一覧の間に空行を入れる
+	SIF ARG:1 == 0
+		OUT '= @"%OUT%<br>"
+	;1歩で行ける場所＝隣接（黄ボタン。徒歩の所要時間付き）
+	CALL 凡例セクション(ARG, 幅, 22, 1)
+	OUT '= @"%OUT%%RESULTS%"
+	;その他の場所＝非隣接（水色ボタン。クリックすると目的地に設定されて自動移動）
+	CALL 凡例セクション(ARG, 幅, 20, 2)
+	OUT '= @"%OUT%%RESULTS%"
+ENDIF
+
+RESULTS '= @"%OUT%"
+RETURN 1
+
+;=================================================
+; 場所一覧の1セクションぶんのHTMLを RESULTS に返す
+; ARG   = 地区
+; ARG:1 = 表示幅（半角換算）
+; ARG:2 = 名前の表示幅（半角換算）
+; ARG:3 = モード（1=1歩で行ける場所[徒歩分付き] / 2=その他の場所）
+; 1件の幅は @MAP_NAME_BUTTON の「マーカー2 + 番号2 + ：2 + 名前」＝ 6 + 名前幅 で固定。
+; モード1はさらに「( M分)」の6桁が付く。列間は半角2桁。
+;=================================================
+@凡例セクション(ARG, ARG:1, ARG:2, ARG:3)
+#DIMS OUT
+#DIMS 見出し
+#DIM 件幅
+#DIM 列数
+#DIM 列
+#DIM PX
+#DIM 時間
+OUT '= ""
+列 = 0
+件幅 = 6 + ARG:2 + 2
+SIF ARG:3 == 1
+	件幅 += 6
+列数 = ARG:1 / 件幅
+SIF 列数 < 1
+	列数 = 1
+FOR PX, 1, MAX_ROOM() + 1
+	;賃貸の号室など、状況的に一覧へ出さない部屋を除外（COMMON.ERB）
+	SIF !一覧表示対象(ARG, PX)
+		CONTINUE
+	;現在地はグリッドと【現在地】ヘッダで分かるので一覧からは省く
+	SIF PX == CFLAG:MASTER:現在位置
+		CONTINUE
+	CALLFORM CAN_MOVE_{ARG}(CFLAG:MASTER:現在位置, PX)
+	時間 = RESULT
+	;モード1は隣接のみ／モード2は非隣接のみ
+	SIF (ARG:3 == 1) != (時間 > 0)
+		CONTINUE
+	;表示文字＝「マーカー 番号：名前」全体（ボタンは途中で折れない設定なので項目単位で改行される）
+	CALL DRAW_MAP_ROOM(ARG, PX, MAP_NAME_BUTTON(ARG, PX, ARG:2))
+	OUT '= @"%OUT%%RESULTS%"
+	SIF ARG:3 == 1
+		OUT '= @"%OUT%({時間,2}分)"
+	列 ++
+	IF 列 % 列数 == 0
+		OUT '= @"%OUT%<br>"
+	ELSE
+		OUT '= @"%OUT%　"
+	ENDIF
+NEXT
+;該当が1件も無いセクションは見出しごと省略
+IF !列
+	RESULTS '= ""
+	RETURN 0
+ENDIF
+;端数改行
+SIF 列 % 列数
+	OUT '= @"%OUT%<br>"
+IF ARG:3 == 1
+	見出し '= マップ見出し("1歩で行ける場所", "黄", ARG:1)
+ELSE
+	見出し '= マップ見出し("その他の場所（クリックで自動移動）", "水色", ARG:1)
+ENDIF
+RESULTS '= @"%見出し%%OUT%"
+RETURN 1
+
+;=================================================
+; 各ゾーンのAAデータ（地形＋2桁部屋番号）
+; 既存 @GET_MAP_n の ■□ 文字列をそのまま流用し、GETMAP(n) 位置に 0n/nn を挿入
+;=================================================
+
+;----- ゾーン0：町 -----
+@MAP_AA_0(AA)
+#DIMS REF AA, 0
+AA:0  = ■■■■■■■■■
+AA:1  = 03□□□□02□□01
+AA:2  = ■■05□06■■■■
+AA:3  = ■■14□09■□□■
+AA:4  = ■■■04□□11□■
+AA:5  = ■■■□07■10□■
+AA:6  = ■■13□16■■■■
+AA:7  = ■■12□08■■■■
+AA:8  = ■■■□■■■■■
+AA:9  = ■■■30■■■■■
+AA:10 = ■■■■■■■■■
+
+;----- ゾーン1：大学 -----
+@MAP_AA_1(AA)
+#DIMS REF AA, 0
+AA:0  = ■■■■■■■■■■■■■■■■■■■■■■
+AA:1  = ■■12■■25■26■■■■■■■■■■■■■■
+AA:2  = ■■□□□□27□□□03□□□□□□□□□□01
+AA:3  = ■■□■■■■■□■■■■■■■□■■■■□
+AA:4  = ■08□■■■■05□04■■■■■□□□■■■□
+AA:5  = ■■18■■■■■□■■■■■□□□□□■■□
+AA:6  = ■02□10■■■06□07■■■■□□13□□■■□
+AA:7  = ■■□■■■■■29■■■■■□□□□□■■□
+AA:8  = ■09□■■■■20□23■■■■■□□□■■■□
+AA:9  = ■■□■■■■■□■■■■■■■□■■■30□
+AA:10 = ■■□■■■■■□24■16□14■15□17■■□□
+AA:11 = ■11□■21■22■□■■■□■■■□■■■□□
+AA:12 = ■■□□□28□□□□19□□□□□□■■■□□
+AA:13 = ■■■■■■■■■■■■■■■■■■■■■■
+
+;----- ゾーン2：繁華街 -----
+@MAP_AA_2(AA)
+#DIMS REF AA, 0
+AA:0  = ■■■■■■■■■■■26■■■■
+AA:1  = 01□□□□02□□□□□□03＝＝＝
+AA:2  = ■■■25■■■■17■■14□11■■
+AA:3  = ■■■■■■■■■■■56□29■■
+AA:4  = ■■■■■■■■■■■05□06■■
+AA:5  = ■■■■■■■■■■■57□30■■
+AA:6  = ■■■■■■■■■■■16□15■■
+AA:7  = ■■■■■■■■51■■■04■■■
+AA:8  = ■■■■■■■20□22■07□08■■
+AA:9  = ■■■■■■■55□■■■□■■■
+AA:10 = ■■■■27■■52□19■09□10■■
+AA:11 = ■■■■□■■■18■■■□■■■
+AA:12 = ■■■■□□□□□□□□□■■■
+AA:13 = ■■■■□■■53□54■21□12■■
+AA:14 = ■■■■28■■■□■■■□■■■
+AA:15 = ■■■■■■■■23■■24□13■■
+AA:16 = ■■■■■■■■■■■■■■■■

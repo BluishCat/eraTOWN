@@ -1,0 +1,1414 @@
+﻿@JYUGYOU1()
+PRINTL
+PRINTFORML %"=" * 107%
+;身分システム：プレイヤーが教師なら教師視点の授業イベントへ分岐
+IF CFLAG:MASTER:仕事 == 1
+	CALL JYUGYOU_TEACHER()
+	RETURN 1
+ENDIF
+IF TFLAG:COM用変数
+	PRINTL 体育の授業だ。
+	CALL JYUGYOU2()
+ELSE
+	PRINTL 学科の授業だ。
+	CALL JYUGYOU3()
+ENDIF
+
+RETURN 1
+
+;身分システム：教師視点の授業中イベント（2026-07-19追加）
+;ランダムな生徒を1人選び、3パターンから抽選。TA:(生徒):1:n で生徒→あなたの感情を操作
+@JYUGYOU_TEACHER()
+J:102 = RAND(CHARANUM - 2) + 2
+J:103 = NO:(J:102)
+J:104 = RAND:3
+SELECTCASE J:104
+	CASE 0
+		;居眠りしている生徒を起こす
+		PRINTFORML 授業中、%CALLNAME:(J:102)%が船を漕いで居眠りしている。
+$INPUT_LOOP_TEACHER0
+		PRINTL どうしますか？
+		PRINTL [0] - 優しく起こす
+		PRINTL [1] - チョークを投げる
+		INPUT
+		IF RESULT == 0
+			PRINTFORMW あなたは%CALLNAME:(J:102)%の肩をそっと叩いて起こした。
+			PRINTL 「……はっ、すみません先生」
+			TA:(J:102):1:3 += 10
+			BASE:MASTER:評判 += 5
+		ELSEIF RESULT == 1
+			PRINTFORMW あなたの投げたチョークが見事に命中し、%CALLNAME:(J:102)%は飛び起きた。
+			PRINTL 教室に笑いが起きる。
+			TA:(J:102):1:6 += 5
+			BASE:MASTER:評判 += 3
+		ELSE
+			GOTO INPUT_LOOP_TEACHER0
+		ENDIF
+	CASE 1
+		;熱心な生徒からの質問
+		PRINTFORML 授業の後、%CALLNAME:(J:102)%が質問にやってきた。
+		PRINTL 「先生、ここがどうしても分からなくて……」
+$INPUT_LOOP_TEACHER1
+		PRINTL どうしますか？
+		PRINTL [0] - 丁寧に教える
+		PRINTL [1] - 適当にあしらう
+		INPUT
+		IF RESULT == 0
+			PRINTFORMW あなたは%CALLNAME:(J:102)%に丁寧に解説した。理解できた様子で嬉しそうだ。
+			TA:(J:102):1:3 += 15
+			TA:(J:102):1:1 += 5
+			BASE:MASTER:評判 += 8
+			EXP:MASTER:接客経験 += 1
+		ELSEIF RESULT == 1
+			PRINTFORMW あなたが面倒そうに答えると、%CALLNAME:(J:102)%は残念そうに戻っていった。
+			TA:(J:102):1:3 -= 10
+			BASE:MASTER:評判 -= 5
+		ELSE
+			GOTO INPUT_LOOP_TEACHER1
+		ENDIF
+	CASE 2
+		;授業がうまくいった（フレーバー）
+		PRINTL 今日の授業は生徒たちの反応も良く、滞りなく進んだ。
+		PRINTFORMW %CALLNAME:(J:102)%たちが熱心にノートを取っている。
+		BASE:MASTER:評判 += 5
+ENDSELECT
+RETURN 1
+
+@JYUGYOU2()
+;;;男視点女視点は意識してない部分もまだある
+J:102 = RAND(CHARANUM - 2)
+J:102 += 2
+J:103 = NO:(J:102)
+SELECTCASE J:103
+	CASE 2
+		PRINTL 準備体操をしてると
+		PRINTFORML 体操服とブルマ姿の%CALLNAME:(J:102)%が話しかけてきた。
+		PRINTL 「ねぇ、私の格好変じゃないかな？」
+		PRINTFORML %CALLNAME:(J:102)%は整ったモデル系の顔立ちで
+		PRINTL 体操服から乳首の形が少し分かるのが艶かしい。
+		PRINTL 股間の膨らみは他の子よりあるようだ。
+$INPUT_LOOP202
+		PRINTL どう答えますか？
+		PRINTFORML [0] - おかしくないよ
+		PRINTFORML [1] - ちょっと変かな？
+		PRINTFORML [2] - 股間を凝視する
+		SIF TALENT:(J:102):恋人
+			PRINTL [3] - 触って確かめる
+INPUT
+		IF RESULT == 0
+			PRINTL 「ありがとう」
+			PRINTFORMW そう言って%CALLNAME:(J:102)%は立ち去った。
+			TA:1:(J:102):4 += 10
+			TA:(J:102):1:3 += 10
+		ELSEIF RESULT == 1
+			PRINTL 「そう・・・そうよね」
+			PRINTFORMW %CALLNAME:(J:102)%は少し寂しそうだった。
+			TA:1:(J:102):4 -= 10
+			TA:(J:102):1:3 -= 10
+		ELSEIF RESULT == 2
+			PRINTFORML %CALLNAME:(J:102)%は少し怪訝な顔をしたがすぐに笑顔で
+			PRINTW 「じゃあまたね」と言い、去っていった。
+			TA:1:(J:102):0 += 50
+			TA:1:(J:102):4 += 20
+			TA:(J:102):1:6 += 10
+		ELSEIF RESULT == 3
+			PRINTL 「バ、バカ・・・！」
+			PRINTFORMW %CALLNAME:(J:102)%の股間はさっきまでよりも大きくなってしまった。
+			PRINTL 後で慰めてあげなきゃ
+			TA:1:(J:102):0 += 50
+			TA:(J:102):1:0 += 50
+			TA:1:(J:102):4 += 10
+			TA:(J:102):1:4 += 100
+		ELSE
+			GOTO INPUT_LOOP202
+		ENDIF
+	CASE 3
+		PRINTL 準備体操をしてると
+		PRINTFORML %CALLNAME:(J:102)%が話しかけてきた。
+		PRINTL 「よう、今日も頑張ろうな」
+$INPUT_LOOP203
+		PRINTL どう答えますか？
+		PRINTFORML [0] - もちろん
+		PRINTFORML [1] - だるい
+		PRINTFORML [2] - Ｈなら頑張れるよ
+		SIF TALENT:(J:102):恋人
+			PRINTL [3] - キスしてみる
+INPUT
+		IF RESULT == 0
+			PRINTFORMW %CALLNAME:(J:102)%と少し仲良くなれた。
+			TA:1:(J:102):3 += 10
+			TA:(J:102):1:3 += 10
+		ELSEIF RESULT == 1
+			PRINTL 「なんだよだらしねぇなぁ」
+			PRINTFORMW %CALLNAME:(J:102)%は少し不満そうだ。
+			TA:1:(J:102):3 -= 10
+			TA:(J:102):1:3 -= 10
+		ELSEIF RESULT == 2
+			PRINTL 「ぷっ」
+			PRINTFORML %CALLNAME:(J:102)%は吹きだし、
+			PRINTW 「相変わらず面白いな」と笑った。
+			TA:1:(J:102):4 += 20
+			TA:(J:102):1:4 += 10
+		ELSE
+			GOTO INPUT_LOOP203
+		ENDIF
+	CASE 5,6,20
+		PRINTL また来てるよ・・・
+		PRINTFORML 見ると%CALLNAME:(J:102)%が大学のグランドを覗いている。
+$INPUT_LOOP205
+		PRINTFORML [0] - 誘惑してみる
+		PRINTFORML [1] - 見つめる
+		PRINTFORML [2] - 通報する
+		SIF TALENT:(J:102):恋人
+			PRINTL [3] - 会いに行く
+INPUT
+		IF RESULT == 0
+			PRINTFORML 体操服を摘んで、暑い暑いと胸元を曝してみた。
+			PRINTFORMW 突然パシャリと写真を撮って%CALLNAME:(J:102)%は去っていってしまった。
+			TA:(J:102):1:0 += 20
+			TA:1:(J:102):2 += 10
+			TA:1:(J:102):3 += 10
+			TA:(J:102):1:3 += 10
+			TA:(J:102):1:4 += 10
+		ELSEIF RESULT == 1
+			PRINTFORML %CALLNAME:(J:102)%は気味の悪い笑みを浮かべている。
+			PRINTFORMW しばらくこちらを見た後、ニヤニヤしながら%CALLNAME:(J:102)%は去っていった。
+			TA:1:(J:102):0 += 10
+			TA:(J:102):1:0 += 30
+			TA:1:(J:102):2 += 10
+			TA:(J:102):1:4 += 50
+		ELSEIF RESULT == 2
+			PRINTL 「てめえら覚えてろ！」
+			PRINTFORMW 捨て台詞を吐いて%CALLNAME:(J:102)%は去っていった。
+			TA:1:(J:102):6 += 50
+			TA:(J:102):1:6 += 50
+		ELSE
+			GOTO INPUT_LOOP205
+		ENDIF
+	CASE 7
+		PRINTL ３年も体育の授業をしている、ランニングか。
+		PRINTL 走る３年女子の中でもかわいい顔立ちで背が高く、
+		PRINTL 胸がぶるんぶるん揺れている人がいる。
+		PRINTFORML %CALLNAME:(J:102)%先輩だ！
+$INPUT_LOOP207
+		PRINTFORML [0] - もてるんだろうなぁ
+		PRINTFORML [1] - あの人に痴漢された事あるよ
+		PRINTFORML [2] - ＳＥＸしたい
+		SIF TALENT:(J:102):恋人
+			PRINTL [3] - 
+INPUT
+		IF RESULT == 0
+			PRINTFORML %CALLNAME:(J:102)%先輩がよく男子生徒に話しかけられるのを見て、
+			PRINTW 少し嫉妬しながら授業を受けた。
+			TA:1:(J:102):3 += 10
+			TA:(J:102):1:3 += 10
+		ELSEIF RESULT == 1
+			PRINTW （まあ私には関係ないよ）そう思いながら授業を受けた。
+			TA:1:(J:102):3 -= 10
+			TA:(J:102):1:3 -= 10
+		ELSEIF RESULT == 2
+			PRINTL ！・・ふと見られた様な気がする。
+			PRINTW 自分で気づかない内にニヤニヤしてたのだろうか、少し目付きが怖かった。
+			TA:1:(J:102):0 += 10
+			TA:(J:102):1:0 += 10
+			TA:1:(J:102):4 += 20
+			TA:(J:102):1:6 += 10
+		ELSE
+			GOTO INPUT_LOOP207
+		ENDIF
+	CASE 8
+		PRINTL 別のクラスもグラウンドで体育をしている。１年のクラスか
+		PRINTL なんかニヤニヤしてる奴がいる
+		PRINTFORML %CALLNAME:(J:102)%だ！
+$INPUT_LOOP208
+		PRINTFORML [0] - にやつき顔を教えてやろうか
+		PRINTFORML [1] - あいつ痴漢もするんだよな
+		PRINTFORML [2] - ああいうの好み
+		SIF TALENT:(J:102):恋人
+			PRINTL [3] - キスしてみる
+INPUT
+		IF RESULT == 0
+			PRINTFORML %CALLNAME:(J:102)%は顔を真っ赤にしながらも
+			PRINTW 「そんな顔してましたか」とばつが悪そうだった。
+			TA:1:(J:102):3 += 10
+			TA:(J:102):1:3 += 10
+		ELSEIF RESULT == 1
+			PRINTW （ああいうのには気をつけようか）そう思いながら授業を受けた。
+			TA:1:(J:102):3 -= 10
+			TA:(J:102):1:3 -= 10
+		ELSEIF RESULT == 2
+			PRINTL 「今度遊ぼうか？」
+			PRINTFORMW 何気なく話しかけたら%CALLNAME:(J:102)%は嬉しそうだった。
+;ここからデートフラグに繋いだりしたい
+			TA:(J:102):1:0 += 10
+			TA:1:(J:102):4 += 20
+			TA:(J:102):1:4 += 20
+		ELSE
+			GOTO INPUT_LOOP208
+		ENDIF
+	CASE 9
+		PRINTFORML %CALLNAME:(J:102)%が声を掛けてきた。
+		PRINTL 「準備運動一緒にやりましょ」
+$INPUT_LOOP209
+		PRINTL どう答えますか？
+		PRINTFORML [0] - もちろん
+		PRINTFORML [1] - ごめん
+		PRINTFORML [2] - それより今度デートしよう
+		SIF TALENT:(J:102):恋人
+			PRINTL [3] - キスしてみる
+INPUT
+		IF RESULT == 0
+			PRINTFORML %CALLNAME:(J:102)%と一緒に準備運動をする。
+			PRINTL 体をべたべた触ってしまった。
+			PRINTL 結構密着してたので気持ちよかった。
+			PRINTFORMW 今度%CALLNAME:(J:102)%と・・・いやいやそこまでは・・・ぐふふ
+			TA:1:(J:102):3 += 10
+			TA:1:(J:102):4 += 20
+			TA:(J:102):1:3 += 10
+		ELSEIF RESULT == 1
+			PRINTFORMW 「うん分かった」そう言い%CALLNAME:(J:102)%は別の人と準備運動を始めた。
+			TA:1:(J:102):3 -= 5
+			TA:(J:102):1:3 -= 5
+		ELSEIF RESULT == 2
+			PRINTL 「え〜、デートはいいけど今は違うでしょ」
+			PRINTFORML %CALLNAME:(J:102)%の言う通りだ。
+			PRINTW …今デートしてもいいって言った？
+;ここからデートフラグに繋いだりしたい
+			TA:1:(J:102):4 += 30
+			TA:(J:102):1:4 += 10
+			TA:(J:102):1:3 -= 10
+		ELSE
+			GOTO INPUT_LOOP209
+		ENDIF
+	CASE 10,11
+		PRINTL 今日は走り幅跳びだ。
+		PRINTFORML %CALLNAME:(J:102)%が授業を見にきている。
+		PRINTL 授業参観かな？
+$INPUT_LOOP210
+		PRINTFORML [0] - いつも通りにやろう
+		PRINTFORML [1] - 緊張してきた
+		PRINTFORML [2] - 張り切ってジャンプ！
+INPUT
+		IF RESULT == 0
+			PRINTW うん、今日も調子いいぞ
+			TA:1:(J:102):3 += 10
+			TA:(J:102):1:3 += 10
+			TA:1:(J:102):4 += 20
+			TA:(J:102):1:4 += 10
+		ELSEIF RESULT == 1
+			PRINTW 転んでしまった
+			TA:1:(J:102):3 -= 5
+			TA:(J:102):1:3 -= 5
+		ELSEIF RESULT == 2
+			PRINTW やった！新記録
+			TA:1:(J:102):3 += 10
+			TA:(J:102):1:3 += 10
+			TA:1:(J:102):4 += 20
+			TA:(J:102):1:4 += 10
+		ELSE
+			GOTO INPUT_LOOP210
+		ENDIF
+	;CASE 12〜15（弟・妹・兄・姉）は2026-07-26のキャラ削除に伴い撤去
+	CASE 16
+		PRINTL 適当に流そうか？
+		PRINTL そう考えながらだるそうにやっていると。
+		PRINTFORML %CALLNAME:(J:102)%が近くに来て、グイッと顔を近づけた。
+		PRINTL 「コラ！真面目にやりなさい」
+$INPUT_LOOP216
+		PRINTL どう答えますか？
+		PRINTFORML [0] - う、うん。ちゃんとやります
+		PRINTFORML [1] - うるさいなー
+		PRINTFORML [2] - 無言で胸を揉んでみる
+		SIF TALENT:(J:102):恋人
+			PRINTL [3] - キスしてみる
+INPUT
+		IF RESULT == 0
+			PRINTFORMW 「よし」と言って私の肩をポンと叩いた後、%CALLNAME:(J:102)%はニコッと笑った。
+			TA:1:(J:102):3 += 10
+			TA:(J:102):1:3 += 10
+		ELSEIF RESULT == 1
+			PRINTW 「後で職員室に来なさい」・・・お説教を受けてしまった。
+			TA:1:(J:102):3 -= 10
+			TA:(J:102):1:3 -= 10
+		ELSEIF RESULT == 2
+			PRINTW 正座させられた。
+			TA:1:(J:102):0 += 10
+			TA:(J:102):1:0 += 10
+			TA:1:(J:102):6 += 20
+			TA:(J:102):1:6 += 20
+			JUEL:(J:102):快Ｂ += 500
+		ELSE
+			GOTO INPUT_LOOP216
+		ENDIF
+	CASE 17
+		PRINTL 女子は走り高跳びだ
+		PRINTFORML %CALLNAME:(J:102)%も綺麗なフォームで飛んでいる。
+		PRINTL ？？！・・見えた？
+		PRINTL 今体操着の隙間からチラッと乳首が見えた気がした
+		PRINTFORML 「？？」%CALLNAME:(J:102)%は注目されているのを不思議そうにしている。
+$INPUT_LOOP217
+		PRINTFORML [0] - 授業に集中しなきゃ
+		PRINTFORML [1] - きっとノーブラだ。見極めよう！
+		PRINTFORML [2] - 山田とかにも教えてやらなきゃ
+INPUT
+		IF RESULT == 0
+			PRINTL 授業が終わった後もちょっとあの光景を思い出していた
+			PRINTW 今日はいい日だ。
+			TA:1:(J:102):3 += 10
+			TA:1:(J:102):4 += 20
+			TA:(J:102):1:3 += 10
+		ELSEIF RESULT == 1
+			PRINTFORML どうも途中で%CALLNAME:(J:102)%にガン見がばれた様だ
+			PRINTFORMW %CALLNAME:(J:102)%はよく胸の辺りを隠していた。
+			TA:1:(J:102):0 += 10
+			TA:(J:102):1:0 += 10
+			TA:1:(J:102):3 -= 10
+			TA:(J:102):1:3 -= 10
+		ELSEIF RESULT == 2
+			PRINTW クラスに噂が広まってしまった。山田め！
+			TA:1:3:0 += 1
+			TA:3:1:0 += 1
+			TA:1:3:6 += 30
+			TA:(J:102):1:6 += 30
+			TA:(J:102):1:6 += 30
+		ELSE
+			GOTO INPUT_LOOP217
+		ENDIF
+	CASE 21
+		PRINTFORML 今日は%CALLNAME:(J:102)%が体育の授業をみるようだ。
+		PRINTL 「ほらしっかりやれ」
+		PRINTL さっきから女子の尻を叩いている。
+$INPUT_LOOP221
+		PRINTL これはどうみても…
+		PRINTFORML [0] - 気合を入れてくれている
+		PRINTFORML [1] - セクハラだよね
+		PRINTFORML [2] - 見なかったことにしよう
+		SIF TALENT:(J:102):恋人
+			PRINTL [3] - 気合を入れてもらいに行く
+INPUT
+		IF RESULT == 0
+			PRINTFORMW なんてやさしいせんせいなんだろう（棒）
+			TA:1:(J:102):0 += 10
+			TA:(J:102):1:0 += 10
+			TA:1:(J:102):1 += 1
+			TA:(J:102):1:1 += 1
+			TA:1:(J:102):2 += 3
+			TA:1:(J:102):3 += 20
+			TA:(J:102):1:3 += 20
+			TA:1:(J:102):4 += 10
+			TA:(J:102):1:4 += 10
+		ELSEIF RESULT == 1
+			PRINTFORMW 女子と団結し、%CALLNAME:(J:102)%に隙を見せないことにした。
+			TA:1:(J:102):0 -= 10
+			TA:1:(J:102):3 -= 10
+			TA:(J:102):1:3 -= 5
+			TA:1:(J:102):6 += 5
+			TA:2:(J:102):6 += 5
+			TA:9:(J:102):6 += 5
+			TA:17:(J:102):6 += 5
+			TA:31:(J:102):6 += 5
+			TA:33:(J:102):6 += 5
+			TA:35:(J:102):6 += 5
+			TA:39:(J:102):6 += 5
+			TA:40:(J:102):6 += 5
+			TA:(J:102):1:6 += 10
+		ELSEIF RESULT == 2
+			PRINTL 触らぬ神に祟りなし。
+			PRINTL 自分さえよければそれでいいのだ。
+			TA:(J:102):1:0 += 10
+			TA:(J:102):1:3 += 10
+			TA:1:(J:102):6 -= 5
+			TA:(J:102):1:6 -= 10
+		ELSE
+			GOTO INPUT_LOOP221
+		ENDIF
+	CASE 22
+		PRINTL 適当に流そうか？
+		PRINTL そう考えながらだるそうにやっていると。
+		PRINTFORML %CALLNAME:(J:102)%が近くに来て、グイッと顔を近づけた。
+		PRINTL 「もう〜ちゃんとやらなきゃダメでしょ？」
+$INPUT_LOOP222
+		PRINTL どう答えますか？
+		PRINTFORML [0] - う、うん。ちゃんとやります
+		PRINTFORML [1] - うるさいなー
+		PRINTFORML [2] - 無言で胸を揉んでみる
+		SIF TALENT:(J:102):恋人
+			PRINTL [3] - キスしてみる
+INPUT
+		IF RESULT == 0
+			PRINTFORMW 「うんいい子ね」と言って、%CALLNAME:(J:102)%はニコッと笑った。
+			TA:1:(J:102):3 += 10
+			TA:(J:102):1:3 += 10
+		ELSEIF RESULT == 1
+			PRINTW 「先生、悪い子は嫌いよ〜」・・・嫌われてしまった。
+			TA:1:(J:102):3 -= 10
+			TA:(J:102):1:3 -= 10
+		ELSEIF RESULT == 2
+			PRINTL 「きゃん！？」
+			PRINTW 柔らかかった。
+			TA:1:(J:102):0 += 10
+			TA:(J:102):1:0 += 10
+			TA:(J:102):1:6 += 20
+			JUEL:(J:102):快Ｂ += 500
+		ELSE
+			GOTO INPUT_LOOP222
+		ENDIF
+	CASE 28
+		PRINTL 他のクラスも体育だ、３年か。
+		PRINTFORML %CALLNAME:(J:102)%が居る、水泳部らしく腰まわりがスリムな体付きだ。
+		PRINTL スタミナもあるみたいで何時も先頭に立っている。
+$INPUT_LOOP228
+		PRINTFORML [0] - あの体で凄いスタミナだよね
+		PRINTFORML [1] - 脳筋なんだよね
+		PRINTFORML [2] - 銭湯も一緒したいね
+INPUT
+		IF RESULT == 0
+			PRINTW 応援しなきゃ
+			TA:1:(J:102):3 += 10
+			TA:(J:102):1:3 += 10
+		ELSEIF RESULT == 1
+			PRINTW 天は弐物を与えず・・・こっち見てるよ、こわ。
+			TA:1:(J:102):3 -= 10
+			TA:(J:102):1:3 -= 10
+		ELSEIF RESULT == 2
+			PRINTL 「じゃあスパで一緒に鍛えようか？」
+			PRINTW え！？……近くには誰もいない。空耳だったのかな？。
+;ここからデートフラグに繋いだりしたい
+			TA:1:(J:102):4 += 20
+			TA:(J:102):1:4 += 20
+		ELSE
+			GOTO INPUT_LOOP228
+		ENDIF
+	CASE 29
+		PRINTL 「ねえ君、かわいいね」
+		PRINTFORML どこから入ったのか%CALLNAME:(J:102)%がナンパしてきた。
+$INPUT_LOOP229
+		PRINTFORML [0] - 「そうですか？」
+		PRINTFORML [1] - 「そうでしょ？」
+		PRINTFORML [2] - 先生を呼びに行く
+		SIF TALENT:(J:102):恋人
+			PRINTL [3] - 一緒にトイレへ…
+INPUT
+		IF RESULT == 0
+			PRINTFORML 「自覚ないの？こんなにかわいいのに…もっと自信持ちなよ。」
+			PRINTFORML さわやかな笑みを浮かべて%CALLNAME:(J:102)%は去っていった。
+			PRINTFORMW %CALLNAME:1%は自分の顔が赤くなっているのに気付いた…。
+			TA:1:(J:102):0 += 10
+			TA:(J:102):1:0 += 30
+			TA:1:(J:102):2 += 30
+			TA:1:(J:102):3 += 5
+			TA:(J:102):1:3 += 10
+			TA:1:(J:102):4 += 20
+			TA:(J:102):1:4 += 20
+			TA:1:(J:102):6 -= 10
+			TA:(J:102):1:6 -= 10
+		ELSEIF RESULT == 1
+			PRINTFORML 「うわー自意識過剰かよ。」
+			PRINTFORMW %CALLNAME:1%は泣きたくなった…。
+			TA:1:(J:102):0 -= 30
+			TA:(J:102):1:0 -= 30
+			TA:1:(J:102):4 -= 20
+			TA:(J:102):1:4 -= 20
+		ELSEIF RESULT == 2
+			PRINTL 「やばい！」
+			PRINTFORMW あわてて%CALLNAME:(J:102)%は去っていった。
+			TA:1:(J:102):6 += 50
+		ELSE
+			GOTO INPUT_LOOP229
+		ENDIF
+	CASE 30
+		PRINTFORML %CALLNAME:(J:102)%は寮の管理人の他に大学の用務員も兼ねている。
+		PRINTL 今日も花壇の手入れに余念がない。
+		PRINTL キラッ・・おや、今花壇で何か光った様に見えた。
+$INPUT_LOOP230
+		PRINTFORML [0] - ガラスの破片かな？危ないよね
+		PRINTFORML [1] - なんかのレンズっぽいなぁ、あのオヤジ気をつけなきゃ
+		PRINTFORML [2] - ビデオに決まってる。通報だ！
+INPUT
+		IF RESULT == 0
+			PRINTFORMW 今度%CALLNAME:(J:102)%の肩でも揉んであげようか
+			TA:1:(J:102):3 += 10
+			TA:(J:102):1:3 += 10
+		ELSEIF RESULT == 1
+			PRINTW 友達にも教えておこう
+			TA:1:(J:102):3 -= 10
+			TA:(J:102):1:3 -= 10
+		ELSEIF RESULT == 2
+			PRINTL 「お嬢様、あれは大学に侵入するものを捕らえる道具でございます。
+			PRINTL 上に設置致したのではすぐに分かってしまいますのであの様になっているのでございます。」
+			PRINTFORML 「なるほどね。さすが%CALLNAME:(J:102)%さんだね」
+			PRINTL 「ありがとうございます。お嬢様の為でしたら何でも致しますので御言いつけ下さい。」
+			PRINTFORMW %CALLNAME:(J:102)%さんは偉いな、と思った。
+			TA:(J:102):1:0 += 30
+			TA:1:(J:102):2 += 100
+			TA:(J:102):1:4 += 200
+			TA:(J:102):1:6 += 30
+		ELSE
+			GOTO INPUT_LOOP230
+		ENDIF
+	CASE 31
+		PRINTFORML %CALLNAME:(J:102)%は勝負好きだ
+		PRINTL 今日も幅跳びで負けてしまった。
+		PRINTFORML 悦に浸っている%CALLNAME:(J:102)%を見ると少しいらついてくるけど、
+		PRINTL かわいいので何故か許してしまう。
+$INPUT_LOOP231
+		PRINTL 何か声をかけてください
+		PRINTFORML [0] - 次もやるからね
+		PRINTFORML [1] - 友達居ないの？
+		PRINTFORML [2] - Ｈなら負けないから
+INPUT
+		IF RESULT == 0
+			PRINTL 「勿論受けて立つわよ」
+			PRINTFORMW %CALLNAME:(J:102)%は嬉しそうだ
+			TA:1:(J:102):3 += 10
+			TA:(J:102):1:3 += 10
+		ELSEIF RESULT == 1
+			PRINTL 「い、居るわよ沢山・・・」
+			PRINTW 黙ってしまった
+			TA:1:(J:102):3 -= 10
+			TA:(J:102):1:3 -= 10
+		ELSEIF RESULT == 2
+			PRINTFORML %CALLNAME:(J:102)%は聞こえなかったフリをしている様だ
+			PRINTW だがその顔は赤い。
+			TA:1:(J:102):0 += 10
+			TA:(J:102):1:0 += 10
+			TA:1:(J:102):4 += 20
+			TA:(J:102):1:4 += 10
+		ELSE
+			GOTO INPUT_LOOP231
+		ENDIF
+	CASE 32
+		PRINTL 今日は１年も体育だ。
+		PRINTFORML %CALLNAME:(J:102)%が居る、足速いなぁ
+		PRINTL 噂ではエロい妄想が得意なようだ。
+$INPUT_LOOP232
+		PRINTFORML [0] - エロ武両立？本人には自覚無いんだろうけど
+		PRINTFORML [1] - 妄想もいい加減にして欲しい
+		PRINTFORML [2] - 本物を体に教えたい
+INPUT
+		IF RESULT == 0
+			PRINTW 見てても幸せそうだね
+			TA:1:(J:102):3 += 10
+			TA:(J:102):1:3 += 10
+		ELSEIF RESULT == 1
+			PRINTW なんか怪訝な顔をされた
+			TA:1:(J:102):3 -= 10
+			TA:(J:102):1:3 -= 20
+		ELSEIF RESULT == 2
+			PRINTL 「あ、エッチさんだエッチさん」
+			PRINTW 変なあだ名を付けられてしまった。
+			TA:1:(J:102):4 += 30
+			TA:(J:102):1:4 += 10
+			TA:(J:102):1:6 += 10
+		ELSE
+			GOTO INPUT_LOOP232
+		ENDIF
+	CASE 33
+		PRINTFORML %CALLNAME:(J:102)%は話しやすく、他の子からも結構声を掛けられている。
+		PRINTL 「やりたい」
+		PRINTL え？何の話してるんだろ？・・・
+$INPUT_LOOP233
+		PRINTFORML [0] - 今「やりたい」って聞こえたけど
+		PRINTFORML [1] - （このエロ魔人が！）
+		PRINTFORML [2] - 「いいよ、やろう」
+INPUT
+		IF RESULT == 0
+			PRINTL 「新しい合唱曲をやりたいなぁって話してたんだ」
+			PRINTW なるほど
+			TA:1:(J:102):3 += 10
+			TA:(J:102):1:3 += 10
+			TA:1:(J:102):4 += 20
+			TA:(J:102):1:4 += 10
+		ELSEIF RESULT == 1
+			PRINTFORMW %CALLNAME:1%のテレパシーは届かず、%CALLNAME:(J:102)%は向こうに行ってしまった。
+			TA:1:(J:102):3 -= 10
+			TA:(J:102):1:3 -= 30
+		ELSEIF RESULT == 2
+			PRINTL 「私なんか言った？」
+			PRINTL そういえば自分でなく、他の子と話してたんだっけ…
+			PRINTW あまりいい印象を与えなかったようだ
+			TA:1:(J:102):4 += 20
+			TA:(J:102):1:6 += 10
+		ELSE
+			GOTO INPUT_LOOP233
+		ENDIF
+	CASE 35
+		PRINTFORML %CALLNAME:(J:102)%が居る、ちょっとクラスでは浮いているけど
+		PRINTL スレンダーで女子からの人気は凄いものがある。
+$INPUT_LOOP235
+		PRINTFORML [0] - 一緒に組体操しよう
+		PRINTFORML [1] - 何もしない
+		PRINTFORML [2] - エッチしたい
+INPUT
+		IF RESULT == 0
+			PRINTW 胸が当たったり、絡まった格好になったり楽しかった
+			TA:1:(J:102):3 += 20
+			TA:(J:102):1:3 += 20
+		ELSEIF RESULT == 1
+			PRINTW まあ関係ないよな。向こうもそう思ってそうだ。
+			TA:1:(J:102):3 -= 5
+			TA:(J:102):1:3 -= 5
+		ELSEIF RESULT == 2
+			PRINTW 「また今度ね」。どこからかそう聞こえたようだ。
+			TA:1:(J:102):0 += 10
+			TA:(J:102):1:0 += 10
+			TA:1:(J:102):4 += 20
+			TA:(J:102):1:6 += 20
+		ELSE
+			GOTO INPUT_LOOP235
+		ENDIF
+	CASE 39
+		PRINTFORML %CALLNAME:(J:102)%が居る、なんか謎だ。
+		PRINTL かわいくて、スーパーモデル並みの体形なんだけど
+		PRINTFORML 昨日居た%CALLNAME:(J:102)%とは違う様な気もよくする
+		PRINTL 「任務が・・」
+		PRINTL ぽつりと独り言が聞こえた。
+$INPUT_LOOP239
+		PRINTFORML [0] - 今、任務って・・・
+		PRINTFORML [1] - 今、任務って・・・
+		PRINTFORML [2] - 今、任務って・・・
+INPUT
+		SIF RESULT != 0 && RESULT != 1 && RESULT != 2
+			GOTO INPUT_LOOP239
+		IF RAND(3) == 0
+			PRINTL 「え？そんな事言ったかなぁ？」
+			PRINTFORMW %CALLNAME:(J:102)%は不思議がっている。
+			TA:1:(J:102):3 += 10
+			TA:(J:102):1:3 += 10
+		ELSEIF RAND(3) == 1
+			PRINTL プシュッ
+			PRINTL 首筋に冷たい感じがして、気を失った
+			PRINTL 「あなたは全てを忘れるのよ」
+			PRINTFORML 気が付くと保健室にいて裸の%CALLNAME:(J:102)%と抱き合っている。
+			PRINTFORML %CALLNAME:(J:102)%の指使いで%CALLNAME:1%は何度も絶頂を迎え
+			PRINTW その気持ちよさにもうどうでもよくなっていた。
+			JUEL:1:快Ｃ += 1000
+			JUEL:1:快Ｂ += 1000
+			JUEL:1:潤滑 += 10000
+			JUEL:1:欲情 += 1000
+			JUEL:1:屈服 += 1000
+			JUEL:1:恥情 += 300
+			JUEL:1:恐怖 += 300
+			TA:1:(J:102):2 += 100
+			TA:1:(J:102):3 -= 10
+			TA:1:(J:102):4 += 100
+			TA:(J:102):1:3 -= 10
+			TA:(J:102):1:4 += 30
+			TA:(J:102):1:6 += 10
+		ELSE
+			PRINTL 「新アニメNINMU-の事だけど、知らない？」
+			PRINTW きっとあるんだろう、これ以上はちょっと怖かった。
+			TA:1:(J:102):4 += 5
+			TA:(J:102):1:6 += 5
+		ENDIF
+	CASE 40
+		PRINTFORML %CALLNAME:(J:102)%はお嬢様だ。
+		PRINTL どういった理由でこの大学に来たか分からないが、とっても気さくでゴンッ
+		PRINTL 「いたたた」
+		PRINTL 「す、すみません」
+		PRINTFORML %CALLNAME:(J:102)%の額に%CALLNAME:1%の肘が当たってしまった。
+		PRINTL 「大丈夫ですわ、それにちょっと気持ち良かったし」
+		PRINTL え？
+$INPUT_LOOP240
+		PRINTFORML [0] - もしかして、痛いの好きとか？
+		PRINTFORML [1] - もしかしてマゾですか？
+		PRINTFORML [2] - もしかしなくてもマゾですか？
+INPUT
+		IF RESULT == 0
+			PRINTL 「ええ、そうね。好きというか」
+			PRINTFORMW そこまで言って%CALLNAME:(J:102)%は顔を赤らめてしまった。
+			TA:1:(J:102):3 += 10
+			TA:(J:102):1:3 += 10
+		ELSEIF RESULT == 1
+			PRINTL 「ええ、そうね。マゾというか」
+			PRINTL 「…あなた、少々不躾ね」
+			PRINTFORMW そこまで言って%CALLNAME:(J:102)%はちょっと怒ってるようだ。
+			TA:1:(J:102):4 += 10
+			TA:(J:102):1:3 -= 10
+			TA:(J:102):1:6 += 5
+		ELSEIF RESULT == 2
+			PRINTL 「ええ、そうね。マゾというか」
+			PRINTFORML そこまで言って%CALLNAME:(J:102)%は
+			PRINTL 「あなた面白いわね。今度うちにいらっしゃい」
+			PRINTW 誘われてしまった。
+;ここからデートフラグに繋いだりしたい
+			TA:1:(J:102):0 += 10
+			TA:(J:102):1:0 += 10
+			TA:1:(J:102):3 += 10
+			TA:1:(J:102):4 += 50
+			TA:(J:102):1:3 += 10
+			TA:(J:102):1:4 += 100
+		ELSE
+			GOTO INPUT_LOOP240
+		ENDIF
+	CASEELSE
+			CALL JYUGYOU2()
+ENDSELECT
+
+RETURN 1
+
+@JYUGYOU3()
+J:102 = RAND(CHARANUM - 2)
+J:102 += 2
+J:103 = NO:(J:102)
+
+SELECTCASE J:103
+	CASE 2
+		PRINTFORML 生徒会の%CALLNAME:(J:102)%は成績が優秀だ
+		PRINTL 今も数学で難問を指されたけど難なく解いている。
+		PRINTFORML 長い髪にも見とれながら%CALLNAME:(J:102)%を見てると
+		PRINTFORML 近くの子から「%CALLNAME:(J:102)%好きなの？」と聞かれた。
+$INPUT_LOOP302
+		PRINTL どう答えますか？
+		PRINTFORML [0] - 結構好きだよ
+		PRINTFORML [1] - あいつあれだしなぁ
+		PRINTFORML [2] - あのチンポがたまらない
+INPUT
+		SIF RESULT != 0 && RESULT != 1 && RESULT != 2
+			GOTO INPUT_LOOP302
+		IF RESULT == 0
+			PRINTFORMW 聞こえたのか%CALLNAME:(J:102)%は顔を赤らめている。
+			TA:1:(J:102):3 += 10
+			TA:(J:102):1:3 += 10
+		ELSEIF RESULT == 1
+			PRINTL 「あれって？」
+			PRINTW 聞いてきた子との会話はそれ以上続かなかった。
+			TA:1:(J:102):4 -= 10
+			TA:(J:102):1:3 -= 10
+		ELSEIF RESULT == 2
+			PRINTFORMW 「へ？・・・」聞いてきた子は何か珍しいものを見る目つきで%CALLNAME:1%を見た。
+			TA:1:(J:102):0 += 10
+			TA:(J:102):1:0 += 10
+			TA:1:(J:102):4 += 20
+			TA:(J:102):1:4 += 10
+			BASE:1:評判 -= 50
+		ENDIF
+	CASE 3
+		PRINTFORML %CALLNAME:(J:102)%は成績が悪いちゃっかりものだ
+		PRINTL 今日も小テストで答えを見せてと言ってきた。
+$INPUT_LOOP303
+		PRINTFORML [0] - いいよ
+		PRINTFORML [1] - ダメだよ
+		PRINTFORML [2] - 私の方が成績悪いじゃん
+		PRINTFORML [3] - ・・・してくれたらいいよ
+INPUT
+		SIF RESULT != 0 && RESULT != 1 && RESULT != 2 && RESULT != 3
+			GOTO INPUT_LOOP303
+		IF RESULT == 0
+			PRINTL 「いつも悪いなぁ」
+			PRINTFORML %CALLNAME:(J:102)%が嬉しそうに言うと
+			PRINTL 「何が悪いのだと？」
+			PRINTFORML %CALLNAME:(J:102)%の後ろに%CALLNAME:21%が立っていた。
+			PRINTW 内申書が悪くなった。
+			BASE:1:評判 -= 100
+			BASE:1:学力 -= 1
+			TA:1:(J:102):3 -= 10
+			TA:(J:102):1:3 -= 10
+		ELSEIF RESULT == 1
+			PRINTL 「ちぇ、ケチ」
+			PRINTFORMW %CALLNAME:(J:102)%は不満そうだ
+			TA:1:(J:102):3 -= 5
+			TA:(J:102):1:3 -= 5
+		ELSEIF RESULT == 2
+			PRINTL 「そりゃそうだ」
+			PRINTFORMW %CALLNAME:(J:102)%は笑った。
+			TA:1:(J:102):3 += 5
+			TA:(J:102):1:3 += 5
+		ELSEIF RESULT == 3
+			PRINTL 「え・・・」
+			PRINTFORMW %CALLNAME:(J:102)%は顔が真っ赤だ
+			TA:1:(J:102):0 += 10
+			TA:(J:102):1:0 += 10
+		ENDIF
+	CASE 5,6,20
+		PRINTL また来てるよ・・・
+		PRINTFORML 外を見ると%CALLNAME:(J:102)%が大学のグランドを覗いている。
+$INPUT_LOOP305
+		PRINTFORML [0] - 誘惑する
+		PRINTFORML [1] - 見つめる
+		PRINTFORML [2] - 通報する
+INPUT
+		SIF RESULT != 0 && RESULT != 1 && RESULT != 2
+			GOTO INPUT_LOOP305
+		IF RESULT == 0
+			PRINTL ウインクしながら投げキッスをしてみた。
+			PRINTFORML ニヤリと笑って%CALLNAME:(J:102)%は去っていった。
+			PRINTW ……まさか本気にしてないよね？
+			TA:1:(J:102):0 += 10
+			TA:(J:102):1:0 += 40
+			TA:1:(J:102):3 += 10
+			TA:(J:102):1:3 += 10
+			TA:(J:102):1:4 += 20
+		ELSEIF RESULT == 1
+			PRINTFORML %CALLNAME:(J:102)%は気味の悪い笑みを浮かべている。
+			PRINTFORMW しばらくこちらを見た後、ニヤニヤしながら%CALLNAME:(J:102)%は去っていった。
+			TA:1:(J:102):0 += 10
+			TA:(J:102):1:0 += 30
+			TA:1:(J:102):2 += 20
+			TA:(J:102):1:4 += 50
+		ELSEIF RESULT == 2
+			PRINTL 「てめえら覚えてろ！」
+			PRINTFORMW 捨て台詞を吐いて%CALLNAME:(J:102)%は去っていった。
+			TA:1:(J:102):6 += 50
+			TA:(J:102):1:6 += 50
+		ENDIF
+	CASE 7
+		PRINTL 「遊びにきたよ」
+		PRINTFORML 自習なのか３年の%CALLNAME:(J:102)%先輩が教室に入ってきた。
+		PRINTL あの人ほんとに自由だなぁ
+$INPUT_LOOP307
+		PRINTFORML [0] - あれだけかわいきゃ許されるよね
+		PRINTFORML [1] - 同級生に相手にされないのかな？
+		PRINTFORML [2] - あの、授業中なんだけど・・・
+INPUT
+		SIF RESULT != 0 && RESULT != 1 && RESULT != 2
+			GOTO INPUT_LOOP307
+		IF RESULT == 0
+			PRINTFORML あ、%CALLNAME:(J:102)%先輩のパンティが見えた
+			PRINTW 少し得した気分。
+			TA:1:(J:102):3 += 10
+			TA:1:(J:102):4 += 20
+			TA:(J:102):1:3 += 10
+		ELSEIF RESULT == 1
+			PRINTL 「そんな事は無いよ〜だ」
+			PRINTW 顔見て考えてる事分かるのかな？。
+			TA:1:(J:102):3 -= 10
+			TA:(J:102):1:3 -= 10
+		ELSEIF RESULT == 2
+			PRINTFORMW %CALLNAME:(J:102)%先輩は教師に追い出された。
+			TA:1:(J:102):3 += 10
+			TA:(J:102):1:3 += 10
+			TA:(J:102):21:6 += 20
+		ENDIF
+	CASE 8
+		PRINTFORML 自習時間に廊下で%CALLNAME:(J:102)%と会った。
+		PRINTL ペコリと挨拶された後、近寄ってきて
+		PRINTL 「今度デートしたい」と囁かれた。
+		IF GETBIT(TALENT:1:2,0)
+$INPUT_LOOP3081
+			PRINTFORML [0] - いいよ
+			PRINTFORML [1] - やだよ
+			PRINTFORML [2] - 今する？
+INPUT
+			SIF RESULT != 0 && RESULT != 1 && RESULT != 2
+				GOTO INPUT_LOOP3081
+			IF RESULT == 0
+				PRINTL 「やった〜」
+				PRINTFORMW %CALLNAME:(J:102)%は嬉しそうだ。
+				TA:1:(J:102):3 += 10
+				TA:(J:102):1:3 += 10
+				TA:1:(J:102):4 += 10
+				TA:(J:102):1:4 += 10
+			ELSEIF RESULT == 1
+				PRINTL 「そうですか」
+				PRINTFORMW %CALLNAME:(J:102)%は今にも泣きそうだ。
+				TA:1:(J:102):3 -= 10
+				TA:(J:102):1:3 -= 10
+			ELSEIF RESULT == 2
+				PRINTFORML 何を勘違いしたのか%CALLNAME:(J:102)%はおもむろにズボンを脱ぎだした
+				PRINTL 「ちょ、ちょっと何してんの！」
+				PRINTW ちょっとした騒ぎになった。
+				TA:1:(J:102):0 += 10
+				TA:(J:102):1:0 += 10
+				TA:1:(J:102):4 += 10
+				TA:(J:102):1:4 += 50
+			ENDIF
+		ELSE
+$INPUT_LOOP3082
+			PRINTFORML [0] - 遊びにって意味だよな
+			PRINTFORML [1] - やだね
+			PRINTFORML [2] - そっちの気あるの？
+INPUT
+			SIF RESULT != 0 && RESULT != 1 && RESULT != 2
+				GOTO INPUT_LOOP3082
+			IF RESULT == 0
+				PRINTL 「勿論そうですよ」
+				PRINTFORMW %CALLNAME:(J:102)%は嬉しそうだ。
+				TA:1:(J:102):3 += 10
+				TA:(J:102):1:3 += 10
+			ELSEIF RESULT == 1
+				PRINTL 「そうですか」
+				PRINTFORMW %CALLNAME:(J:102)%は今にも泣きそうだ。
+				TA:1:(J:102):3 -= 10
+				TA:(J:102):1:3 -= 10
+			ELSEIF RESULT == 2
+				PRINTL 「僕の凄いんですよ」
+				PRINTFORML %CALLNAME:(J:102)%はおもむろにズボンを脱ぎだした
+				PRINTW ちょっとどころじゃない騒ぎになった。
+				TA:1:(J:102):6 += 20
+				TA:(J:102):1:4 += 500
+			ENDIF
+		ENDIF
+	CASE 9
+		PRINTFORML %CALLNAME:(J:102)%とは中学から一緒だ。
+		PRINTL そう思い何気なく見ていると、スカートに手を入れて
+		PRINTL ごそごそしだした。
+$INPUT_LOOP309
+		PRINTFORML [0] - （何か忘れ物かな？）
+		PRINTFORML [1] - （ちょ、ちょっと授業中だよ！）
+		PRINTFORML [2] - それより今度デートしよう
+INPUT
+		SIF RESULT != 0 && RESULT != 1 && RESULT != 2
+			GOTO INPUT_LOOP309
+		IF RESULT == 0
+			PRINTL あんまりガン見しても悪いし、
+			PRINTFORMW そんなに気にする事も無いか
+			TA:1:(J:102):3 += 10
+			TA:(J:102):1:3 += 10
+		ELSEIF RESULT == 1
+			PRINTFORML 顔を赤くしながらまだ動いている
+			PRINTFORML %CALLNAME:(J:102)%は意外とエロいからなぁ・・・今夜のおかずにしよう
+			PRINTW あ！見てるの気付かれた
+			TA:1:(J:102):0 += 20
+			TA:(J:102):1:0 += 10
+			TA:1:(J:102):3 -= 5
+			TA:(J:102):1:3 -= 5
+		ELSEIF RESULT == 2
+			PRINTL 「突然なに言ってんの？」
+			PRINTFORMW 邪魔者を見る目付きで%CALLNAME:(J:102)%に言われてしまった。
+			TA:1:(J:102):4 += 30
+			TA:(J:102):1:3 -= 10
+		ENDIF
+	;CASE 12〜15（弟・妹・兄・姉）は2026-07-26のキャラ削除に伴い撤去
+	CASE 16
+		PRINTFORML %CALLNAME:(J:102)%の授業だ。
+		PRINTL 今日は色っぽい格好をしてるな。
+		PRINTL 何かあるのかな？
+$INPUT_LOOP316
+		PRINTFORML [0] - 彼氏とデートかな？
+		PRINTFORML [1] - ＡＶにでも出るのかな？
+		PRINTFORML [2] - 私とデートかな？
+INPUT
+		SIF RESULT != 0 && RESULT != 1 && RESULT != 2
+			GOTO INPUT_LOOP316
+		IF RESULT == 0
+			PRINTFORMW 「彼氏？まだいないわ」クラスの女子の質問に%CALLNAME:(J:102)%は笑いながら答えた。
+			TA:1:(J:102):3 += 10
+			TA:(J:102):1:3 += 10
+		ELSEIF RESULT == 1
+			PRINTL 「なにニヤついてるの？」
+			PRINTW あまりいい印象を与えなかったようだ
+			TA:1:(J:102):0 += 10
+			TA:1:(J:102):3 -= 10
+			TA:(J:102):1:3 -= 10
+		ELSEIF RESULT == 2
+			PRINTW ………そんな予定あるのか？
+			TA:1:(J:102):4 += 20
+			TA:(J:102):1:6 += 10
+		ENDIF
+	CASE 17
+		PRINTL グー、、、スー、、、
+		PRINTFORML 見ると%CALLNAME:(J:102)%が居眠りをしている。
+$INPUT_LOOP317
+		PRINTL どうしようか？
+		PRINTFORML [0] - 起こす
+		PRINTFORML [1] - 一緒に寝る！
+		PRINTFORML [2] - 顔に落書きする
+		PRINTFORML [3] - イタズラ！
+INPUT
+		SIF RESULT != 0 && RESULT != 1 && RESULT != 2 && RESULT != 3
+			GOTO INPUT_LOOP317
+		IF RESULT == 0
+			PRINTL あ、ありがとう、う、ＮＮ、ＺＺ
+			PRINTW また寝てしまった。
+			TA:1:(J:102):3 += 10
+			TA:1:(J:102):4 += 10
+			TA:(J:102):1:3 += 10
+			TA:(J:102):1:4 += 10
+		ELSEIF RESULT == 1
+			PRINTL え？なになに？！
+			PRINTW あまりいい印象を与えなかったようだ
+			TA:1:(J:102):3 -= 10
+			TA:(J:102):1:3 -= 10
+		ELSEIF RESULT == 2
+			PRINTW あとでぶちころすと言っていた様だ
+			TA:1:(J:102):6 += 10
+			TA:(J:102):1:6 += 40
+		ELSEIF RESULT == 3
+			PRINTL 微かに喘いでいる？！
+			PRINTW キモチよさそうだ
+			TA:1:(J:102):0 += 10
+			TA:(J:102):1:0 += 10
+			JUEL:1:習得 += 1000
+			JUEL:(J:102):快Ｃ += 1000
+			JUEL:(J:102):快Ｂ += 1000
+			JUEL:(J:102):潤滑 += 10000
+			JUEL:(J:102):欲情 += 1000
+			JUEL:(J:102):屈服 += 1000
+			JUEL:(J:102):恥情 += 300
+		ENDIF
+	CASE 21
+		PRINTFORML 次は%CALLNAME:(J:102)%の授業だが…
+		PRINTL 「ちょっと手伝ってくれないか？」
+		PRINTL そういって手招きしながら準備室へ入っていった。
+$INPUT_LOOP321
+		PRINTL これはどうみても…
+		PRINTFORML [0] - 気にせず手伝いに行く
+		PRINTFORML [1] - セクハラだよね
+		PRINTFORML [2] - 見なかったことにしよう
+		SIF TALENT:(J:102):恋人
+			PRINTL [3] - 気合を入れてもらいに行く
+INPUT
+		IF RESULT == 0
+			PRINTL 「みんなには内緒だぞ」
+			PRINTW 飴をもらった！
+			TA:1:(J:102):0 += 10
+			TA:(J:102):1:0 += 10
+			TA:1:(J:102):2 += 10
+			TA:1:(J:102):3 += 50
+			TA:(J:102):1:3 += 50
+			TA:1:(J:102):4 += 50
+			TA:(J:102):1:4 += 10
+			TA:1:(J:102):6 -= 20
+		ELSEIF RESULT == 1
+			PRINTL やはりあちこち触られてしまった。
+			TA:(J:102):1:0 += 30
+			TA:1:(J:102):2 += 20
+			TA:(J:102):1:3 += 50
+			TA:(J:102):1:4 += 100
+			TA:1:(J:102):6 += 30
+			JUEL:1:快Ｃ += 1000
+			JUEL:1:快Ｂ += 1000
+			JUEL:1:潤滑 += 10000
+			JUEL:1:欲情 += 1000
+			JUEL:1:屈服 += 1000
+			JUEL:1:恥情 += 300
+			JUEL:1:恐怖 += 300
+		ELSEIF RESULT == 2
+			PRINTL 怒られてしまった。
+			TA:1:(J:102):6 -= 10
+			TA:(J:102):1:6 -= 10
+		ELSE
+			GOTO INPUT_LOOP321
+		ENDIF
+	CASE 22
+		PRINTFORML %CALLNAME:(J:102)%の授業だ。
+		PRINTL 今日は色っぽい格好をしてるな。
+		PRINTL 何かあるのかな？
+$INPUT_LOOP322
+		PRINTFORML [0] - 彼氏とデートかな？
+		PRINTFORML [1] - ＡＶにでも出るのかな？
+		PRINTFORML [2] - 私とデートかな？
+INPUT
+		SIF RESULT != 0 && RESULT != 1 && RESULT != 2
+			GOTO INPUT_LOOP316
+		IF RESULT == 0
+			PRINTFORMW 「彼氏〜？そんな人いませんよ〜」クラスの男子の質問に%CALLNAME:(J:102)%は緩やかに答えた。
+			TA:1:(J:102):3 += 10
+			TA:(J:102):1:3 += 10
+		ELSEIF RESULT == 1
+			PRINTL 「？なにかいいことあったの？」
+			PRINTW あまりいい印象を与えなかったようだ
+			TA:1:(J:102):0 += 10
+			TA:1:(J:102):3 -= 10
+			TA:(J:102):1:3 -= 10
+		ELSEIF RESULT == 2
+			PRINTW ………そんな予定あるのか？
+			TA:1:(J:102):4 += 20
+			TA:(J:102):1:6 += 10
+		ENDIF
+	CASE 28
+		PRINTL ダダダダダッ
+		PRINTFORML 今水着姿の%CALLNAME:(J:102)%が廊下を走っていったようだ。
+$INPUT_LOOP328
+		PRINTFORML [0] - 何か忘れ物かな？
+		PRINTFORML [1] - あの姿で部の勧誘かよ
+		PRINTFORML [2] - 変態発見！
+INPUT
+		SIF RESULT != 0 && RESULT != 1 && RESULT != 2
+			GOTO INPUT_LOOP328
+		IF RESULT == 0
+			PRINTW 大事なものだったのかな？慌ててたよね
+			TA:1:(J:102):3 += 10
+			TA:(J:102):1:3 += 10
+		ELSEIF RESULT == 1
+			PRINTW 羞恥心ってのが無いのかな？
+			TA:1:(J:102):3 -= 10
+			TA:(J:102):1:3 -= 10
+		ELSEIF RESULT == 2
+			PRINTL い、いつ襲われるのかな？ドキドキ………
+			PRINTW ……何時まで立っても襲われる気配は無かった、残念
+			TA:1:(J:102):0 += 10
+			TA:(J:102):1:0 += 10
+			TA:1:(J:102):4 += 20
+			TA:(J:102):1:4 += 20
+		ENDIF
+	CASE 29
+		PRINTL 「ねえ君、かわいいね」
+		PRINTFORML どこから入ったのか%CALLNAME:(J:102)%がナンパしてきた。
+$INPUT_LOOP229
+		PRINTFORML [0] - 「そうですか？」
+		PRINTFORML [1] - 「そうでしょ？」
+		PRINTFORML [2] - 先生を呼びに行く
+		SIF TALENT:(J:102):恋人
+			PRINTL [3] - 一緒にトイレへ…
+INPUT
+		IF RESULT == 0
+			PRINTFORML 「自覚ないの？こんなにかわいいのに…もっと自信持ちなよ。」
+			PRINTFORML さわやかな笑みを浮かべて%CALLNAME:(J:102)%は去っていった。
+			PRINTFORMW %CALLNAME:1%は自分の顔が赤くなっているのに気付いた…。
+			TA:1:(J:102):0 += 100
+			TA:(J:102):1:0 += 10
+			TA:1:(J:102):2 += 10
+			TA:1:(J:102):3 += 50
+			TA:(J:102):1:3 += 10
+			TA:1:(J:102):4 += 20
+			TA:(J:102):1:4 += 20
+			TA:1:(J:102):6 -= 10
+			TA:(J:102):1:6 -= 10
+		ELSEIF RESULT == 1
+			PRINTFORML 「うわー自意識過剰かよ。」
+			PRINTFORMW %CALLNAME:1%は泣きたくなった…。
+			TA:1:(J:102):0 -= 30
+			TA:(J:102):1:0 -= 30
+			TA:1:(J:102):4 -= 20
+			TA:(J:102):1:4 -= 20
+		ELSEIF RESULT == 2
+			PRINTL 「やばい逃げろ！」
+			PRINTFORMW あわてて%CALLNAME:(J:102)%は去っていった。
+			TA:1:(J:102):6 += 50
+		ELSE
+			GOTO INPUT_LOOP229
+		ENDIF
+	CASE 30
+		PRINTFORML %CALLNAME:(J:102)%は寮の管理人の他に大学の用務員も兼ねている。
+		PRINTL トイレ前で掃除中の看板が出ている。
+		PRINTFORML キラッ・・おや、%CALLNAME:(J:102)%の持ち物が何か光った様に見えた。
+$INPUT_LOOP330
+		PRINTFORML [0] - 掃除道具もピカピカなんだね
+		PRINTFORML [1] - なんかのレンズっぽいなぁ、あのオヤジ気をつけなきゃ
+		PRINTFORML [2] - ビデオに決まってる。通報だ！
+INPUT
+		SIF RESULT != 0 && RESULT != 1 && RESULT != 2
+			GOTO INPUT_LOOP330
+		IF RESULT == 0
+			PRINTFORMW さすが%CALLNAME:(J:102)%さんだと感心した
+			TA:1:(J:102):3 += 10
+			TA:(J:102):1:3 += 10
+		ELSEIF RESULT == 1
+			PRINTW このトイレ入るのはやばいなぁ
+			TA:1:(J:102):3 -= 10
+			TA:(J:102):1:3 -= 10
+		ELSEIF RESULT == 2
+			PRINTL 「お嬢様、これは細菌を検出する機械でございます。
+			PRINTL トイレと言えども他のお嬢様の菌類は危険なのでございます。」
+			PRINTFORML 「なるほどね。さすが%CALLNAME:(J:102)%さんだね」
+			PRINTL 「ありがとうございます。お嬢様の為でしたら何でも致しますので御言いつけ下さい。」
+			PRINTFORMW %CALLNAME:(J:102)%さんは偉いな、と思った。
+			TA:(J:102):1:0 += 50
+			TA:1:(J:102):2 += 100
+			TA:(J:102):1:4 += 200
+			TA:(J:102):1:6 += 30
+		ENDIF
+	CASE 31
+		PRINTFORML %CALLNAME:(J:102)%は結構勝負好きだ
+		PRINTL 今日も小テストで負けてしまった。
+		PRINTFORML 悦に浸っている%CALLNAME:(J:102)%を見ると少しいらついてくるけど、
+		PRINTL かわいいので何故か許してしまう。
+$INPUT_LOOP331
+		PRINTL 何か声をかけてください
+		PRINTFORML [0] - 凄いね、%CALLNAME:(J:102)%さん
+		PRINTFORML [1] - 友達居ないんだろ
+		PRINTFORML [2] - 声を掛けない
+INPUT
+		SIF RESULT != 0 && RESULT != 1 && RESULT != 2
+			GOTO INPUT_LOOP331
+		IF RESULT == 0
+			PRINTL 「そ、そうかな？ふふふ」
+			PRINTFORMW %CALLNAME:(J:102)%は嬉しそうだ
+			TA:1:(J:102):3 += 10
+			TA:(J:102):1:3 += 10
+		ELSEIF RESULT == 1
+			PRINTW 落ち込んでしまった
+			TA:1:(J:102):3 -= 10
+			TA:(J:102):1:3 -= 10
+		ELSEIF RESULT == 2
+			PRINTL そ、そんな……
+			PRINTFORML %CALLNAME:(J:102)%に声を掛けないなんて……
+			PRINTW きっと悪い事が起こるよ！……
+			PRINTL モブが襲ってきた！
+			CALLFORM FIGHT1((38 + CHARANUM - 71),1)
+			TA:1:(J:102):3 -= 10
+			TA:(J:102):1:3 -= 10
+		ENDIF
+	CASE 32
+		PRINTL 「遅くなりました！」
+		PRINTFORML 勢いよく入ってきたのは１年の%CALLNAME:(J:102)%だ
+		PRINTL ここは２年の教室なんだけど
+$INPUT_LOOP332
+		PRINTFORML [0] - 「ここ２年○組だよ」
+		PRINTFORML [1] - 「飛び級かい？」
+		PRINTFORML [2] - 「罰としてオナニーだな」
+INPUT
+		SIF RESULT != 0 && RESULT != 1 && RESULT != 2
+			GOTO INPUT_LOOP332
+		IF RESULT == 0
+			PRINTW 「えへへへ」恥ずかしそうに戻っていった
+			TA:1:(J:102):3 += 10
+			TA:(J:102):1:3 += 10
+		ELSEIF RESULT == 1
+			PRINTW 「飛び魚？」……どっちも寒かった
+			TA:1:(J:102):3 -= 10
+			TA:(J:102):1:3 -= 20
+		ELSEIF RESULT == 2
+			PRINTL 「えっと・・・ここで？」
+			PRINTW 白さと寒さがダブルで襲ってきた
+			CALLFORM FIGHT1((37 + CHARANUM - 71),1)
+			TA:1:(J:102):0 += 10
+			TA:1:(J:102):4 += 30
+			TA:1:(J:102):3 -= 10
+			TA:(J:102):1:3 -= 20
+		ENDIF
+	CASE 33
+		PRINTFORML %CALLNAME:(J:102)%は話しやすく、他の子からも結構声を掛けられている。
+		PRINTL 「やりたい」
+		PRINTL え？今何て・・・
+$INPUT_LOOP333
+		PRINTL 何か声をかけてください
+		PRINTFORML [0] - 今「やりたい」って・・
+		PRINTFORML [1] - このエロ魔人が
+		PRINTFORML [2] - いいよ、やろう
+INPUT
+		SIF RESULT != 0 && RESULT != 1 && RESULT != 2
+			GOTO INPUT_LOOP333
+		IF RESULT == 0
+			PRINTL 「あ、ほ、ほら、新しい合唱曲をやりたいなぁって」
+			PRINTW うんうん、そうだよね
+			TA:1:(J:102):3 += 10
+			TA:(J:102):1:3 += 10
+		ELSEIF RESULT == 1
+			PRINTW 何も言わずに向こうに行ってしまった。
+			TA:1:(J:102):3 -= 10
+			TA:(J:102):1:3 -= 30
+		ELSEIF RESULT == 2
+			IF CFLAG:1:部活 == 39
+				PRINTL 「やっぱり次回はこの曲だよね」
+				PRINTW 合唱部の話だった
+				TA:1:(J:102):3 += 10
+				TA:(J:102):1:3 += 10
+				TA:1:(J:102):4 += 10
+				TA:(J:102):1:4 += 10
+			ELSE
+				PRINTL 「へ？、合唱曲なんだけど。それとも入部希望？」
+				PRINTW あまりいい印象を与えなかったようだ
+				TA:1:(J:102):0 += 10
+				TA:1:(J:102):4 += 20
+				TA:(J:102):1:6 += 10
+			ENDIF
+		ENDIF
+	CASE 35
+		PRINTFORML %CALLNAME:(J:102)%が居る、ちょっとクラスでは浮いているけど
+		PRINTL スレンダーで女子からの人気は凄いものがある。
+$INPUT_LOOP335
+		PRINTFORML [0] - 友達になりたいな
+		PRINTFORML [1] - 何もしない
+		PRINTFORML [2] - なにをしたい
+INPUT
+		SIF RESULT != 0 && RESULT != 1 && RESULT != 2
+			GOTO INPUT_LOOP335
+		IF RESULT == 0
+			PRINTW バッチリいい印象を与えたようだ。
+			TA:1:(J:102):3 += 20
+			TA:(J:102):1:3 += 20
+		ELSEIF RESULT == 1
+			PRINTW 何もしなければ何も起こらないのは当たり前か。
+			TA:1:(J:102):3 -= 5
+			TA:(J:102):1:3 -= 5
+		ELSEIF RESULT == 2
+			PRINTL 「チュ・・・じゃあいずれね」
+			PRINTFORMW %CALLNAME:(J:102)%は不思議がっている。
+			TA:1:(J:102):0 += 10
+			TA:(J:102):1:0 += 10
+			TA:1:(J:102):4 += 20
+			TA:(J:102):1:6 += 20
+		ENDIF
+	CASE 39
+		PRINTFORML %CALLNAME:(J:102)%が居る、なんか謎だ。
+		PRINTL かわいくて、スーパーモデル並みの体形なんだけど
+		PRINTFORML 昨日会話してた%CALLNAME:(J:102)%とは違う様な気もよくする
+		PRINTL 「任務が・・」
+$INPUT_LOOP339
+		PRINTL 何か言ってください
+		PRINTFORML [0] - 今、任務って・・・
+		PRINTFORML [1] - 今、任務って・・・
+		PRINTFORML [2] - 今、任務って・・・
+INPUT
+		SIF RESULT != 0 && RESULT != 1 && RESULT != 2
+			GOTO INPUT_LOOP339
+		IF RAND(3) == 0
+			PRINTL 「え？そんな事言ったかなぁ？」
+			PRINTFORMW %CALLNAME:(J:102)%は不思議がっている。
+			TA:1:(J:102):3 += 10
+			TA:(J:102):1:3 += 10
+		ELSEIF RAND(3) == 1
+			PRINTL プシュッ
+			PRINTL 首筋に冷たい感じがして、気を失った
+			PRINTL 「あなたは全てを忘れるのよ」
+			PRINTFORML 気が付くと保健室にいて裸の%CALLNAME:(J:102)%と抱き合っている。
+			PRINTFORML %CALLNAME:(J:102)%の指使いで%CALLNAME:1%は何度も絶頂を迎え
+			PRINTW その気持ちよさにもうどうでもよくなっていた。
+			JUEL:1:快Ｃ += 1000
+			JUEL:1:快Ｂ += 1000
+			JUEL:1:潤滑 += 10000
+			JUEL:1:欲情 += 1000
+			JUEL:1:屈服 += 1000
+			JUEL:1:恥情 += 300
+			JUEL:1:恐怖 += 300
+			TA:1:(J:102):2 += 100
+			TA:1:(J:102):3 -= 10
+			TA:1:(J:102):4 += 100
+			TA:(J:102):1:3 -= 10
+			TA:(J:102):1:4 += 30
+			TA:(J:102):1:6 += 10
+		ELSE
+			PRINTL 「新アニメNINMU-の事だけど、知らない？」
+			PRINTW きっとあるんだろう、これ以上はちょっと怖かった。
+			TA:1:(J:102):4 += 5
+			TA:(J:102):1:6 += 5
+		ENDIF
+	CASE 40
+		PRINTFORML %CALLNAME:(J:102)%はお嬢様だ。
+		PRINTL どういった理由でこの大学に来たか分からないが、とっても気さくでゴンッ
+		PRINTL 「いたたた」
+		PRINTL 「す、すみません」
+		PRINTFORML 廊下で%CALLNAME:(J:102)%の額に%CALLNAME:1%の肘が当たってしまった。
+		PRINTL 「大丈夫ですわ、それにちょっと気持ち良かったし」
+		PRINTL え？
+$INPUT_LOOP340
+		PRINTFORML [0] - もしかして、痛いの好きとか？
+		PRINTFORML [1] - もしかしてマゾですか？
+		PRINTFORML [2] - もしかしなくてもマゾですか？
+INPUT
+		SIF RESULT != 0 && RESULT != 1 && RESULT != 2
+			GOTO INPUT_LOOP340
+		IF RESULT == 0
+			PRINTL 「ええ、そうね。好きというか」
+			PRINTFORMW そこまで言って%CALLNAME:(J:102)%は顔を赤らめてしまった。
+			TA:1:(J:102):3 += 100
+			TA:(J:102):1:3 += 100
+			TA:1:(J:102):4 += 100
+			TA:(J:102):1:4 += 100
+		ELSEIF RESULT == 1
+			PRINTL 「ええ、そうね。マゾというか」
+			PRINTL 「…あなた、少々不躾ね」
+			PRINTFORMW そこまで言って%CALLNAME:(J:102)%はちょっと怒ってるようだ。
+			TA:1:(J:102):4 += 10
+			TA:(J:102):1:3 -= 10
+			TA:(J:102):1:6 += 5
+		ELSEIF RESULT == 2
+			PRINTL 「ええ、そうね。マゾというか」
+			PRINTFORML そこまで言って%CALLNAME:(J:102)%は
+			PRINTL 「あなた面白いわね。今度うちにいらっしゃい」
+			PRINTW 誘われてしまった。
+			TA:1:(J:102):3 += 10
+			TA:1:(J:102):4 += 50
+			TA:(J:102):1:3 += 10
+			TA:(J:102):1:4 += 100
+		ENDIF
+	CASEELSE
+			CALL JYUGYOU3()
+ENDSELECT
+
+RETURN 1
+
+

@@ -1,0 +1,79 @@
+﻿;================================================
+; もぶ沢モブ子（キャラ番号 38）の妊娠・出産口上
+; 状況：1危険日 2妊娠中 3発覚 4陣痛開始 5出産 6陣痛激化 7いきみ 8破水
+;================================================
+
+;@妊娠口上_1_38(ARG,ARG:1)
+;;危険日の中出し
+;PRINTFORMW %CALLNAME:ARG%「（危険日の中出しの台詞）」
+;RETURN
+;@妊娠口上_2_38(ARG,ARG:1)
+;;妊娠中の中出し
+;PRINTFORMW %CALLNAME:ARG%「（妊娠中の中出しの台詞）」
+;RETURN
+@妊娠口上_3_38(ARG,ARG:1)
+;妊娠発覚
+SELECTCASE RAND(3)
+	CASE 0
+		PRINTFORMW %CALLNAME:ARG%「え……わたし、妊娠、してるの……？」
+	CASE 1
+		PRINTFORMW %CALLNAME:ARG%「うそ……どうしよう……」
+	CASEELSE
+		PRINTFORMW %CALLNAME:ARG%「ほんとに……わたしのお腹に……」
+ENDSELECT
+RETURN
+@妊娠口上_4_38(ARG,ARG:1)
+;陣痛・破水
+SELECTCASE RAND(3)
+	CASE 0
+		PRINTFORMW %CALLNAME:ARG%「い、痛いです……っ」
+	CASE 1
+		PRINTFORMW %CALLNAME:ARG%「ふぇ……っ、痛い……！」
+	CASEELSE
+		PRINTFORMW %CALLNAME:ARG%「はぁはぁ……もう少し、です……っ」
+ENDSELECT
+RETURN
+@妊娠口上_5_38(ARG,ARG:1)
+;出産
+SELECTCASE RAND(3)
+	CASE 0
+		PRINTFORMW %CALLNAME:ARG%「はぁ……産まれ、ました……」
+	CASE 1
+		PRINTFORMW %CALLNAME:ARG%「ちいさい……可愛い……」
+	CASEELSE
+		PRINTFORMW %CALLNAME:ARG%「ふぅ……よかった、です……」
+ENDSELECT
+RETURN
+@妊娠口上_6_38(ARG,ARG:1)
+;陣痛激化
+SELECTCASE RAND(2)
+	CASE 0
+		PRINTFORMW %CALLNAME:ARG%「ひぅ……っ、もっと、痛い……！」
+	CASEELSE
+		PRINTFORMW %CALLNAME:ARG%「もう、むりぃ……っ」
+ENDSELECT
+RETURN
+@妊娠口上_7_38(ARG,ARG:1)
+;いきみ
+SELECTCASE RAND(2)
+	CASE 0
+		PRINTFORMW %CALLNAME:ARG%「ふぇ……いきむ、です……っ」
+	CASEELSE
+		PRINTFORMW %CALLNAME:ARG%「んんっ……！」
+ENDSELECT
+RETURN
+@妊娠口上_8_38(ARG,ARG:1)
+;破水
+SELECTCASE RAND(2)
+	CASE 0
+		PRINTFORMW %CALLNAME:ARG%「ひゃっ……！　な、なにか出ちゃいました……」
+	CASEELSE
+		PRINTFORMW %CALLNAME:ARG%「こわいです……濡れて……これが破水……」
+ENDSELECT
+RETURN
+
+@妊娠口上_9_38(ARG,ARG:1)
+;多胎に気づく（驚き）
+TSTR:(FLAG:口上候補数++) = %CALLNAME:ARG%「え……!?　ま、まだいるんですか……!?」
+TSTR:(FLAG:口上候補数++) = %CALLNAME:ARG%「双子……!?　わたし……!?」
+RETURN

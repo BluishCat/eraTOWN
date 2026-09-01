@@ -1,0 +1,77 @@
+﻿;================================================
+; バイブを動かす（器具挿入中のみ）
+;  既に膣バイブ／アナルバイブ類が挿入されているときだけ選べる。
+;  新たに挿入・除去はせず、挿入済みの器具を操作して刺激する（COMF44とは別物）。
+;================================================
+@XCOM_ABLE49(ARG)
+VARSET LOCAL
+LOCAL = ARG
+VARSET ARG
+SIF !TCVAR:LOCAL:行為対象
+	RETURN 0
+;膣バイブ／アナルバイブ類が挿入中のときのみ
+SIF !器具挿入あり(LOCAL)
+	RETURN 0
+RETURN GLOBAL_COMABLE(49)
+
+;-------------------------------------------------
+;バイブを動かす
+;-------------------------------------------------
+@XCOM49(ARG)
+#DIM 相手
+#DIM 被
+#DIM 部
+VARSET LOCAL
+相手 = TCVAR:ARG:行為対象
+;挿入されている側と部位（1=膣/2=アナル）を特定。相手側を優先
+IF TEQUIP:相手:膣 == 1
+	被 = 相手
+	部 = 1
+ELSEIF TEQUIP:相手:アナル == 60 || TEQUIP:相手:アナル == 61 || TEQUIP:相手:アナル == 62
+	被 = 相手
+	部 = 2
+ELSEIF TEQUIP:ARG:膣 == 1
+	被 = ARG
+	部 = 1
+ELSE
+	被 = ARG
+	部 = 2
+ENDIF
+PRINTL
+PRINTFORML %"=" * 107%
+PRINTFORML バイブを動かす(%CALLNAME:ARG%)
+IF ARG == MASTER || 相手 == MASTER
+	IF 部 == 2
+		PRINTFORML %CALLNAME:ARG%は%CALLNAME:被%のアナルに挿さった器具を握り、抜き差しして震わせた。
+	ELSE
+		PRINTFORML %CALLNAME:ARG%は%CALLNAME:被%の膣に挿さった器具を握り、抜き差しして震わせた。
+	ENDIF
+	CALL 汎用口上(3, 相手, ARG)
+ENDIF
+;-------------------------------------------------
+;ソース追加処理
+;-------------------------------------------------
+DOWNBASE:被:体力 += 15
+DOWNBASE:被:気力 += 60
+IF 部 == 2
+	SOURCE:被:快Ａ = 250
+ELSE
+	SOURCE:被:快Ｖ = 250
+ENDIF
+SOURCE:被:苦痛 = 30
+SOURCE:被:露出 = 20
+SOURCE:被:逸脱 = 40
+SOURCE:被:欲情 = 40
+;抑圧・抵抗持ちには抑鬱ソース
+SIF TALENT:被:自己愛 < 0 || TALENT:被:抵抗
+	SOURCE:被:鬱屈 += 30
+;操作している側（被と異なる場合）に軽い性行動
+SIF ARG != 被
+	SOURCE:ARG:性行動 = 30
+;-------------------------------------------------
+;経験の処理
+;-------------------------------------------------
+EXP:ARG:道具使用経験 ++
+CFLAG:ARG:待機時間 += 2
+VARSET ARG
+RETURN 1

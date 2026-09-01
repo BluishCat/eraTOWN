@@ -1,0 +1,597 @@
+﻿;=================================================
+; 常時サイドバー描画（erablue_resort のサイド領域描画処理を参考に移植）
+; 画面右に <div rect> の固定パネルを置き、マップ／能力をタブ切替表示する。
+; ・rect 座標系は「X_px = 値 × フォントサイズ ÷ 100」と推定
+;   （eraTOWN: ウィンドウ幅1790 / フォント17 → 右端 ≈ 10500単位）。実測で微調整する。
+;   ※ウィンドウ幅を変えたら X0（と必要なら W0/BODYH）を連動させること。
+;   現在は 1790×1200 / コマンド4列（PRINTCを並べる数:4）前提で X0=5600 / W0=4700 / BODYH=4000。
+;   ※メイン最右はコマンド欄（USERCOM.ERB の PRINTFORMC）。基本は4列×25桁=5000単位(=850px)だが、
+;    「アルバイトに応募する[1044]」等の長ラベル(>25桁)は2セルに溢れて行が右に伸びる＝状況で変動する。
+;    そのため X0 は基本幅5000／PALAM箱右端5050(3500+1550,メイン画面描画.ERB)を余裕をもって越える
+;    5600(=952px)に置く。元は重なり無しの X0=6100 で、そこから85px詰めた安全値。
+;    さらに詰めたい場合はコマンド欄の折返しを固定幅化する必要あり（要相談）。
+;   タブ帯は本文パネルの下辺に配置（コマンド欄に近く押しやすい）。BODYH を大きくしすぎると
+;   タブ帯がウィンドウ下端からはみ出して見えなくなるので注意。
+; ・タブ状態は FLAG:サイドタブ（0=クイック移動マップ / 1=能力表示[既定] / 2=同室者 / 3=相手）
+;   3=相手：会話/H中の相手（TCVAR:MASTER:行為対象）の能力・関係値・基本情報を表示。
+;     イベント開始時に自動でこのタブへ切り替え、終了時に元のタブへ戻す
+;     （FLAG:サイドタブ自動切替中/サイドタブ退避を使用。手動切替はイベント中も有効）。
+;   ※メイン画面イメージ.txt 準拠：能力表示タブの中身は ■あなた パネル
+;     （□情報□/□服装□/□素質□/□妊娠・出産□/□胎内精液□）。
+;     旧PALAMタブと旧・能力タブ（評判/容姿/…）は廃止（詳細は能力表示[1900]の画面が担う）。
+;     PALAMはメイン列の▼PALAM（通常時）／従来グリッド（イベント中）が担う
+;=================================================
+
+;-------------------------------------------------
+; サイドバー本体描画（毎ターン SHOW_STATUS 後に呼ぶ）
+;-------------------------------------------------
+@サイド領域描画
+#DIMS 表示
+#DIMS 本文
+#DIM X0
+#DIM W0
+#DIM BODYY
+#DIM BODYH
+#DIM PTOP
+#DIM TX
+#DIM TW
+#DIM TY
+#DIM CY
+
+;右側パネルの矩形（メインはコマンド4列≈5000単位に収まるので、その右に配置）
+;タブは erablue 風の「枠付き連結タブ」：各タブを独立した <div rect border bcolor> の箱にし、
+;選択中タブだけ本文パネルとの境界に同色の連結 div を重ねて境界の枠線を消し、本文と一体化させる。
+;タブ帯は本文パネルの下（＝コマンド欄に近い側）に置いて押しやすくする。
+;※旧・地図/文字サブトグル（サイド領域_マップモード_0/1・FLAG:マップ表示モード）は廃止し、
+;  マップタブは地図グリッド＋文字凡例の同時表示（DRAW_MAP モード0）になった。
+X0 = 5600
+W0 = 4700
+BODYY = 250		;本文パネル上端
+BODYH = 4000	;本文パネル高さ（日常画面でタブ帯がウィンドウ下端付近に来るよう実測調整）
+TY = BODYY + BODYH	;主タブ帯の上端（本文パネル下端に接する）
+CY = TY - 30	;連結 div の上端（本文／タブの境界をまたぐ）
+
+;----- イベント中（会話/H）は相手タブへ自動切替。終了時に元のタブへ戻す -----
+;切替はイベント開始の1回のみ（自動切替中フラグで判定）。イベント中の手動切替は妨げない。
+IF TCVAR:MASTER:イベント && TCVAR:MASTER:行為対象
+	IF !FLAG:サイドタブ自動切替中
+		FLAG:サイドタブ退避 = FLAG:サイドタブ
+		FLAG:サイドタブ = 3
+		FLAG:サイドタブ自動切替中 = 1
+	ENDIF
+ELSEIF FLAG:サイドタブ自動切替中
+	FLAG:サイドタブ = FLAG:サイドタブ退避
+	FLAG:サイドタブ自動切替中 = 0
+ENDIF
+;タブ範囲ガード（不正値・旧タブ番号は既定の能力表示タブへ）
+SIF FLAG:サイドタブ < 0 || FLAG:サイドタブ > 3
+	FLAG:サイドタブ = 1
+
+;----- 本文（タブの中身）を先に組み立て -----
+SELECTCASE FLAG:サイドタブ
+	CASE 1
+		;能力表示タブ＝■あなた パネル（メイン画面イメージ.txt の右パネル）
+		CALL サイド領域_あなた情報
+		本文 '= @"%RESULTS%"
+	CASE 2
+		CALL サイド領域_同室者表示
+		本文 '= @"%RESULTS%"
+	CASE 3
+		;相手タブ＝会話/H中の相手（行為対象）の能力・関係値・基本情報
+		CALL サイド領域_相手情報
+		本文 '= @"%RESULTS%"
+	CASEELSE
+		;クイック移動マップ（地図グリッド＋場所一覧を同時表示。旧・地図/文字トグルは廃止）
+		;※第3引数1=等倍コンパクト。狭いパネルに収めるため（2倍だと大学マップが縦にはみ出す）。
+		;  移動コマンド画面（COMF1000・全幅）は2倍のまま。
+		;※第4引数=場所一覧の桁幅。パネル内寸 W0-padding ≈ 4660単位 ≈ 792px ≈ 93桁なので安全側に88。
+		;  X0/W0 を変えたらここも連動させること。
+		CALL DRAW_MAP(CFLAG:MASTER:現在地区, 0, 1, 88)
+		;マップ内ボタン value を サイド領域_ 接頭辞化して本体コマンドと区別
+		REPLACE RESULTS, "value='", "value='サイド領域_"
+		本文 '= @"%RESULTS%"
+ENDSELECT
+
+PTOP = 30
+
+;----- (1) 本文パネル（タブより先に描き、タブ箱が下辺に重なる）-----
+;※<div>のsize属性はwidth/heightの簡略指定であり文字拡大ではない（rectと併用するとwidth二重指定エラー）
+表示 '= @"<div rect='{X0}, {BODYY}, {W0}, {BODYH}' padding='{PTOP},20,20' color='#101010' border='20' bcolor='#C0C0C0'>%本文%</div>"
+
+;----- (2) 主タブ帯（本文パネル下辺・クイック移動 / 能力表示 / 同室者）＝枠付きボックス。選択中は連結 div で本文と一体化 -----
+;クイック移動タブ（マップ・タブ番号0）
+TX = X0
+TW = 740
+表示 '= @"%表示%<div rect='{TX}, {TY}, {TW}, 185' padding='25,15,0' color='#101010' border='20' bcolor='#C0C0C0'><button value='サイド領域_切替_0'>クイック移動</button></div>"
+IF FLAG:サイドタブ == 0
+	表示 '= @"%表示%<div rect='{TX + 25}, {CY}, {TW - 40}, 60' color='#101010'></div>"
+ENDIF
+TX += TW + 50
+;能力表示タブ（タブ番号1・既定。■あなた パネル）
+TW = 540
+表示 '= @"%表示%<div rect='{TX}, {TY}, {TW}, 185' padding='25,15,0' color='#101010' border='20' bcolor='#C0C0C0'><button value='サイド領域_切替_1'>能力表示</button></div>"
+IF FLAG:サイドタブ == 1
+	表示 '= @"%表示%<div rect='{TX + 25}, {CY}, {TW - 40}, 60' color='#101010'></div>"
+ENDIF
+TX += TW + 50
+;同室者タブ（タブ番号2）
+TW = 440
+表示 '= @"%表示%<div rect='{TX}, {TY}, {TW}, 185' padding='25,15,0' color='#101010' border='20' bcolor='#C0C0C0'><button value='サイド領域_切替_2'>同室者</button></div>"
+IF FLAG:サイドタブ == 2
+	表示 '= @"%表示%<div rect='{TX + 25}, {CY}, {TW - 40}, 60' color='#101010'></div>"
+ENDIF
+TX += TW + 50
+;相手タブ（タブ番号3・会話/H中の相手情報）
+TW = 440
+表示 '= @"%表示%<div rect='{TX}, {TY}, {TW}, 185' padding='25,15,0' color='#101010' border='20' bcolor='#C0C0C0'><button value='サイド領域_切替_3'>相手</button></div>"
+IF FLAG:サイドタブ == 3
+	表示 '= @"%表示%<div rect='{TX + 25}, {CY}, {TW - 40}, 60' color='#101010'></div>"
+ENDIF
+
+HTML_PRINT 表示, 1
+
+;-------------------------------------------------
+; 能力表示タブの中身（RESULTSにHTML）
+;-------------------------------------------------
+@サイド領域_能力表示
+#DIMS OUT
+#DIM 整数
+#DIM 小数
+OUT '= @"<b>%CALLNAME:MASTER%</b><br><br>"
+
+;----- 状態（メインから移動）-----
+OUT '= @"%OUT%評判 {BASE:MASTER:評判}<br>"
+OUT '= @"%OUT%容姿 {BASE:MASTER:容姿}<br>"
+OUT '= @"%OUT%学力 {BASE:MASTER:学力}<br>"
+OUT '= @"%OUT%刺激度 {BASE:MASTER:刺激度}<br>"
+
+;----- 身体 -----
+OUT '= @"%OUT%─ 身体 ─<br>"
+;身長・体重（実値は10倍で格納。整数部と小数1桁に分解して表示）
+IF BASE:MASTER:身長 > 0
+	整数 = BASE:MASTER:身長 / 10
+	小数 = BASE:MASTER:身長 % 10
+	OUT '= @"%OUT%身長 {整数}.{小数}cm　"
+ENDIF
+IF BASE:MASTER:体重 > 0
+	整数 = BASE:MASTER:体重 / 10
+	小数 = BASE:MASTER:体重 % 10
+	OUT '= @"%OUT%体重 {整数}.{小数}kg"
+ENDIF
+OUT '= @"%OUT%<br>"
+;スリーサイズ B(胸囲33)/W(胴囲34)/H(腰囲35)。胸囲はカップ文字も併記
+IF BASE:MASTER:胸囲 > 0 && BASE:MASTER:胴囲 > 0
+	;カップサイズ番号（CFLAG:36）が未算出なら取得
+	IF CFLAG:MASTER:36 == 0
+		CALL GET_CUP_SIZE(MASTER)
+		SIF RESULT > 0
+			CFLAG:MASTER:36 = RESULT
+	ENDIF
+	CALL サイド領域_カップ文字(CFLAG:MASTER:36)
+	整数 = BASE:MASTER:胸囲 / 10
+	OUT '= @"%OUT%B{整数}(%RESULTS%) "
+	整数 = BASE:MASTER:胴囲 / 10
+	OUT '= @"%OUT%W{整数} "
+	整数 = BASE:MASTER:腰囲 / 10
+	OUT '= @"%OUT%H{整数}<br>"
+ENDIF
+
+;----- 能力 -----
+OUT '= @"%OUT%─ 能力 ─<br>"
+OUT '= @"%OUT%感覚 C{ABL:MASTER:Ｃ感覚} V{ABL:MASTER:Ｖ感覚} A{ABL:MASTER:Ａ感覚} B{ABL:MASTER:Ｂ感覚}<br>"
+OUT '= @"%OUT%性技 指{ABL:MASTER:指} 舌{ABL:MASTER:舌} 胸{ABL:MASTER:胸}<br>"
+OUT '= @"%OUT%　　 腰{ABL:MASTER:腰} 膣{ABL:MASTER:膣} 尻{ABL:MASTER:アナル}<br>"
+OUT '= @"%OUT%技巧{ABL:MASTER:技巧} 奉仕{ABL:MASTER:奉仕精神} 露出{ABL:MASTER:露出癖}<br>"
+
+RESULTS '= @"%OUT%"
+
+;-------------------------------------------------
+; 情報タブ（既定）の中身（RESULTSにHTML）
+; ■あなた パネル：□情報□/□服装□/□素質□/□妊娠・出産□/□胎内精液□
+; （メイン画面イメージ.txt 準拠。メイン列の▼情報と重複表示で可）
+;-------------------------------------------------
+@サイド領域_あなた情報
+CALL サイド領域_キャラ情報(MASTER)
+LOCALS '= RESULTS
+RESULTS '= @"<b>■%CALLNAME:MASTER%</b><br>%LOCALS%"
+
+;-------------------------------------------------
+; 1キャラ分の基本情報HTMLを RESULTS に返す（ARG=対象キャラ）
+; □情報□/□服装□/□素質□/□妊娠・出産□/□胎内精液□
+; （■名前 見出しは呼び出し側で付ける。あなたタブ／相手タブで共用）
+;-------------------------------------------------
+@サイド領域_キャラ情報(ARG)
+#DIMS OUT
+#DIM 整数
+#DIM 小数
+#DIM 表示数
+OUT '= ""
+
+;----- □ 情報 □ -----
+OUT '= OUT + サイド領域_節見出し("情報")
+OUT '= @"%OUT%　性別：%性別処女文字列(ARG)%<br>"
+IF BASE:ARG:身長 > 0
+	整数 = BASE:ARG:身長 / 10
+	小数 = BASE:ARG:身長 % 10
+	OUT '= @"%OUT%　身長：{整数}.{小数}cm　"
+ENDIF
+IF BASE:ARG:体重 > 0
+	整数 = BASE:ARG:体重 / 10
+	小数 = BASE:ARG:体重 % 10
+	OUT '= @"%OUT%体重：{整数}.{小数}kg"
+ENDIF
+OUT '= @"%OUT%<br>"
+IF BASE:ARG:胸囲 > 0 && BASE:ARG:胴囲 > 0
+	;カップサイズ番号（CFLAG:36）が未算出なら取得
+	IF CFLAG:ARG:36 == 0
+		CALL GET_CUP_SIZE(ARG)
+		SIF RESULT > 0
+			CFLAG:ARG:36 = RESULT
+	ENDIF
+	CALL サイド領域_カップ文字(CFLAG:ARG:36)
+	LOCALS '= RESULTS
+	整数 = BASE:ARG:胸囲 / 10
+	小数 = BASE:ARG:胸囲 % 10
+	OUT '= @"%OUT%　B/W/H：{整数}.{小数}cm(%LOCALS%)"
+	整数 = BASE:ARG:胴囲 / 10
+	小数 = BASE:ARG:胴囲 % 10
+	OUT '= @"%OUT% / {整数}.{小数}cm"
+	整数 = BASE:ARG:腰囲 / 10
+	小数 = BASE:ARG:腰囲 % 10
+	OUT '= @"%OUT% / {整数}.{小数}cm<br>"
+ENDIF
+SIF CFLAG:ARG:職業
+	OUT '= @"%OUT%　アルバイト：%JOB_NAME(CFLAG:ARG:職業)%<br>"
+;生理状態（非妊娠の女性のみ）。危険日（排卵期）だけピンクで強調
+IF GETBIT(TALENT:ARG:性別,0) && !TALENT:ARG:妊娠
+	IF CFLAG:ARG:産後回復 <= 0 && CFLAG:ARG:生理周期 >= 12 && CFLAG:ARG:生理周期 <= 16
+		OUT '= @"%OUT%　<font color='#FF78A0'>状態：【%生理状態_名(ARG)%】</font>"
+	ELSE
+		OUT '= @"%OUT%　状態：【%生理状態_名(ARG)%】"
+	ENDIF
+	SIF CFLAG:ARG:避妊 > 0
+		OUT '= @"%OUT%【避妊中(あと{CFLAG:ARG:避妊}日)】"
+	OUT '= @"%OUT%<br>"
+ENDIF
+
+;----- □ 服装 □（PRINT_STATE_CLOTH と同ロジック。200-203が主要部位＝無ければ全裸） -----
+OUT '= OUT + サイド領域_節見出し("服装")
+表示数 = 0
+FOR LOCAL,200,204
+	IF TEQUIP:ARG:LOCAL
+		OUT '= @"%OUT%　%TEQUIPNAME:LOCAL%：%ITEMNAME:(TEQUIP:ARG:LOCAL)%<br>"
+		表示数 ++
+	ENDIF
+NEXT
+SIF !表示数
+	OUT '= @"%OUT%　全裸<br>"
+FOR LOCAL,204,218
+	IF TEQUIP:ARG:LOCAL
+		OUT '= @"%OUT%　%TEQUIPNAME:LOCAL%：%ITEMNAME:(TEQUIP:ARG:LOCAL)%<br>"
+	ENDIF
+NEXT
+
+;----- □ 素質 □（PRINT_STATE_TALENT と同ロジック・約40全角で折返し） -----
+OUT '= OUT + サイド領域_節見出し("素質")
+LOCALS =
+FOR LOCAL,0,200
+	IF STRLENS(GET_TALENTNAME(LOCAL,TALENT:ARG:LOCAL))
+		;童貞は男性器持ちのみ表示
+		SIF LOCAL == 1 && !(TALENT:ARG:2 & 2)
+			CONTINUE
+		LOCALS '= @"%LOCALS%[%GET_TALENTNAME(LOCAL,TALENT:ARG:LOCAL)%]"
+		IF STRLENS(LOCALS) > 76
+			OUT '= @"%OUT%　%LOCALS%<br>"
+			LOCALS =
+		ENDIF
+	ENDIF
+NEXT
+SIF STRLENS(LOCALS)
+	OUT '= @"%OUT%　%LOCALS%<br>"
+
+;----- □ 妊娠・出産 □（自覚がある妊娠／経産／急性状態／流産歴のいずれか） -----
+IF (TALENT:ARG:妊娠 && CFLAG:ARG:妊娠自覚 >= 1) || CFLAG:ARG:出産回数 || (TALENT:ARG:妊娠 && (CFLAG:ARG:陣痛 > 0 || CFLAG:ARG:切迫流産度 > 0)) || CFLAG:ARG:流産回数
+	OUT '= OUT + サイド領域_節見出し("妊娠・出産")
+	IF TALENT:ARG:妊娠 && CFLAG:ARG:妊娠自覚 >= 1
+		IF CFLAG:ARG:健診済
+			OUT '= @"%OUT%　妊娠{CFLAG:ARG:妊娠日数}日目（出産予定まであと{出産予定日数(ARG) - CFLAG:ARG:妊娠日数}日）<br>"
+		ELSE
+			OUT '= @"%OUT%　妊娠{CFLAG:ARG:妊娠日数}日目<br>"
+		ENDIF
+		OUT '= @"%OUT%　お腹の大きさ：%腹段階_名(ARG)%"
+		SIF 臨月(ARG)
+			OUT '= @"%OUT%　【臨月】"
+		OUT '= @"%OUT%<br>"
+		SIF CFLAG:ARG:健診済 && CFLAG:ARG:胎児数 >= 2
+			OUT '= @"%OUT%　多胎妊娠：胎児{CFLAG:ARG:胎児数}人<br>"
+		OUT '= @"%OUT%　父親（推定）：%CALLNAME:(CFLAG:ARG:父親)%<br>"
+	ENDIF
+	;----- 妊娠中の急性状態（陣痛/破水/切迫流産）を赤系で強調。自覚に依らず表示 -----
+	IF TALENT:ARG:妊娠
+		IF CFLAG:ARG:陣痛 > 0
+			;多胎で1人産んだ後（次の児を待つ小休止）は残り人数を出す
+			IF 分娩中(ARG)
+				OUT '= @"%OUT%　<font color='#FF3333'>状態：【分娩中・あと{CFLAG:ARG:分娩残}人】</font><br>"
+			ELSEIF CFLAG:ARG:破水済
+				OUT '= @"%OUT%　<font color='#FF3333'>状態：【陣痛中・破水済】</font><br>"
+			ELSE
+				OUT '= @"%OUT%　<font color='#FF3333'>状態：【陣痛中】</font><br>"
+			ENDIF
+		ELSEIF CFLAG:ARG:切迫流産度 > 0
+			OUT '= @"%OUT%　<font color='#FF6666'>状態：%切迫流産タグ(ARG)%</font><br>"
+		ENDIF
+	ENDIF
+	SIF CFLAG:ARG:出産回数
+		OUT '= @"%OUT%　経産：{CFLAG:ARG:出産回数}回（これまでに{CFLAG:ARG:子供数}人を出産）<br>"
+	SIF TALENT:ARG:育児中
+		OUT '= @"%OUT%　育児中（あと{CFLAG:ARG:育児日数}日）<br>"
+	SIF CFLAG:ARG:流産回数
+		OUT '= @"%OUT%　流産：{CFLAG:ARG:流産回数}回<br>"
+ENDIF
+
+;----- □ 胎内精液 □（体内に残っている時のみ） -----
+IF CFLAG:ARG:膣内精液 > 0 || CFLAG:ARG:子宮内精液 > 0 || CFLAG:ARG:肛内精液 > 0
+	OUT '= OUT + サイド領域_節見出し("胎内精液")
+	IF CFLAG:ARG:膣内精液 > 0
+		OUT '= @"%OUT%　腟内：%精液量_名(CFLAG:ARG:膣内精液)%%精液内訳_文字列(ARG, 3000)%<br>"
+	ENDIF
+	IF CFLAG:ARG:子宮内精液 > 0
+		OUT '= @"%OUT%　子宮内：%精液量_名(CFLAG:ARG:子宮内精液)%%精液内訳_文字列(ARG, 3600)%<br>"
+	ENDIF
+	IF CFLAG:ARG:肛内精液 > 0
+		OUT '= @"%OUT%　肛内：%精液量_名(CFLAG:ARG:肛内精液)%%精液内訳_文字列(ARG, 3100)%<br>"
+	ENDIF
+ENDIF
+RESULTS '= @"%OUT%"
+
+;-------------------------------------------------
+; 相手タブの中身（RESULTSにHTML）
+; 会話/H中の相手（TCVAR:MASTER:行為対象）の能力・関係値・基本情報を表示。
+; 行為対象が無ければ TARGET を予備に使い、それも無ければ案内文のみ。
+;-------------------------------------------------
+@サイド領域_相手情報
+#DIMS OUT
+#DIM 相手
+相手 = TCVAR:MASTER:行為対象
+SIF !相手 && TARGET > 0
+	相手 = TARGET
+IF !相手
+	RESULTS '= @"<b>■相手</b><br><br>　相手はいません<br>　（会話やＨの相手の情報がここに表示される）<br>"
+	RETURN 0
+ENDIF
+OUT '= @"<b>■%CALLNAME:相手%</b><br>"
+
+;----- □ 能力 □（性別対応：Ｃ感覚は男性器持ち、Ｖ感覚・膣は女性器持ちのみ表示） -----
+OUT '= OUT + サイド領域_節見出し("能力")
+LOCALS '= "　感覚："
+SIF TALENT:相手:性別 & 2
+	LOCALS '= @"%LOCALS%Ｃ{ABL:相手:Ｃ感覚} "
+SIF TALENT:相手:性別 & 1
+	LOCALS '= @"%LOCALS%Ｖ{ABL:相手:Ｖ感覚} "
+OUT '= @"%OUT%%LOCALS%Ａ{ABL:相手:Ａ感覚} Ｂ{ABL:相手:Ｂ感覚}<br>"
+LOCALS '= @"　性技：指{ABL:相手:指} 舌{ABL:相手:舌} 胸{ABL:相手:胸} 腰{ABL:相手:腰} "
+SIF TALENT:相手:性別 & 1
+	LOCALS '= @"%LOCALS%膣{ABL:相手:膣} "
+OUT '= @"%OUT%%LOCALS%尻{ABL:相手:アナル}<br>"
+OUT '= @"%OUT%　技巧{ABL:相手:技巧} 奉仕{ABL:相手:奉仕精神} 露出{ABL:相手:露出癖} 親密{ABL:相手:親密} 従順{ABL:相手:従順}<br>"
+
+;----- □ 関係 □（相手→あなたの関係値TA。(+n)はこのシーンで蓄積中の感情TCVAR:390-394） -----
+OUT '= OUT + サイド領域_節見出し("関係")
+OUT '= @"%OUT%　肉欲{TA:相手:MASTER:0,4}%サイド領域_感情加算(相手,390)%　愛情{TA:相手:MASTER:1,4}%サイド領域_感情加算(相手,391)%<br>"
+OUT '= @"%OUT%　服従{TA:相手:MASTER:2,4}%サイド領域_感情加算(相手,392)%　好意{TA:相手:MASTER:3,4}%サイド領域_感情加算(相手,393)%<br>"
+OUT '= @"%OUT%　欲情{TA:相手:MASTER:4,4}"
+SIF TCVAR:相手:憧れ > 0
+	OUT '= @"%OUT%　憧れ(+{TCVAR:相手:憧れ})"
+SIF TA:相手:MASTER:6 > 0
+	OUT '= @"%OUT%　<font color='#FF6666'>敵対{TA:相手:MASTER:6,4}</font>"
+OUT '= @"%OUT%<br>"
+
+;----- 基本情報（□情報□/□服装□/□素質□/□妊娠・出産□/□胎内精液□。あなたタブと共用） -----
+CALL サイド領域_キャラ情報(相手)
+OUT '= @"%OUT%%RESULTS%"
+RESULTS '= @"%OUT%"
+
+;-------------------------------------------------
+; シーン中の感情蓄積（TCVAR:390-394）が正なら "(+n)" を返す（ARG=キャラ, ARG:1=TCVAR番号）
+;-------------------------------------------------
+@サイド領域_感情加算(ARG,ARG:1)
+#FUNCTIONS
+SIF TCVAR:ARG:(ARG:1) > 0
+	RETURNF @"(+{TCVAR:ARG:(ARG:1)})"
+RETURNF @""
+
+;-------------------------------------------------
+; 「□ 名前 □────…」のセクション見出し（前後に改行込み）
+; 幅はサイドバー内側（約44全角）に収まるよう ─ で埋める
+;-------------------------------------------------
+@サイド領域_節見出し(ARGS)
+#FUNCTIONS
+#DIM 残
+LOCALS '= @"□ %ARGS% □"
+残 = (84 - STRLENS(LOCALS)) / 2
+SIF 残 < 0
+	残 = 0
+LOCALS:1 '= "─" * 残
+RETURNF @"<br>%LOCALS%%LOCALS:1%<br>"
+
+;-------------------------------------------------
+; 同室者タブの中身（RESULTSにHTML）
+; 同じ部屋に居るNPCを 名前＋好意＋状態タグ（睡眠中/衰弱/会話中）で列挙
+; 声をかけられる相手は名前がボタンになる（値 "声かけ_登録番号"）。メイン画面の同室者行と受け口は共通で、
+; USERCOM.ERB @PLAYER_USERCOM の $INPUT_LOOP が拾い、コマンド「声をかける」(1020)と同じ処理が走る
+;-------------------------------------------------
+@サイド領域_同室者表示
+#DIMS OUT
+#DIM 人数
+OUT '= @"<b>■同室者</b><br><br>"
+人数 = 0
+FOR LOCAL,1,CHARANUM
+	SIF LOCAL == MASTER
+		CONTINUE
+	SIF CFLAG:LOCAL:現在地区 != CFLAG:MASTER:現在地区 || CFLAG:LOCAL:現在位置 != CFLAG:MASTER:現在位置
+		CONTINUE
+	;声をかけられない相手（睡眠中/衰弱/会話中、またはイベント中）は従来どおり素のテキストのまま
+	IF !TCVAR:MASTER:イベント && 声かけ可能(LOCAL)
+		OUT '= @"%OUT%<button value='声かけ_{LOCAL}'>%CALLNAME:LOCAL%</button>　好意{TA:LOCAL:MASTER:3,4}"
+	ELSE
+		OUT '= @"%OUT%%CALLNAME:LOCAL%　好意{TA:LOCAL:MASTER:3,4}"
+	ENDIF
+	SIF CFLAG:LOCAL:睡眠
+		OUT '= @"%OUT%　（睡眠中）"
+	SIF CFLAG:LOCAL:衰弱
+		OUT '= @"%OUT%　（衰弱）"
+	SIF 風邪中(LOCAL)
+		OUT '= @"%OUT%　（風邪気味）"
+	SIF CFLAG:LOCAL:会話
+		OUT '= @"%OUT%　（会話中）"
+	OUT '= @"%OUT%<br>"
+	人数 ++
+NEXT
+SIF !人数
+	OUT '= @"%OUT%誰もいない<br>"
+RESULTS '= @"%OUT%"
+
+;-------------------------------------------------
+; PALAM表示タブの中身（RESULTSにHTML）
+; 快感・恭順・欲情・屈服など調教中の状態値を、MASTER（TARGETがいればTARGETも）分表示する。
+; レベルは GETPALAMLV の15段階評価を使い、高いほど強調色にして一目で分かるようにする。
+;-------------------------------------------------
+@サイド領域_PALAM表示
+#DIMS OUT
+OUT '= @"<b>%CALLNAME:MASTER%</b><br>"
+CALL サイド領域_PALAM行(MASTER)
+OUT '= @"%OUT%%RESULTS%"
+IF TARGET
+	OUT '= @"%OUT%<br><b>%CALLNAME:TARGET%</b><br>"
+	CALL サイド領域_PALAM行(TARGET)
+	OUT '= @"%OUT%%RESULTS%"
+ENDIF
+RESULTS '= @"%OUT%"
+
+;-------------------------------------------------
+; 1キャラ分のPALAM行HTMLを RESULTS に返す（ARG=対象キャラ）
+;-------------------------------------------------
+@サイド領域_PALAM行(ARG)
+#DIMS OUT
+#DIM LV
+#DIM PIDX
+#DIM 列
+OUT '= ""
+;18項目を1行2列で並べ、Lv15段階を幅700（全角7文字分＝従来の●7個と同幅）の矩形バーで表示（2キャラ表示でも溢れない）
+;色分け（赤/黄/白/灰）は COLORBAR.ERB の @PALAMLV色_HTML で従来の●ゲージを踏襲
+列 = 0
+FOR PIDX,0,100
+	SIF !STRLENS(PALAMNAME:PIDX)
+		CONTINUE
+	LV = GETPALAMLV(PALAM:ARG:PIDX,15)
+	LOCALS = %PALAMLV色_HTML(LV)%
+	LOCALS:1 = %RESULTS:1%
+	OUT '= @"%OUT%<font color='#%LOCALS%'>%PALAMNAME:PIDX,4,LEFT%{LV,2} </font>%PRINT_COLORBAR_HTML(LV, 15, 700, 60, LOCALS, LOCALS:1)%"
+	列 ++
+	IF 列 % 2 == 0
+		OUT '= @"%OUT%<br>"
+	ELSE
+		OUT '= @"%OUT%　"
+	ENDIF
+NEXT
+;奇数項目で終わった場合は末尾を改行して閉じる
+SIF 列 % 2
+	OUT '= @"%OUT%<br>"
+RESULTS '= @"%OUT%"
+
+;-------------------------------------------------
+; サイドバーのボタン押下処理（RESULTS が "サイド領域_..." のとき呼ぶ）
+; RETURN 1: 再描画のみ / RETURN 2: 移動コマンド(1000)実行を要求
+;-------------------------------------------------
+@サイド領域_実行処理
+#DIM 部屋
+;タブ切替
+IF STRCOUNT(RESULTS, "サイド領域_切替_")
+	FLAG:サイドタブ = TOINT(REPLACE(RESULTS, "サイド領域_切替_", ""))
+	RETURN 1
+ENDIF
+;マップの部屋ボタン（サイド領域_数値）→ 目的地を設定してターン終了（EVENTCOMENDが一気に移動）
+部屋 = TOINT(REPLACE(RESULTS, "サイド領域_", ""))
+IF 部屋 > 0 && 部屋 <= MAX_ROOM() && 部屋 != CFLAG:MASTER:現在位置
+	;閉店中の施設は目的地に設定できない（ターン非消費で再描画のみ。勤務先の開店準備時間は入れる）
+	IF !入店可(CFLAG:MASTER:現在地区, 部屋)
+		PRINTFORMW %PLACE_NAME(CFLAG:MASTER:現在地区,部屋)%は閉まっている（%営業時間表示(CFLAG:MASTER:現在地区,部屋)%）
+		RETURN 1
+	ENDIF
+	TCVAR:MASTER:目的位置 = 部屋
+	SELECTCOM:MASTER = 1000
+	CFLAG:MASTER:待機時間 = 0
+	;経過時間表示用に移動開始時刻を記録
+	TFLAG:移動開始時刻 = TIME
+	TFLAG:移動中 = 1
+	;新しい移動なので歩数カウンタを初期化（経路振動時の打ち切り用）
+	TFLAG:移動歩数 = 0
+	RETURN 2
+ENDIF
+RETURN 1
+
+;-------------------------------------------------
+; カップサイズ番号（CFLAG:36）→ 全角1文字を RESULTS に返す
+; 対応表は PRINT_STATE.ERB の詳細ステータス表示と同一（1=ＡＡＡ … 28=Ｚ）
+;-------------------------------------------------
+@サイド領域_カップ文字(ARG)
+SELECTCASE ARG
+	CASE 1
+		RESULTS = ＡＡＡ
+	CASE 2
+		RESULTS = ＡＡ
+	CASE 3
+		RESULTS = Ａ
+	CASE 4
+		RESULTS = Ｂ
+	CASE 5
+		RESULTS = Ｃ
+	CASE 6
+		RESULTS = Ｄ
+	CASE 7
+		RESULTS = Ｅ
+	CASE 8
+		RESULTS = Ｆ
+	CASE 9
+		RESULTS = Ｇ
+	CASE 10
+		RESULTS = Ｈ
+	CASE 11
+		RESULTS = Ｉ
+	CASE 12
+		RESULTS = Ｊ
+	CASE 13
+		RESULTS = Ｋ
+	CASE 14
+		RESULTS = Ｌ
+	CASE 15
+		RESULTS = Ｍ
+	CASE 16
+		RESULTS = Ｎ
+	CASE 17
+		RESULTS = Ｏ
+	CASE 18
+		RESULTS = Ｐ
+	CASE 19
+		RESULTS = Ｑ
+	CASE 20
+		RESULTS = Ｒ
+	CASE 21
+		RESULTS = Ｓ
+	CASE 22
+		RESULTS = Ｔ
+	CASE 23
+		RESULTS = ∪
+	CASE 24
+		RESULTS = Ｖ
+	CASE 25
+		RESULTS = Ｗ
+	CASE 26
+		RESULTS = Ｘ
+	CASE 27
+		RESULTS = Ｙ
+	CASE 28
+		RESULTS = Ｚ
+	CASEELSE
+		RESULTS = ？
+ENDSELECT

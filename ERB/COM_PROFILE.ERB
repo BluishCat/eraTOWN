@@ -1,0 +1,315 @@
+﻿;=================================================
+; コマンド・プロファイル（身分システムの中央テーブル）
+; コマンドの「表示条件」を各@XCOM_ABLEに散らばらせず、ここで宣言的に一元管理する。
+;  - 身分軸: @COM_JOB_MASK でコマンド→許可身分を宣言。USERCOMが列挙時に一元フィルタ。
+;  - 場所/時間軸: @COM_PLACE_OK / @COM_TIME_OK で新規コマンドの場所・時間を宣言。
+;    （既存の複雑なコマンドは各@XCOM_ABLEの自前条件を据え置き、段階的に移行する）
+; 身分ビット: bit0=学生 bit1=教師 bit2=会社員 bit3=フリーター bit4=専業主婦 bit5=キャバ嬢 bit6=ソープ嬢 bit7=ダンサー
+;=================================================
+
+;現在のプレイヤー身分をビットで返す（学生はTALENT、その他はcflag:72仕事）
+@PLAYER_JOB_BIT
+#FUNCTION
+IF TALENT:MASTER:学生
+	RETURNF 0x01
+ELSEIF CFLAG:MASTER:仕事 == 1
+	RETURNF 0x02
+ELSEIF CFLAG:MASTER:仕事 == 5
+	RETURNF 0x04
+ELSEIF CFLAG:MASTER:仕事 == 6
+	RETURNF 0x08
+ELSEIF CFLAG:MASTER:仕事 == 7
+	RETURNF 0x10
+ELSEIF CFLAG:MASTER:仕事 == 8
+	RETURNF 0x20
+ELSEIF CFLAG:MASTER:仕事 == 9
+	RETURNF 0x40
+ELSEIF CFLAG:MASTER:仕事 == 10
+	RETURNF 0x80
+ENDIF
+RETURNF 0
+
+;コマンド番号→許可身分ビットマスク。0=全身分共通（誰でも表示）
+;身分固有のコマンドだけここに宣言する。共通コマンドはCASEELSEの0でよい。
+@COM_JOB_MASK(ARG)
+#FUNCTION
+SELECTCASE ARG
+	;学生専用：授業を受ける・入部届・部活動
+	CASE 1001, 1012, 1013
+		RETURNF 0x01
+	;教師専用：授業をする
+	CASE 1050
+		RETURNF 0x02
+	;会社員専用：会社で働く
+	CASE 1051
+		RETURNF 0x04
+	;専業主婦専用：家事をする
+	CASE 1052
+		RETURNF 0x10
+	;キャバ嬢専用：店に出る
+	CASE 1053
+		RETURNF 0x20
+	;ソープ嬢専用：店に出る
+	CASE 1054
+		RETURNF 0x40
+	;ダンサー専用：ステージに立つ
+	CASE 1057
+		RETURNF 0x80
+	;仕事を辞める：辞めて身分が変わる職のみ（教師・会社員・キャバ嬢・ソープ嬢・ダンサー）
+	;学生・無職は元より対象外。フリーター・専業主婦は辞めても行き先が同じで意味がないので除外する
+	CASE 1056
+		RETURNF 0xE6
+	CASEELSE
+		RETURNF 0
+ENDSELECT
+
+;現在の身分の勤務先（職場）の地区。-1=専用の職場なし
+;「直接職場へ行く」(移動OP803)などが参照する。
+;（フリーターのバイト先は805「直接バイト先へ行く」、主婦の自宅は804/811「家に帰る」が既にあるため対象外）
+@勤務先地区
+#FUNCTION
+IF TALENT:MASTER:学生 || CFLAG:MASTER:仕事 == 1
+	;学生・教師：大学の教室
+	RETURNF 1
+ELSEIF CFLAG:MASTER:仕事 == 5
+	;会社員：オフィスビル
+	RETURNF 2
+ELSEIF CFLAG:MASTER:仕事 == 8
+	;キャバ嬢：キャバクラ
+	RETURNF 2
+ELSEIF CFLAG:MASTER:仕事 == 9
+	;ソープ嬢：ソープランド
+	RETURNF 2
+ELSEIF CFLAG:MASTER:仕事 == 10
+	;ダンサー：劇場
+	RETURNF 2
+ENDIF
+RETURNF -1
+
+;現在の身分の勤務先（職場）の位置。-1=専用の職場なし
+@勤務先位置
+#FUNCTION
+IF TALENT:MASTER:学生 || CFLAG:MASTER:仕事 == 1
+	RETURNF 2
+ELSEIF CFLAG:MASTER:仕事 == 5
+	RETURNF 29
+ELSEIF CFLAG:MASTER:仕事 == 8
+	RETURNF 19
+ELSEIF CFLAG:MASTER:仕事 == 9
+	RETURNF 51
+ELSEIF CFLAG:MASTER:仕事 == 10
+	RETURNF 52
+ENDIF
+RETURNF -1
+
+;現在の身分の勤務先の呼び名（移動オプションのラベル用）
+@勤務先名
+#FUNCTIONS
+IF TALENT:MASTER:学生 || CFLAG:MASTER:仕事 == 1
+	RETURNF "教室"
+ELSEIF CFLAG:MASTER:仕事 == 5
+	RETURNF "会社"
+ELSEIF CFLAG:MASTER:仕事 == 8 || CFLAG:MASTER:仕事 == 9
+	RETURNF "店"
+ELSEIF CFLAG:MASTER:仕事 == 10
+	RETURNF "劇場"
+ENDIF
+RETURNF ""
+
+;コマンド番号→場所条件を満たすか（1=OK）。テーブルに無ければ1（場所無制限）。
+;新規の身分別コマンドはここに地区・位置を宣言するだけでよい。
+@COM_PLACE_OK(ARG)
+#FUNCTION
+SELECTCASE ARG
+	;授業をする：大学の教室（地区1・位置2）
+	CASE 1050
+		RETURNF (CFLAG:MASTER:現在地区 == 1 && CFLAG:MASTER:現在位置 == 2)
+	;会社で働く：オフィスビル（地区2・位置29）
+	CASE 1051
+		RETURNF (CFLAG:MASTER:現在地区 == 2 && CFLAG:MASTER:現在位置 == 29)
+	;家事をする：自宅（地区0・位置1）
+	CASE 1052
+		RETURNF IS_MASTER_HOME()
+	;店に出る：キャバクラ（地区2・位置19）
+	CASE 1053
+		RETURNF (CFLAG:MASTER:現在地区 == 2 && CFLAG:MASTER:現在位置 == 19)
+	;店に出る：ソープランド（地区2・位置51）
+	CASE 1054
+		RETURNF (CFLAG:MASTER:現在地区 == 2 && CFLAG:MASTER:現在位置 == 51)
+	;ステージに立つ：劇場（地区2・位置52）
+	CASE 1057
+		RETURNF (CFLAG:MASTER:現在地区 == 2 && CFLAG:MASTER:現在位置 == 52)
+	;仕事を辞める：自宅（面接を受ける1055は複数職場対応のためCOMF1055側の@転職_対象身分で自前判定）
+	CASE 1056
+		RETURNF IS_MASTER_HOME()
+	;始業まで待つ：自分の職場（教室/オフィス/バイト先/キャバクラ/ソープランド/劇場。営業時間.ERB）
+	CASE 1058
+		RETURNF 勤務先か(CFLAG:MASTER:現在地区, CFLAG:MASTER:現在位置)
+	CASEELSE
+		RETURNF 1
+ENDSELECT
+
+;コマンド番号→時間条件を満たすか（1=OK）。テーブルに無ければ1（時間無制限）。
+;平日/休日は D:101（休日フラグ）、時間帯は TIME(分)、営業時間は 営業中() を使う。
+@COM_TIME_OK(ARG)
+#FUNCTION
+SELECTCASE ARG
+	;授業をする：平日の6:00〜16:00
+	CASE 1050
+		RETURNF (!D:101 && TIME >= 360 && TIME < 960)
+	;会社で働く：平日の9:00〜18:00。12:30〜13:30は昼休みなので働けない
+	;（COMF1010「お昼を食べる」がこの帯に入る。午後シフトは13:30開始）
+	CASE 1051
+		RETURNF (!D:101 && TIME >= 540 && TIME < 1080 && !(TIME >= 750 && TIME < 810))
+	;店に出る：キャバクラの営業時間内（19時〜翌1時）
+	CASE 1053
+		RETURNF 営業中(2, 19)
+	;店に出る：ソープランドの営業時間内（9時〜24時）
+	CASE 1054
+		RETURNF 営業中(2, 51)
+	;ステージに立つ：劇場の営業時間内（18時〜翌1時）
+	CASE 1057
+		RETURNF 営業中(2, 52)
+	;始業まで待つ：始業（開店）前で、待てば今日中に働ける時だけ
+	CASE 1058
+		RETURNF (始業までの分() > 0)
+	CASEELSE
+		RETURNF 1
+ENDSELECT
+
+;現在時刻が自分の身分の勤務時間かを示す表示用タグ（例: "(授業中)" "(始業30分前)"）
+;該当なし（勤務時間の概念がない身分・勤務時間外・休日）は空文字を返す。
+;INFO.ERB @SHOW_STATUS の時刻表示の直後に出す。
+;店に出る身分（フリーターのバイト先／キャバ嬢・ソープ嬢・ダンサー）は
+;営業時間.ERBの @営業中 / @開店準備中 / @営業開始 をそのまま流用する（定休日もそちらが見る）。
+@勤務時間タグ
+#FUNCTIONS
+#DIM 地区
+#DIM 位置
+;--- 学生・教師：大学の授業時間（平日のみ）
+IF TALENT:MASTER:学生 || CFLAG:MASTER:仕事 == 1
+	SIF HOLIDAY()
+		RETURNF ""
+	SELECTCASE TIME
+		CASE 390 TO 509
+			RETURNF @"(授業開始{510 - TIME}分前)"
+		CASE 510 TO 749
+			RETURNF "(授業中)"
+		CASE 750 TO 809
+			RETURNF @"(授業開始{810 - TIME}分前)"
+		CASE 810 TO 959
+			RETURNF "(授業中)"
+	ENDSELECT
+	RETURNF ""
+ENDIF
+;--- 会社員：平日9:00〜18:00（COMF1051の拘束時間に合わせる。2時間前から予告）
+;    12:30〜13:30は昼休み（学生・教師の昼休みと同じ帯）で、この間は勤務コマンドが出ない
+IF CFLAG:MASTER:仕事 == 5
+	SIF HOLIDAY()
+		RETURNF ""
+	SELECTCASE TIME
+		CASE 420 TO 539
+			RETURNF @"(始業{540 - TIME}分前)"
+		CASE 540 TO 749
+			RETURNF "(勤務中)"
+		CASE 750 TO 809
+			RETURNF "(昼休み)"
+		CASE 810 TO 1079
+			RETURNF "(勤務中)"
+	ENDSELECT
+	RETURNF ""
+ENDIF
+;--- フリーター：バイト先の営業時間（未就業なら表示なし）
+IF CFLAG:MASTER:仕事 == 6
+	SIF !CFLAG:MASTER:職業
+		RETURNF ""
+	地区 = JOB_AREA(CFLAG:MASTER:職業)
+	位置 = JOB_PLACE(CFLAG:MASTER:職業)
+	SIF 営業中(地区, 位置)
+		RETURNF "(バイト可)"
+	SIF 開店準備中(地区, 位置)
+		RETURNF @"(開店{営業開始(地区, 位置) - TIME}分前)"
+	RETURNF ""
+ENDIF
+;--- キャバ嬢・ソープ嬢・ダンサー：勤務先の営業時間（文言だけ職種で切り替える）
+IF CFLAG:MASTER:仕事 == 8 || CFLAG:MASTER:仕事 == 9 || CFLAG:MASTER:仕事 == 10
+	地区 = 勤務先地区()
+	位置 = 勤務先位置()
+	SIF 地区 < 0
+		RETURNF ""
+	IF 営業中(地区, 位置)
+		SIF CFLAG:MASTER:仕事 == 10
+			RETURNF "(開演中)"
+		RETURNF "(営業中)"
+	ENDIF
+	IF 開店準備中(地区, 位置)
+		SIF CFLAG:MASTER:仕事 == 10
+			RETURNF @"(開演{営業開始(地区, 位置) - TIME}分前)"
+		RETURNF @"(開店{営業開始(地区, 位置) - TIME}分前)"
+	ENDIF
+	RETURNF ""
+ENDIF
+;専業主婦・無職・レスラー・サービス業：勤務時間の概念なし
+RETURNF ""
+
+;現在地で「次の始業（開店）まであと何分か」を返す。0=待つ対象なし
+; （勤務時間中・本日の終業後・休日・そもそも職場でない）。「始業まで待つ」(COMF1058)が使う。
+; 身分ではなく現在地で分岐するので、学生がバイト先で開店待ちする場合も店の分岐に落ちる。
+; 時刻の根拠は @勤務時間タグ と各勤務コマンド（COMF1001/1050/1051）の時間条件に合わせる。
+@始業までの分
+#FUNCTION
+;--- 大学の教室：平日の授業開始（午前8:30／午後13:30。昼休みも待機対象）
+IF CFLAG:MASTER:現在地区 == 1 && CFLAG:MASTER:現在位置 == 2 && (TALENT:MASTER:学生 || CFLAG:MASTER:仕事 == 1)
+	SIF HOLIDAY()
+		RETURNF 0
+	SIF TIME < 510
+		RETURNF 510 - TIME
+	SIF TIME >= 750 && TIME < 810
+		RETURNF 810 - TIME
+	RETURNF 0
+ENDIF
+;--- オフィスビル：平日9:00始業（COMF1051の時間条件に合わせる。昼休みも待機対象）
+IF CFLAG:MASTER:現在地区 == 2 && CFLAG:MASTER:現在位置 == 29 && CFLAG:MASTER:仕事 == 5
+	SIF HOLIDAY()
+		RETURNF 0
+	SIF TIME < 540
+		RETURNF 540 - TIME
+	SIF TIME >= 750 && TIME < 810
+		RETURNF 810 - TIME
+	RETURNF 0
+ENDIF
+;--- 店（バイト先・キャバクラ・ソープランド・劇場）：開店準備中の帯だけが待機対象
+;    （それより前は@入店可が通さないので、そもそも店内にいられない）
+SIF 開店準備中(CFLAG:MASTER:現在地区, CFLAG:MASTER:現在位置)
+	RETURNF 営業開始(CFLAG:MASTER:現在地区, CFLAG:MASTER:現在位置) - TIME
+RETURNF 0
+
+;プレイヤーの身分／職種を文字列で返す（セーブ表示・情報表示などで再利用）
+;優先順は@PLAYER_JOB_BITに合わせ学生を最優先、以降はCFLAG:MASTER:仕事で分岐。
+;名称はPRINT_STATE.ERBの職種表示に合わせる。
+@身分名
+#FUNCTIONS
+IF TALENT:MASTER:学生
+	RETURNF "学生"
+ENDIF
+SELECTCASE CFLAG:MASTER:仕事
+	CASE 1
+		RETURNF "教師"
+	CASE 2, 3
+		RETURNF "レスラー"
+	CASE 4
+		RETURNF "サービス業"
+	CASE 5
+		RETURNF "会社員"
+	CASE 6
+		RETURNF "フリーター"
+	CASE 7
+		RETURNF "専業主婦"
+	CASE 8
+		RETURNF "キャバ嬢"
+	CASE 9
+		RETURNF "ソープ嬢"
+	CASE 10
+		RETURNF "ダンサー"
+ENDSELECT
+RETURNF "無職"

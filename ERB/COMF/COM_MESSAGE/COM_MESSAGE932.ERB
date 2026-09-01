@@ -1,0 +1,13 @@
+﻿@COM_MESSAGE_932
+;--------------------------------------------------------------------------
+;振り払う
+;--------------------------------------------------------------------------
+PRINTFORML ＜振り払う＞
+SELECTCASE TFLAG:COM用変数
+	CASE -1
+		PRINTW 抵抗不可
+	CASE 0
+		PRINTFORMW %CALLNAME:(TFLAG:行為者)%は%CALLNAME:(TCVAR:(TFLAG:行為者):行為対象)%を振り払おうとしたが失敗した
+	CASE 1
+		PRINTFORMW %CALLNAME:(TFLAG:行為者)%は%CALLNAME:(TCVAR:(TFLAG:行為者):行為対象)%を振り払った
+ENDSELECT

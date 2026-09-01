@@ -1,0 +1,68 @@
+﻿;乗車時にFLAG:痴漢付与フラグによって[痴漢]をつけたり消したりする
+@痴漢付与(キャラ番号)
+#DIM キャラ番号
+SIF !FLAG:痴漢付与フラグ
+	RETURN
+
+SELECTCASE FLAG:痴漢付与フラグ
+CASE 1
+	SIF TALENT:キャラ番号:痴漢
+		RETURN
+	TALENT:キャラ番号:痴漢 = 1
+	CFLAG:キャラ番号:一時痴漢 = 1
+
+CASE 2
+	IF !HETEROSEX(MASTER, キャラ番号)
+		SIF TALENT:キャラ番号:痴漢
+			RETURN
+		TALENT:キャラ番号:痴漢 = 1
+		CFLAG:キャラ番号:一時痴漢 = 1
+	ELSE
+		SIF !TALENT:キャラ番号:痴漢
+			RETURN
+		TALENT:キャラ番号:痴漢 = 0
+		CFLAG:キャラ番号:一時痴漢 = -1
+	ENDIF
+CASE 3
+	IF HETEROSEX(MASTER, キャラ番号)
+		SIF TALENT:キャラ番号:痴漢
+			RETURN
+		TALENT:キャラ番号:痴漢 = 1
+		CFLAG:キャラ番号:一時痴漢 = 1
+	ELSE
+		SIF !TALENT:キャラ番号:痴漢
+			RETURN
+		TALENT:キャラ番号:痴漢 = 0
+		CFLAG:キャラ番号:一時痴漢 = -1
+	ENDIF
+CASE 12
+	IF HETEROSEX(MASTER, キャラ番号)
+		SIF !TALENT:キャラ番号:痴漢
+			RETURN
+		TALENT:キャラ番号:痴漢 = 0
+		CFLAG:キャラ番号:一時痴漢 = -1
+	ENDIF
+CASE 13
+	IF !HETEROSEX(MASTER, キャラ番号)
+		SIF !TALENT:キャラ番号:痴漢
+			RETURN
+		TALENT:キャラ番号:痴漢 = 0
+		CFLAG:キャラ番号:一時痴漢 = -1
+	ENDIF
+ENDSELECT
+	
+RETURN
+
+;下車時にCFLAG:一時痴漢によって[痴漢]を付け直したり消し直したりする
+@痴漢消去(キャラ番号)
+#DIM キャラ番号
+
+IF CFLAG:キャラ番号:一時痴漢 > 0
+	TALENT:キャラ番号:痴漢 = 0
+	CFLAG:キャラ番号:一時痴漢 = 0
+ELSEIF CFLAG:キャラ番号:一時痴漢 < 0
+	TALENT:キャラ番号:痴漢 = 1
+	CFLAG:キャラ番号:一時痴漢 = 0
+ENDIF
+
+RETURN

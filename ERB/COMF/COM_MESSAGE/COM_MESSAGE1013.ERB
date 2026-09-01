@@ -1,0 +1,63 @@
+﻿@COM_MESSAGE_1013
+;--------------------------------------------------------------------------
+;部活動
+;--------------------------------------------------------------------------
+SIF M:101 == 1
+	RETURN 0
+PRINTFORML %CLUB_NAME(CFLAG:MASTER:部活)%の活動を行った。
+;ノーパン＋女性＋テニス部
+IF TEQUIP:MASTER:下半身下着 == 0 && TALENT:MASTER:性別 & 1 && CFLAG:MASTER:部活 == 1
+	PRINTFORML コートの中を走り回るたび、ウェアのスカートがひるがえる。
+	IF ABL:MASTER:露出癖 >= 2
+		PRINTFORML その下は下着も、そしてアンダースコートすら穿いていないため、ちょっとしたことで大事な部分が丸見えになりかねない。
+		PRINTFORM 激しい羞恥
+		SIF ABL:MASTER:露出癖 >= 4
+			PRINTFORM と共にゾクゾクとした快美感
+	ELSE
+		PRINTFORML アンダースコートを穿いてはいるものの、その下には下着を着けていない。
+		PRINTFORM 初歩的な露出プレイに羞恥
+		;露出癖Lv1 or 恥薄い
+		SIF ABL:MASTER:露出癖 == 1 || TALENT:MASTER:羞恥心 == 1
+			PRINTFORM と微かな快楽
+	ENDIF
+	PRINTFORMW を感じながら、%CALLNAME:MASTER%は部活動を続けた…
+;水泳部（↓のノーブラ時の運動部活動の文に違和感が出るので隔離。現状では空です）
+ELSEIF CFLAG:MASTER:部活 == 2
+;	PRINTFORML 
+;新体操部（同上）
+ELSEIF CFLAG:MASTER:部活 == 3
+;	PRINTFORML 
+;ノーブラ＋女性＋運動部
+ELSEIF TEQUIP:MASTER:上半身下着 == 0 && TALENT:MASTER:性別 & 1 && CFLAG:MASTER:部活 <= 30
+	PRINTFORM 動き回るたびに、下着に覆われていない
+	;絶壁
+	IF TALENT:MASTER:バストサイズ == -2
+		PRINTFORM 平坦な胸
+	ELSE
+		;貧乳
+		IF TALENT:MASTER:バストサイズ == -1
+			PRINTFORM なだらかな胸が微か
+		;巨乳
+		ELSEIF TALENT:MASTER:バストサイズ == 1
+			PRINTFORM 豊かな乳房が
+		;爆乳
+		ELSEIF TALENT:MASTER:バストサイズ == 2
+			PRINTFORM 豊か過ぎる乳房が重そうに
+		ELSE
+			PRINTFORM 乳房が
+		ENDIF
+		PRINTFORM 揺れ、そ
+	ENDIF
+	PRINTFORM の先端が服の裏地に擦れて
+	;Ｂ感覚Lv4以上
+	IF ABL:MASTER:Ｂ感覚 >= 4
+		PRINTFORML 絶え間ない快美感を伝えてくる。
+	;Ｂ感覚Lv2以上 or Ｂ敏感
+	ELSEIF ABL:MASTER:Ｂ感覚 >= 2 || TALENT:MASTER:Ｂ感度 == 1
+		PRINTFORML %CALLNAME:MASTER%の体に快楽を送り込んでくる。
+	ELSE
+		PRINTFORML 疼痛を送り込んでくる。
+	ENDIF
+	PRINTFORMW その感覚に堪えながら、%CALLNAME:MASTER%は部活動を続けた…
+ENDIF
+M:101 = 1

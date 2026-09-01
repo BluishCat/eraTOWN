@@ -1,0 +1,270 @@
+﻿@NMKAIWA(ARG)
+;呼び出し元(NPC_AUTOACTION1/2)で I=1(プレイヤー)、ARG=話しかけるNPC。1=あなた
+;--- 関係性ティア判定(NPC→あなた) K:105  0=顔見知り 1=親しい 2=険悪 ---
+K:105 = 0
+IF TA:ARG:1:6 >= 200 && TA:ARG:1:6 > TA:ARG:1:3
+	K:105 = 2
+ELSEIF TA:ARG:1:3 >= 200 || TA:ARG:1:1 >= 2
+	K:105 = 1
+ENDIF
+;NPCがあなたのお腹を見て妊娠に気づくことがある
+CALL 妊娠露見チェック(ARG, 1)
+;大半はあいさつ。3割ほどで本格的な会話になる
+K:102 = RAND(100)
+IF K:102 >= 30
+	SELECTCASE K:105
+		CASE 1
+			SELECTCASE RAND(3)
+				CASE 0
+					PRINTFORML %CALLNAME:ARG%が笑顔で近づいてきた。
+					PRINTL 「やっほー！」
+				CASE 1
+					PRINTFORML %CALLNAME:ARG%が手を振ってきた。
+					PRINTL 「あ、元気してた？」
+				CASEELSE
+					PRINTFORML %CALLNAME:ARG%が声をかけてきた。
+					PRINTL 「ねえねえ！」
+			ENDSELECT
+			TA:ARG:1:3 += 1
+			TA:1:ARG:3 += 1
+			EXP:ARG:会話経験 += 1
+			EXP:1:会話経験 += 1
+		CASE 2
+			IF RAND(2)
+				PRINTFORML %CALLNAME:ARG%と目が合ったが、ふいとそらされた。
+			ELSE
+				PRINTFORML %CALLNAME:ARG%はあなたを一瞥して通り過ぎた。
+			ENDIF
+		CASEELSE
+			SELECTCASE RAND(3)
+				CASE 0
+					PRINTFORML %CALLNAME:ARG%が軽く会釈してきた。
+					PRINTL 「あ、どうも」
+				CASE 1
+					PRINTFORML %CALLNAME:ARG%が声をかけてきた。
+					PRINTL 「こんにちは」
+				CASEELSE
+					PRINTFORML %CALLNAME:ARG%が片手を挙げた。
+					PRINTL 「やあ」
+			ENDSELECT
+			TA:ARG:1:3 += 1
+			TA:1:ARG:3 += 1
+			EXP:ARG:会話経験 += 1
+			EXP:1:会話経験 += 1
+	ENDSELECT
+	CFLAG:ARG:会話 = 1
+	CFLAG:1:会話 = 1
+	PRINTL
+	RETURN 1
+ENDIF
+;=== ここから本格会話（残り3割） ===
+;恋人への告白（NPC→あなた。最愛があなたで愛情・好意が十分な相手のみ、低確率）2026-07-16追加
+IF !TALENT:ARG:恋人 && CFLAG:1:恋人相手 == 0 && !TALENT:ARG:家族 && CFLAG:ARG:最愛 == 1 && TA:ARG:1:1 >= 5 && TA:ARG:1:3 >= 250 && !TCVAR:ARG:告白済 && RAND(3) == 0
+	TCVAR:ARG:告白済 = 1
+	PRINTL
+	PRINTFORML %"=" * 107%
+	PRINTFORML %CALLNAME:ARG%が意を決した様子であなたの前に立った。
+	IF TALENT:ARG:性別 & 2 && !(TALENT:ARG:性別 & 1)
+		;男性器のみ＝男性口調
+		PRINTL 「……ずっと前から、お前のことが好きだった。俺と付き合ってくれないか」
+	ELSE
+		PRINTL 「……あのね、ずっと言えなかったんだけど。私、あなたのことが好きなの。……付き合って、くれない？」
+	ENDIF
+	$INPUT_LOOP_L
+	PRINTL どう答えますか？
+	PRINTFORML [0] - 受ける
+	PRINTFORML [1] - 断る
+	INPUT
+	SIF RESULT != 0 && RESULT != 1
+		GOTO INPUT_LOOP_L
+	EXP:ARG:会話経験 += 1
+	EXP:1:会話経験 += 1
+	IF RESULT == 0
+		PRINTFORML あなたは%CALLNAME:ARG%の想いを受け入れた。
+		CALL 恋人成立(1, ARG)
+		PRINTFORML %CALLNAME:ARG%とあなたは恋人同士になった。
+		SIF !TFLAG:移動中
+			PRINTW
+	ELSE
+		PRINTFORML あなたは%CALLNAME:ARG%の想いに応えられなかった。
+		TA:ARG:1:3 -= 20
+		TA:ARG:1:1 -= 1
+		IF TALENT:ARG:性別 & 2 && !(TALENT:ARG:性別 & 1)
+			PRINTFORMW %CALLNAME:ARG%「……そうか。悪かったな、忘れてくれ」
+		ELSE
+			PRINTFORMW %CALLNAME:ARG%「……そっか。ごめんね、変なこと言って……」
+		ENDIF
+	ENDIF
+	PRINTL
+	CFLAG:ARG:会話 = 1
+	CFLAG:1:会話 = 1
+	RETURN 1
+ENDIF
+;セフレ勧誘（NPC→あなた。肉欲・欲情は高いが愛情は低い＝告白ではなくセフレ提案になる相手のみ、低確率）2026-07-17追加
+IF !TA:ARG:1:7 && CFLAG:1:恋人相手 != ARG && !TALENT:ARG:家族 && TA:ARG:1:0 >= 150 && TA:ARG:1:4 >= 200 && TA:ARG:1:1 < 5 && !TCVAR:ARG:セフレ勧誘済 && RAND(4) == 0
+	TCVAR:ARG:セフレ勧誘済 = 1
+	PRINTL
+	PRINTFORML %"=" * 107%
+	PRINTFORML %CALLNAME:ARG%が妙に艶っぽい目つきであなたに身を寄せてきた。
+	IF TALENT:ARG:性別 & 2 && !(TALENT:ARG:性別 & 1)
+		;男性器のみ＝男性口調
+		PRINTL 「なあ……付き合うとか面倒なのは抜きでさ、体だけの関係にならないか？」
+	ELSE
+		PRINTL 「ねえ……恋人とか、そういうのじゃなくてさ。……体だけの関係って、興味ない？」
+	ENDIF
+	$INPUT_LOOP_SF
+	PRINTL どう答えますか？
+	PRINTFORML [0] - 受ける
+	PRINTFORML [1] - 断る
+	INPUT
+	SIF RESULT != 0 && RESULT != 1
+		GOTO INPUT_LOOP_SF
+	EXP:ARG:会話経験 += 1
+	EXP:1:会話経験 += 1
+	IF RESULT == 0
+		PRINTFORML あなたは%CALLNAME:ARG%の誘いに乗ることにした。
+		CALL セフレ成立(1, ARG)
+		PRINTFORML %CALLNAME:ARG%とあなたはセフレになった。
+		SIF !TFLAG:移動中
+			PRINTW
+	ELSE
+		PRINTFORML あなたはやんわりと断った。
+		TA:ARG:1:3 -= 5
+		IF TALENT:ARG:性別 & 2 && !(TALENT:ARG:性別 & 1)
+			PRINTFORMW %CALLNAME:ARG%「……ちぇっ。まあ、気が変わったら言えよ」
+		ELSE
+			PRINTFORMW %CALLNAME:ARG%「……そっか。残念。気が向いたら、いつでも言ってね？」
+		ENDIF
+	ENDIF
+	PRINTL
+	CFLAG:ARG:会話 = 1
+	CFLAG:1:会話 = 1
+	RETURN 1
+ENDIF
+;性的勧誘（相手の欲情・愛情・肉欲が十分な相手のみ、その中でさらに抽選）
+IF (TA:ARG:1:4 >= 200 || (TA:ARG:1:1 >= 1 && TA:ARG:1:3 >= 100) || (TA:ARG:1:0 >= 100 && TA:ARG:1:2 >= 10)) && RAND(2)
+	PRINTL
+	PRINTFORML %"=" * 107%
+	PRINTFORML %CALLNAME:ARG%があなたに話しかけてきた
+	IF NO:ARG == 40
+		IF TALENT:ARG:処女
+			PRINTL 「勉強してますの？」
+		ELSE
+			PRINTL 「わ、わたくしを調教してくださる？」
+		ENDIF
+	ELSEIF !GETBIT(TALENT:ARG:2,0)
+		PRINTL 「やらないか？」
+	ELSE
+		PRINTL 「エッチしよ？」
+	ENDIF
+	$INPUT_LOOP_S
+	PRINTL どう答えますか？
+	PRINTFORML [0] - はい
+	PRINTFORML [1] - いいえ
+	INPUT
+	SIF RESULT != 0 && RESULT != 1
+		GOTO INPUT_LOOP_S
+	IF RESULT == 1
+		PRINTL
+		RETURN 1
+	ENDIF
+	EXP:ARG:会話経験 += 1
+	EXP:1:会話経験 += 1
+	IF NO:ARG == 40 && TALENT:ARG:処女
+		PRINTFORML %CALLNAME:ARG%と勉強の話をした。
+		GOTO KAIWA_SOURCE
+	ENDIF
+	K:104 = 1
+	CALL EVENT_JOIN(1,ARG,4)
+	CFLAG:ARG:待機時間 += 2
+	TB:(CFLAG:ARG:現在地区):(CFLAG:ARG:現在位置):ARG -= 5
+	TB:(CFLAG:ARG:現在地区):(CFLAG:ARG:現在位置):1 -= 3
+	K:104 = 0
+	RETURN 1
+ENDIF
+;悪口(噂話)の対象選定（本当に敵視している相手がいる時のみ）
+;選定は @噂話対象（COMMON.ERB）へ一元化。COMF800 のプレイヤー側噂話と同じ基準を使う
+K:101 = 噂話対象(ARG, 1)
+PRINTL
+PRINTFORML %"=" * 107%
+PRINTFORML %CALLNAME:ARG%があなたに話しかけてきた
+IF K:101
+	TA:ARG:(K:101):6 += 10
+	TA:(K:101):ARG:6 += 10
+	PRINTFORML 「ねえ、%CALLNAME:(K:101)%って悪いやつだと思わない？」
+ELSE
+	SELECTCASE K:105
+		CASE 1
+			PRINTL 「最近どう？　なんか面白いことあった？」
+		CASE 2
+			PRINTL 「……別に。ちょっと話しかけただけ」
+		CASEELSE
+			PRINTL 「いい天気だね」
+	ENDSELECT
+ENDIF
+$INPUT_LOOP1
+PRINTL どう答えますか？
+PRINTFORML [0] - はい
+PRINTFORML [1] - いいえ
+INPUT
+SIF RESULT != 0 && RESULT != 1
+	GOTO INPUT_LOOP1
+IF RESULT == 1
+	PRINTL
+	RETURN 1
+ENDIF
+EXP:ARG:会話経験 += 1
+EXP:1:会話経験 += 1
+IF K:101
+	TA:1:(K:101):6 += 10
+	PRINTFORML %CALLNAME:ARG%の噂話に同意した。（%CALLNAME:(K:101)%への敵対感 +10）
+ELSE
+	PRINTFORML %CALLNAME:ARG%と雑談した。
+ENDIF
+$KAIWA_SOURCE
+
+K:103 = 1
+
+	TFLAG:Ｎイベント = 8
+
+	TCVAR:I:目的位置 = 0
+	TCVAR:I:目的地区 = 0
+	TCVAR:ARG:目的位置 = 0
+	TCVAR:ARG:目的地区 = 0
+	CFLAG:ARG:受能動 = 1
+	CFLAG:I:受能動 = 2
+	TCVAR:ARG:行為対象 = I
+	TCVAR:I:行為対象 = ARG
+	CALL XCOM2800(ARG)
+	TCVAR:ARG:行為対象 = I
+	TCVAR:I:行為対象 = ARG
+	CALL SOURCE_CHECKS(ARG)
+	IF TFLAG:成否用変数 > -2
+		TFLAG:行為者 = I
+		CFLAG:ARG:受能動 = 2
+		CFLAG:I:受能動 = 1
+		TCVAR:ARG:行為対象 = I
+		TCVAR:I:行為対象 = ARG
+		CALL XCOM2801(I)
+		TCVAR:I:行為対象 = ARG
+		TCVAR:ARG:行為対象 = I
+		CALL SOURCE_CHECKS(I)
+		TFLAG:行為者 = ARG
+		MAXBASE:ARG:気力 += 1
+		MAXBASE:I:気力 += 1
+		TA:I:ARG:4 += 5
+		TA:ARG:I:4 += 5
+		TA:I:ARG:6 -= 1
+		TA:ARG:I:6 -= 1
+	ENDIF
+	CFLAG:ARG:会話 = 1
+	CFLAG:I:会話 = 1
+	CALL EVENT_ESCAPE_NPC(ARG,I)
+	TFLAG:Ｎイベント = 0
+
+K:103 = 0
+
+PRINTL
+
+RETURN 1
+

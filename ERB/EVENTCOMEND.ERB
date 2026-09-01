@@ -1,0 +1,260 @@
+﻿@EVENTCOMEND
+
+NEXTCOM = -1
+
+;EVENTTRAINからダミーを経過してここにたどり着く
+;その後は一日の終了条件を満たすまでループする
+WHILE 1
+VARSET LOCAL
+;全員の待機時間を減らす
+;減らした待機時間に応じて各BESEなどの変化
+CALL TIME_COUNT(TFLAG:経過時間)
+;流産・陣痛開始・出産による行為の強制終了予約を消化(PREGNANCY.ERB)
+;TIME_COUNT内で発火した出産・予定日陣痛をコマンド間で畳み、衰弱判定より前に後始末する
+CALL 行為終了予約消化
+[SKIPSTART]
+;一日の終了条件を満たすとAFTERTRAINに飛んでループ終了
+IF TIME >= 1440
+	BEGIN AFTERTRAIN
+	RETURN 1
+ENDIF
+[SKIPEND]
+IF SELECTCOM:MASTER == 1004 || TCVAR:MASTER:衰弱
+	SELECTCOM:MASTER = -1
+	BEGIN AFTERTRAIN
+	RETURN 1
+ENDIF
+;睡眠、衰弱からの回復チェック
+
+CALL SLEEP_CHECK
+CALL WAKE_UP_CHECK
+
+;乗り物に乗っているときの処理
+FOR LOCAL,1,CHARANUM
+	;電車待ち状態で電車が来た
+	IF CFLAG:LOCAL:乗車 == 2 && CFLAG:LOCAL:待機時間 == 0
+		;PRINTFORMW %CALLNAME:LOCAL%乗車
+		CFLAG:LOCAL:乗車 = 1
+		;CFLAG:LOCAL:待機時間 = TRAIN_TIME(LOCAL,CFLAG:LOCAL:到着地区,CFLAG:LOCAL:到着位置)
+	;電車に乗っていて電車が到着した
+	ELSEIF CFLAG:LOCAL:乗車 == 1 && CFLAG:LOCAL:到着時間 <= TIME
+		;PRINTFORMW %CALLNAME:LOCAL%降車
+		CFLAG:LOCAL:乗車 = 0
+		CFLAG:LOCAL:現在地区 = CFLAG:LOCAL:到着地区
+		CFLAG:LOCAL:現在位置 = CFLAG:LOCAL:到着位置
+		IF TCVAR:LOCAL:イベント == 1
+			TCVAR:LOCAL:イベント = 0
+			TARGET = 0
+			TCVAR:LOCAL:行為対象 = 0
+			TCVAR:LOCAL:601 = 0
+			TCVAR:LOCAL:挿入 = 0
+			TCVAR:LOCAL:被挿入 = 0
+			TCVAR:LOCAL:キス中 = 0
+			TCVAR:LOCAL:現在体位 = 0
+			SIF TEQUIP:LOCAL:膣 == 1
+				TEQUIP:LOCAL:膣 = 0
+			SIF TEQUIP:LOCAL:アナル == 60 || TEQUIP:LOCAL:アナル == 61 || TEQUIP:LOCAL:アナル == 62
+				TEQUIP:LOCAL:アナル = 0
+			SELECTCOM:LOCAL = 0
+			CFLAG:LOCAL:痴漢発見 = 0
+			IF LOCAL == MASTER
+				PRINTW 駅に到着したので急いで逃げた
+				PRINTL
+			ENDIF
+		ELSEIF LOCAL == MASTER
+			PRINTW 目的の駅に到着しました
+			PRINTL
+		ENDIF
+		CALL 痴漢消去(LOCAL)
+	ENDIF
+NEXT
+FLAG:痴漢され中 = 0
+
+IF TCVAR:MASTER:イベント == 2
+	;IF BASE:MASTER:抵抗 > 0
+		IF TFLAG:騒ぎ > RAND(200)
+			PRINTFORMW 人がきたので%CALLNAME:(TCVAR:MASTER:行為対象)%は逃げていった
+			PRINTL
+			CFLAG:(TCVAR:MASTER:行為対象):現在地区 = 0
+			CFLAG:(TCVAR:MASTER:行為対象):現在位置 = 12
+			CALL EVENT_ESCAPE_ALL
+		ELSEIF BASE:(TCVAR:MASTER:行為対象):体力 < 800
+			PRINTFORMW 敵わないと見たのか%CALLNAME:(TCVAR:MASTER:行為対象)%は逃げていった
+			PRINTL
+			CFLAG:(TCVAR:MASTER:行為対象):現在地区 = 0
+			CFLAG:(TCVAR:MASTER:行為対象):現在位置 = 12
+			CALL EVENT_ESCAPE_ALL
+		ELSEIF BASE:(TCVAR:MASTER:行為対象):興奮度 < 200
+			PRINTFORMW 萎えたのか%CALLNAME:(TCVAR:MASTER:行為対象)%は%CALLNAME:MASTER%をそのままに去っていった
+			PRINTL
+			CFLAG:(TCVAR:MASTER:行為対象):現在地区 = 0
+			CFLAG:(TCVAR:MASTER:行為対象):現在位置 = 12
+			CALL EVENT_ESCAPE_ALL
+		ELSE
+			TFLAG:騒ぎ++
+		ENDIF
+	;ELSE
+	;	PRINTW 抵抗できなくなった･･････
+	;	CALL EVENT_JOIN(TCVAR:MASTER:行為対象,MASTER,4)
+	;ENDIF
+ENDIF
+
+CALL SAME_ROOM_CHECK
+SIF TIME == 720 || TIME == 960
+	J:151 = 0
+IF (TIME == 539 || TIME == 839) && J:151
+;;;	PRINTL 授業中テスト
+	CALL JYUGYOU1()
+ENDIF
+;待機時間が0以下の人にターンを回す
+FOR LOCAL,1,CHARANUM
+;;;どうもキャラスルーするとバグるみたいです(135行辺りが原因と分かった)
+;;;	SIF NO:LOCAL == 34
+;;;		CONTINUE
+	J:101 = TIME / 60
+	;人数関数が未定義の部屋（賃貸の号室など）は0人扱い
+	RESULT = 0
+	TRYCALLFORM PLACE_NINZU_{CFLAG:LOCAL:現在地区}_{CFLAG:LOCAL:現在位置}(J:101)
+	N:101 = RESULT
+	CALL OYA_OSOU(LOCAL)
+	SIF CFLAG:LOCAL:衰弱 || CFLAG:LOCAL:睡眠
+		CONTINUE
+	IF CFLAG:LOCAL:待機時間 == 0
+		TFLAG:行為者 = LOCAL
+		;前のキャラのターン中(SOURCE処理)に張られた行為強制終了予約を、次の行動前に消化(PREGNANCY.ERB)
+		CALL 行為終了予約消化
+		TCVAR:LOCAL:防御 = 0
+		TCVAR:LOCAL:無抵抗 = 0
+		IF LOCAL == MASTER
+			;あなたの行動はここ
+			;電車に乗ってすぐの状態
+			IF CFLAG:LOCAL:乗車 == 1 && !TCVAR:LOCAL:イベント
+				CFLAG:LOCAL:待機時間 = TRAIN_TIME(LOCAL,CFLAG:LOCAL:到着地区,CFLAG:LOCAL:到着位置)
+			;直接移動（経路追従）の判断点＝次のゾーンへ向かう1歩を決める（電車乗車/校舎出入り/最終到着）
+			ELSEIF TCVAR:LOCAL:直接移動中 && !TCVAR:LOCAL:目的位置 && !TCVAR:LOCAL:イベント
+				CALL 直接移動継続(MASTER)
+			;遠距離移動中
+			ELSEIF TCVAR:LOCAL:目的位置
+				SKIPDISP 1
+				CALL XCOM1000(MASTER)
+				CALL SOURCE_CHECKS(LOCAL)
+				SKIPDISP 0
+			ELSE
+;;;ここは毎時マスターと同室の場合にマスターに対して（マスターの衣装による）欲情を加算している処理
+;;;基本マスターの行動の待機時間は１０分なので５０以上、１０１７（くつろぐ）は３０分なので３０以上、入浴などは６０分なので１回という計算です
+;;;後半イベント中除外、平日の授業中除外、部活中除外です
+				IF ((TIME % 60 >= 50 || (TIME % 60 >= 30 && SELECTCOM:1 == 1017)) && TIME % 60 <= 59 || SELECTCOM:1 == 1002 || SELECTCOM:1 == 1003 || SELECTCOM:1 == 1008) && !TCVAR:1:イベント && !(!D:101 && (TIME >= 510 && TIME <= 749) || (TIME >= 810 && TIME <= 959)) && !(CFLAG:LOCAL:部活 && TIME >= 960 && TIME <= 1129)
+					CALL TEIJI_DOUSHITU(1)
+				ENDIF
+;;;ここまで
+				SIF TARGET
+					TCVAR:MASTER:行為対象 = TARGET
+				CALL PLAYER_USERCOM
+				CALL SOURCE_CHECKS(LOCAL)
+				;PRINTFORML %CALLNAME:LOCAL% {CFLAG:LOCAL:待機時間}
+			ENDIF
+			;路上（繁華街）での見知らぬ男との低確率遭遇
+			CALL 路上遭遇チェック
+			;泥酔したまま夜の街へ出た時のお持ち帰り（路上遭遇が発生した時は見送り）
+			IF !RESULT
+				CALL 酔い持ち帰りチェック
+			ENDIF
+			;私的行為中の覗きイベント（直前コマンドで場面判定。上のイベントが発生した時は見送り）
+			IF !RESULT
+				SIF SELECTCOM:1 == 1008
+					CALL 覗きチェック(1)
+				SIF SELECTCOM:1 == 1007
+					CALL 覗きチェック(2)
+				SIF SELECTCOM:1 == 1019
+					CALL 覗きチェック(3)
+				SIF SELECTCOM:1 == 1013
+					CALL 覗きチェック(4)
+			ENDIF
+;;;			FOR D,2,CHARANUM
+;;;				CFLAG:D:会話 = 0
+;;;			NEXT
+		ELSE
+			;NPCの行動はここ
+			IF CFLAG:LOCAL:乗車 == 1 && !TCVAR:LOCAL:イベント
+				CALL 痴漢付与(LOCAL)
+				CALL EVENT_CHECK_1(LOCAL)
+				IF RESULT
+					LOCAL:2 = 1
+				ELSE
+					CFLAG:LOCAL:待機時間 = TRAIN_TIME(LOCAL,CFLAG:LOCAL:到着地区,CFLAG:LOCAL:到着位置)
+				ENDIF
+			;遠距離移動中は他のことをしようとしない（修正必要かも）
+			ELSEIF TCVAR:LOCAL:目的位置
+				CALL NPC_MOVEMENT(LOCAL)
+				;CALL SOURCE_CHECKS(LOCAL)
+
+			ELSE
+				;特に移動先がない場合何をするか決める
+				CALL NPC_ACTION(LOCAL)
+			ENDIF
+			IF LOCAL == (CHARANUM - 1)
+				FOR D,1,CHARANUM
+					CFLAG:D:会話 = 0
+				NEXT
+			ENDIF
+		ENDIF
+	ENDIF
+	IF !LOCAL:1 || TFLAG:経過時間 > CFLAG:LOCAL:待機時間
+;CFLAG:LOCAL:待機時間が0の場合があるため、TFLAG:経過時間=0とLOCAL:1が同時に立たない様条件付け
+		IF CFLAG:LOCAL:待機時間 >> 0
+			TFLAG:経過時間 = CFLAG:LOCAL:待機時間
+			LOCAL:1++
+		ENDIF
+	ENDIF
+NEXT
+
+IF LOCAL:2 == 1
+	CALL EVENT_MESSAGE_1
+	PRINTL
+ENDIF
+SIF !LOCAL:1
+	TFLAG:経過時間 = 5
+;体力切れなどのチェック
+CALL WEAKNESS_CHECK
+
+;PRINTFORMW {TFLAG:経過時間}
+;次のループで経過時間がいくつになるか計測
+
+WEND
+
+;--------------------------------------------------------------------------
+;抵抗成功
+;--------------------------------------------------------------------------
+@RESIST_SUCCESS
+
+PRINTFORML ＜抵抗成功＞
+LOCAL = RAND:2
+IF LOCAL == 0
+	PRINTFORM 周囲の視線が集まるのを恐れたか、
+ELSE
+	PRINTFORM %CALLNAME:MASTER%の抵抗が予想以上に激しかったのか、
+ENDIF
+PRINTFORMW 痴漢は不承不承引き下がった。
+PRINTL
+
+RETURN 1
+
+;--------------------------------------------------------------------------
+;抵抗失敗
+;--------------------------------------------------------------------------
+@RESIST_FAIL
+
+PRINTFORML ＜抵抗失敗＞
+PRINTFORM %CALLNAME:MASTER%の抵抗を
+LOCAL = RAND:2
+IF LOCAL == 0
+	PRINTFORM 気にも留めず、
+ELSE
+	PRINTFORM ものともせず、
+ENDIF
+PRINTFORMW 痴漢は行為を続行した。
+PRINTL
+
+RETURN 1
+
+

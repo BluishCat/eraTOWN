@@ -1,0 +1,50 @@
+﻿@XCOM_ABLE1004(ARG)
+IF IS_MASTER_HOME() || (CFLAG:MASTER:現在地区 == 0 && (CFLAG:MASTER:現在位置 == 1 || CFLAG:MASTER:現在位置 == 30)) || (CFLAG:1:現在地区 == 1 && (CFLAG:1:現在位置 == 7 || CFLAG:1:現在位置 == 30)) || (CFLAG:1:現在地区 == 2 && (CFLAG:1:現在位置 == 17 || CFLAG:1:現在位置 == 22 || CFLAG:1:現在位置 == 26))
+ELSE
+	RETURN 0
+ENDIF
+;ラブホテルは宿泊料3000円が必要（当日の休憩料金支払済＝TCVAR:ホテル利用権なら無料）
+SIF CFLAG:1:現在地区 == 2 && CFLAG:1:現在位置 == 22 && MONEY:1 < 3000 && !TCVAR:MASTER:ホテル利用権
+	RETURN 0
+;SIF BASE:MASTER:眠気 < 600 && !(CFLAG:MASTER:起床時間 <= 540 && (TIME < CFLAG:MASTER:起床時間 || CFLAG:MASTER:起床時間 + 900 <= TIME))
+;	RETURN 0
+IF BASE:MASTER:眠気 >= 600
+
+ELSE
+	SELECTCASE CFLAG:MASTER:起床時間
+		CASE IS <= 540
+			SIF !(TIME < CFLAG:MASTER:起床時間 || CFLAG:MASTER:起床時間 + 900 <= TIME)
+				RETURN 0
+		CASEELSE
+			SIF !(TIME >= CFLAG:MASTER:起床時間 - 540 && TIME < CFLAG:MASTER:起床時間)
+				RETURN 0
+	ENDSELECT
+ENDIF
+RETURN GLOBAL_COMABLE(1004)
+
+
+@XCOM1004(ARG)
+PRINTL 
+PRINTFORML %"=" * 107%
+;寝る
+SELECTCASE CFLAG:ARG:起床時間
+	CASE IS <= 540
+		SIF TIME < CFLAG:ARG:起床時間 || CFLAG:ARG:起床時間 + 900 <= TIME
+			CFLAG:ARG:主睡眠 = 1
+	CASEELSE
+		SIF TIME >= CFLAG:ARG:起床時間 - 540 && TIME < CFLAG:ARG:起床時間
+			CFLAG:ARG:主睡眠 = 1
+ENDSELECT
+
+;休憩料金支払済（TCVAR:ホテル利用権）なら当日は使い放題＝宿泊料も免除
+SIF CFLAG:1:現在地区 == 2 && CFLAG:1:現在位置 == 22 && !TCVAR:MASTER:ホテル利用権
+	MONEY:1 -= 3000
+;自宅（開始地区/開始位置＝実家またはマンション）以外で寝たら外泊として記録
+IF !(CFLAG:MASTER:現在地区 == CFLAG:MASTER:開始地区 && CFLAG:MASTER:現在位置 == CFLAG:MASTER:開始位置)
+	FLAG:就寝地区 = CFLAG:1:現在地区
+	FLAG:就寝位置 = CFLAG:1:現在位置
+ENDIF
+;;;CFLAG:ARG:衰弱 = 1
+CFLAG:ARG:睡眠 = 1
+RETURN 1
+

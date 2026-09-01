@@ -1,0 +1,224 @@
+﻿@MAX_JOB
+#FUNCTION
+;アルバイトの数
+RETURNF 22
+
+@JOB_NAME(ARG)
+#FUNCTIONS
+SELECTCASE ARG
+	CASE 1
+		RETURNF "ファミレス"
+	CASE 2
+		RETURNF "喫茶店"
+	CASE 3
+		RETURNF "コンビニ(大学前)"
+	CASE 4
+		RETURNF "ハンバーガー屋"
+	CASE 5
+		RETURNF "カラオケ屋"
+	CASE 6
+		RETURNF "ゲームセンター"
+	CASE 7
+		RETURNF "服屋"
+	CASE 8
+		RETURNF "薬屋(大学前)"
+	CASE 9
+		RETURNF "本屋(大学前)"
+	CASE 10
+		RETURNF "スポーツジム"
+	CASE 11
+		RETURNF "アクセサリーショップ"
+	CASE 12
+		RETURNF "スーパー"
+	CASE 13
+		RETURNF "アダルトショップ"
+	CASE 14
+		RETURNF "キャバクラ"
+	CASE 15
+		RETURNF "コンビニ(最寄の駅)"
+	CASE 16
+		RETURNF "薬屋(最寄の駅)"
+	CASE 17
+		RETURNF "本屋(最寄の駅)"
+	CASE 18
+		RETURNF "劇場"
+	CASE 19
+		RETURNF "居酒屋"
+	CASE 20
+		RETURNF "バー"
+	CASE 21
+		RETURNF "映画館"
+	CASE 22
+		RETURNF "定食屋"
+
+ENDSELECT
+
+@JOB_AREA(ARG)
+#FUNCTION
+SELECTCASE ARG
+	CASE 1
+		RETURNF 2
+	CASE 2
+		RETURNF 2
+	CASE 3
+		RETURNF 2
+	CASE 4
+		RETURNF 2
+	CASE 5
+		RETURNF 2
+	CASE 6
+		RETURNF 2
+	CASE 7
+		RETURNF 2
+	CASE 8
+		RETURNF 2
+	CASE 9
+		RETURNF 2
+	CASE 10
+		RETURNF 2
+	CASE 11
+		RETURNF 2
+	CASE 12
+		RETURNF 0
+	CASE 13
+		RETURNF 2
+	CASE 14
+		RETURNF 2
+	CASE 15
+		RETURNF 0
+	CASE 16
+		RETURNF 0
+	CASE 17
+		RETURNF 0
+	CASE 18
+		RETURNF 2
+	CASE 19
+		RETURNF 2
+	CASE 20
+		RETURNF 2
+	CASE 21
+		RETURNF 2
+	;定食屋は町(地区0)の駅前商店街(2026-09-01)。地区0のバイト先は5件目
+	CASE 22
+		RETURNF 0
+
+ENDSELECT
+
+@JOB_PLACE(ARG)
+#FUNCTION
+SELECTCASE ARG
+	CASE 1
+		RETURNF 12
+	CASE 2
+		RETURNF 14
+	CASE 3
+		RETURNF 5
+	CASE 4
+		RETURNF 6
+	CASE 5
+		RETURNF 7
+	CASE 6
+		RETURNF 8
+	CASE 7
+		RETURNF 9
+	CASE 8
+		RETURNF 10
+	CASE 9
+		RETURNF 15
+	CASE 10
+		RETURNF 16
+	CASE 11
+		RETURNF 21
+	CASE 12
+		RETURNF 6
+	CASE 13
+		RETURNF 20
+	CASE 14
+		RETURNF 19
+	CASE 15
+		RETURNF 5
+	CASE 16
+		RETURNF 8
+	CASE 17
+		RETURNF 16
+	CASE 18
+		RETURNF 52
+	CASE 19
+		RETURNF 54
+	CASE 20
+		RETURNF 55
+	CASE 21
+		RETURNF 57
+	CASE 22
+		RETURNF 14
+
+ENDSELECT
+
+;職業番号 → その店の専用店主の「キャラ番号」（登録番号ではない。解決はGETCHARA()で行う）
+;基本は 41+職業（Chara042〜058）。ただし下記は既存キャラと番号が衝突するため個別に振り替える。
+;  職業18 劇場   … 41+18=59（お客さん）と衝突     → 支配人 Chara061
+;  職業19 居酒屋 … 41+19=60（泡瀬 沙羅）と衝突     → 大将 Chara066
+;  職業20 バー   … 41+20=61（劇場の支配人）と衝突 → マスター Chara067
+;  職業21 映画館 … 41+21=62（舞園 玲奈）と衝突     → 支配人 Chara071
+;  職業22 定食屋 … 41+22=63（ホストクラブの店長）と衝突 → 大将 Chara075
+;職業外は-1を返す（呼び出し側は汎用モブへフォールバックする）
+@JOB_MASTER_CHARA(ARG)
+#FUNCTION
+SIF ARG < 1 || ARG > MAX_JOB()
+	RETURNF -1
+SELECTCASE ARG
+	CASE 18
+		RETURNF 61
+	CASE 19
+		RETURNF 66
+	CASE 20
+		RETURNF 67
+	CASE 21
+		RETURNF 71
+	CASE 22
+		RETURNF 75
+	CASEELSE
+		RETURNF 41 + ARG
+ENDSELECT
+
+;職業ごとの関連技能（給料倍率の判定に使うABL番号）
+@JOB_SKILL(ARG)
+#FUNCTION
+SELECTCASE ARG
+	;ファミレス・喫茶店・ハンバーガー屋・定食屋 → 料理技能
+	CASE 1, 2, 4, 22
+		RETURNF 44
+	;薬屋・本屋 → 教養
+	CASE 8, 9, 16, 17
+		RETURNF 43
+	;スポーツジム → 運動能力
+	CASE 10
+		RETURNF 45
+	;劇場 → ダンス技能
+	CASE 18
+		RETURNF 47
+	;居酒屋・バー → 話術技能（CASEELSEと同値だが、酒場の給料の基準を明示しておく）
+	CASE 19, 20
+		RETURNF 41
+	;映画館（もぎり・売店）→ 接客技能
+	;（給料式は接客技能を別枠でも見ているため、この店だけ接客が二重に効く＝接客が仕事の全ての店という扱い）
+	CASE 21
+		RETURNF 46
+	;その他の接客店 → 話術技能
+	CASEELSE
+		RETURNF 41
+
+ENDSELECT
+
+;職業番号 → 1回の勤務で拘束される分数（＝その職場の「勤務の1単位」）
+;劇場だけは時間制ではなく「1ステージ」が単位なので60分。それ以外は従来どおり2時間シフト。
+;XCOM1005の消耗・給料はこの分数に比例するため、120分の店は式の上でも現行と完全に同値になる。
+@JOB_勤務時間(ARG)
+#FUNCTION
+SELECTCASE ARG
+	;劇場（ダンサー）→ 1ステージ60分
+	CASE 18
+		RETURNF 60
+	CASEELSE
+		RETURNF 120
+ENDSELECT

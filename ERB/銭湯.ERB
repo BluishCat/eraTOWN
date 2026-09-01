@@ -1,0 +1,650 @@
+﻿;================================================================
+; 銭湯（地区0・位置10、駅前商店街接続。2026-07-22追加）
+;  ・営業15時〜24時／木曜定休（営業時間.ERB）。閉店中はCOMF1000の移動ガードで入店不可。
+;  ・番台＝Chara070「湯浅 トメ」（呼び名「女将」）。終日この場所に常駐する。
+;  ・入浴料500円。払うと TCVAR:銭湯利用権 が当日いっぱい立ち、
+;    銭湯のメニューに加えて通常コマンドの「入浴」(COMF1008)も解禁される。
+;    ＝メニューを閉じたあと湯に入ると EVENTCOMEND 経由で既存の覗きイベントが乗る。
+;  ・自宅以外で湯に入れる初の「公共の」浴場。他の施設が繁華街(地区2)に偏っているのに対し、
+;    こちらは地区0。NPCのランダム徘徊は部屋番号1〜49しか候補にしない(NPC_ACTION.ERB)ため、
+;    位置10の銭湯には街の誰もが勝手に入ってくる＝出会いと覗きが自然に発生する。
+;  ・遊び方: 湯／サウナ／露天で回復し、同性と背中を流し合って距離を詰め、
+;    仕切りの向こう（男湯）を覗いて火傷する。居酒屋・バー帰りの酔い覚ましにもなる。
+;  ・入浴の効果本体は COMMON.ERB @入浴効果（COMF1008・NPC_AUTOACTION1と共通）。
+;  ・使用フラグ:
+;      TCVAR:640 銭湯利用権   … 当日の入浴料支払済（BEGIN TRAINで自動クリア）
+;      TCVAR:641 当日長湯回数 … 湯・サウナ・露天の合計回数。のぼせ判定に使う
+;      TCVAR:642 当日銭湯覗き済 … 成否問わず1日1回制限
+;      CFLAG:MASTER:3525 来店回数（累計・永続。CSV未登録の生番号運用＝質屋3522-3524の続き）
+;      CFLAG:MASTER:3526 覗いて見つかった回数（累計・永続）
+;================================================================
+
+;================================================================
+;@銭湯_入浴料
+;  入浴料（円）。手ぶらで入れる＝タオル・石鹸込みの値段。
+;================================================================
+@銭湯_入浴料
+#FUNCTION
+RETURNF 500
+
+;================================================================
+;@銭湯受付
+;  銭湯(0,10)到着時のフック（ROOM_IN_OUT.ERB @到着時処理から呼ばれる）。
+;================================================================
+@銭湯受付
+#DIM 女将
+SIF CFLAG:MASTER:現在地区 != 0 || CFLAG:MASTER:現在位置 != 10
+	RETURN
+;イベント文脈からの到着では何もしない（通常コマンド文脈のみ）
+SIF TCVAR:MASTER:イベント
+	RETURN
+女将 = GETCHARA(70)
+PRINTL
+PRINTFORML %"=" * 107%
+;当日すでに料金を払っていれば、番台に会釈するだけで通れる
+IF TCVAR:MASTER:銭湯利用権
+	IF 女将 >= 0
+		PRINTFORMW %CALLNAME:女将%が番台から「はいはい、ごゆっくり」と手を振った。
+	ELSE
+		PRINTFORMW 番台に会釈して、あなたは暖簾の奥へ入っていった。
+	ENDIF
+	CALL 銭湯メニュー
+	RETURN
+ENDIF
+CALL 銭湯_番台の挨拶(女将)
+IF MONEY:MASTER < 銭湯_入浴料()
+	PRINTFORMW 入浴料（%金額(銭湯_入浴料())%円）にすら手が届かず、あなたは暖簾の前で引き返した。（所持金%金額(MONEY:MASTER)%円）
+	RETURN
+ENDIF
+PRINTFORML [0] - 入浴料を払う（%金額(銭湯_入浴料())%円。今日は何度でも入れる）
+PRINTL [1] - やめておく
+$SENTO_UKETUKE_INPUT
+INPUT
+SIF RESULT != 0 && RESULT != 1
+	GOTO SENTO_UKETUKE_INPUT
+IF RESULT == 1
+	PRINTL 番台の前で少し迷って、あなたはそのまま踵を返した。
+	RETURN
+ENDIF
+MONEY:MASTER -= 銭湯_入浴料()
+TCVAR:MASTER:銭湯利用権 = 1
+CFLAG:MASTER:3525 += 1
+IF 女将 >= 0
+	TA:MASTER:女将:3 += 2
+	TA:女将:MASTER:3 += 2
+ENDIF
+PRINTFORMW 小銭を番台に置き、あなたは畳んだタオルを受け取って脱衣所へ向かった。
+CALL 銭湯メニュー
+RETURN
+
+;================================================================
+;@銭湯_番台の挨拶(ARG)
+;  ARG = 番台の女将（-1＝不在）。来店回数で迎えられ方が変わる。
+;================================================================
+@銭湯_番台の挨拶(ARG)
+#DIM 女将
+女将 = ARG
+IF 女将 < 0
+	PRINTL 暖簾をくぐると、番台は無人だった。料金箱に金を入れる仕組みらしい。
+	RETURN
+ENDIF
+IF CFLAG:MASTER:3525 >= 20
+	PRINTFORML 引き戸を開けた音だけで、%CALLNAME:女将%は顔も上げずに湯の温度を言った。
+	PRINTL 「今日はちょいと熱めだよ。あんたの好きな加減さね」
+ELSEIF CFLAG:MASTER:3525 >= 5
+	PRINTFORML 番台の%CALLNAME:女将%が老眼鏡を下げて、あなたを見て目を細めた。
+	PRINTL 「おや、いらっしゃい。今日も冷えるねえ」
+ELSE
+	PRINTL カラン、と桶の鳴る音。番台の上から、しわがれた声が降ってきた。
+	PRINTFORML 「いらっしゃい。……女湯はそっち。ゆっくりしてきな」
+ENDIF
+RETURN
+
+;================================================================
+;@銭湯メニュー
+;  帰るまで遊びを選び続ける（居酒屋.ERBの@居酒屋メニューと同型）。
+;================================================================
+@銭湯メニュー
+#DIM 女将
+女将 = GETCHARA(70)
+$SENTO_MENU_INPUT
+PRINTL
+PRINTFORML ＜銭湯／{TIME / 60}時{TIME % 60}分／所持金%金額(MONEY:MASTER)%円／%銭湯_のぼせ_名()%＞
+PRINTL [0] - 湯に浸かる
+PRINTL [1] - サウナに入る
+PRINTL [2] - 露天風呂に出る
+PRINTL [3] - 背中を流し合う
+PRINTL [4] - コーヒー牛乳を飲む（１５０円）
+IF 女将 >= 0
+	PRINTL [5] - 番台の女将と話す
+ELSE
+	SETCOLOR 96 , 96, 96
+	PRINTL 　　　番台の女将と話す（今日は姿が見えない）
+	RESETCOLOR
+ENDIF
+IF TCVAR:MASTER:当日銭湯覗き済
+	SETCOLOR 96 , 96, 96
+	PRINTL 　　　仕切りの向こうを覗く（今日はもうやめておこう）
+	RESETCOLOR
+ELSE
+	PRINTL [6] - 仕切りの向こうを覗く
+ENDIF
+PRINTL [7] - 上がる
+INPUT
+SIF RESULT < 0 || RESULT > 7
+	GOTO SENTO_MENU_INPUT
+SIF RESULT == 5 && 女将 < 0
+	GOTO SENTO_MENU_INPUT
+SIF RESULT == 6 && TCVAR:MASTER:当日銭湯覗き済
+	GOTO SENTO_MENU_INPUT
+SELECTCASE RESULT
+	CASE 0
+		CALL 銭湯_湯
+	CASE 1
+		CALL 銭湯_サウナ
+	CASE 2
+		CALL 銭湯_露天
+	CASE 3
+		CALL 銭湯_流し合い
+	CASE 4
+		CALL 銭湯_牛乳
+	CASE 5
+		CALL 銭湯_女将と話す(女将)
+	CASE 6
+		CALL 銭湯_覗く
+	CASEELSE
+		IF 女将 >= 0
+			PRINTFORMW 火照った頬のまま暖簾をくぐると、%CALLNAME:女将%の「またおいで」が背中に届いた。
+		ELSE
+			PRINTFORMW 火照った頬のまま、あなたは夜の商店街へ出た。
+		ENDIF
+		RETURN
+ENDSELECT
+;倒れたらメニューは続けられない（@WEAKNESS_CHECKが拾う前でも、その場で打ち切る）
+SIF CFLAG:MASTER:衰弱 || BASE:MASTER:体力 < 500
+	RETURN
+GOTO SENTO_MENU_INPUT
+
+;================================================================
+;@銭湯_のぼせ_名
+;  メニューのヘッダに出す、のぼせ具合の表示（#FUNCTIONS）。
+;================================================================
+@銭湯_のぼせ_名
+#FUNCTIONS
+SELECTCASE TCVAR:MASTER:当日長湯回数
+	CASE 0
+		RETURNF "まだ湯に入っていない"
+	CASE 1, 2
+		RETURNF "ほどよく温まっている"
+	CASE 3, 4
+		RETURNF "のぼせかけている"
+	CASEELSE
+		RETURNF "頭がくらくらする"
+ENDSELECT
+
+;================================================================
+;@銭湯_長湯(ARG)
+;  ARG = 今回加算する長湯カウント。のぼせの進行をまとめて扱う。
+;  酒が入っているほど回りが早い（現実の入浴事故と同じ）。
+;  体力が500を切れば既存の @WEAKNESS_CHECK が倒れ処理を引き受ける。
+;================================================================
+@銭湯_長湯(ARG)
+#DIM 回数
+TCVAR:MASTER:当日長湯回数 += ARG
+回数 = TCVAR:MASTER:当日長湯回数
+;酔ったまま長湯すると一段階ぶん重く効く
+SIF 酔い段階(MASTER) >= 2
+	回数 += 1
+IF 回数 >= 5
+	PRINTL
+	PRINTL 視界の端がじわりと白く濁った。耳の奥で自分の脈が鳴っている。
+	PRINTFORMW 立ち上がろうとした瞬間、足元のタイルがぐにゃりと歪んだ――
+	BASE:MASTER:体力 = MAX(BASE:MASTER:体力 - 900, 0)
+	BASE:MASTER:気力 = MAX(BASE:MASTER:気力 - 400, 0)
+ELSEIF 回数 >= 3
+	PRINTFORMW 指先までぼうっと熱い。少し休んだほうがよさそうだ。
+	BASE:MASTER:体力 = MAX(BASE:MASTER:体力 - 250, 0)
+ENDIF
+RETURN
+
+;================================================================
+;@銭湯_湯
+;  main。COMMON.ERBの@入浴効果に加えて、広い湯船ならではの弛緩と酔い覚まし。
+;  湯から上がったあとに既存の覗きイベント（EVENT_覗き.ERB 場面1）を回す。
+;================================================================
+@銭湯_湯
+CFLAG:MASTER:待機時間 += 60
+CALL 入浴効果(MASTER)
+;広い湯船は自宅の風呂より効く（PALAM:32=抑鬱をさらに落とす）
+DOWNBASE:MASTER:ストレス += 300
+PALAM:MASTER:32 -= (PALAM:MASTER:32 / 5)
+;酒が抜ける
+BASE:MASTER:酔い = MAX(BASE:MASTER:酔い - 200, 0)
+PRINTL
+IF 酔い段階(MASTER) >= 1
+	PRINTL 熱い湯に肩まで沈むと、頭の芯にかかっていた靄がゆっくりと剥がれていった。
+	PRINTFORMW 天井の高い浴室に、桶の音だけが間延びして響いている。
+ELSE
+	PRINTL 洗い場で体を流し、あなたは足からそろそろと湯船に入っていった。
+	PRINTFORMW 熱い。息を吐くと、背中に貼りついていた一日ぶんの強張りがほどけていく。
+ENDIF
+CALL 銭湯_長湯(1)
+;湯上がりの無防備な時間。既存の覗きイベント（1日1回制限はCFLAG:3501で共有）
+SIF !CFLAG:MASTER:衰弱 && BASE:MASTER:体力 >= 500
+	CALL 覗きチェック(1)
+RETURN
+
+;================================================================
+;@銭湯_サウナ
+;  発汗で疲労と汚れを落とす代わりに体力を使う。我慢すると忍耐が付く。
+;================================================================
+@銭湯_サウナ
+#DIM 我慢
+CFLAG:MASTER:待機時間 += 30
+BASE:MASTER:体力 = MAX(BASE:MASTER:体力 - 300, 0)
+DOWNBASE:MASTER:疲労 += 400
+DOWNBASE:MASTER:ストレス += 250
+VARSET STAIN:MASTER:0
+BASE:MASTER:酔い = MAX(BASE:MASTER:酔い - 100, 0)
+;体重は汗のぶんだけ落ちる（水を飲めば戻る程度）
+BASE:MASTER:体重 = MAX(BASE:MASTER:体重 - 1, 1)
+;我慢比べ：気力と忍耐があるほど長く座っていられる
+我慢 = BASE:MASTER:気力 / 40 + ABL:MASTER:運動能力 * 8 + 20
+SIF TALENT:MASTER:度胸 == 1
+	我慢 += 15
+PRINTL
+IF RAND(100) < 我慢
+	PRINTL 熱波が喉を焼く。それでも目を閉じて、砂時計の落ちきる音を待った。
+	PRINTFORMW 水風呂に沈めた体の輪郭が、すっと一本にまとまっていく感覚があった。
+	EXP:MASTER:運動経験 += 1
+	DOWNBASE:MASTER:ストレス += 200
+ELSE
+	PRINTL 上段に座って数十秒。呼吸が浅くなり、肌がちりちりと痛みだした。
+	PRINTFORMW 結局あなたは早々に扉を押し、冷たい空気に転がり出た。
+	BASE:MASTER:体力 = MAX(BASE:MASTER:体力 - 150, 0)
+ENDIF
+CALL 銭湯_長湯(1)
+RETURN
+
+;================================================================
+;@銭湯_露天
+;  外気に晒されながら浸かる。ストレスがいちばんよく落ち、酒もよく抜ける。
+;================================================================
+@銭湯_露天
+CFLAG:MASTER:待機時間 += 40
+CALL 入浴効果(MASTER)
+DOWNBASE:MASTER:ストレス += 600
+;PALAM[抑鬱][不快]をさらに落とす
+PALAM:MASTER:32 -= (PALAM:MASTER:32 / 4)
+PALAM:MASTER:31 -= (PALAM:MASTER:31 / 4)
+BASE:MASTER:酔い = MAX(BASE:MASTER:酔い - 300, 0)
+BASE:MASTER:機嫌 = MIN(BASE:MASTER:機嫌 + 300, MAXBASE:MASTER:機嫌)
+PRINTL
+IF TIME >= 1140
+	PRINTL 塀の上に切り取られた夜空に、思いのほか星が出ていた。
+	PRINTFORMW 湯気が立ちのぼって視界を曇らせ、また晴れる。誰の声もしない。
+ELSE
+	PRINTL 冷えた外気が濡れた肩を撫でていく。湯の熱さがかえって心地よかった。
+	PRINTFORMW 竹垣の向こうを、自転車のベルが通り過ぎていった。
+ENDIF
+CALL 銭湯_長湯(1)
+RETURN
+
+;================================================================
+;@銭湯_牛乳
+;  湯上がりの定番。体力を戻し、長湯の熱も少し引く。
+;================================================================
+@銭湯_牛乳
+IF MONEY:MASTER < 150
+	PRINTFORMW 冷蔵ケースの前で小銭を数えたが、足りなかった。（所持金%金額(MONEY:MASTER)%円）
+	RETURN
+ENDIF
+MONEY:MASTER -= 150
+CFLAG:MASTER:待機時間 += 10
+DOWNBASE:MASTER:体力 -= (MAXBASE:MASTER:体力 / 10)
+DOWNBASE:MASTER:ストレス += 150
+SETBIT CFLAG:MASTER:食事 , 1
+;水分を入れれば、のぼせは少し戻る
+TCVAR:MASTER:当日長湯回数 = MAX(TCVAR:MASTER:当日長湯回数 - 1, 0)
+PRINTL
+PRINTL 腰に手を当てて、瓶の口から一息に流し込む。
+PRINTFORMW 冷たさが喉を落ちていって、火照った体の内側がすっと静かになった。
+RETURN
+
+;================================================================
+;@銭湯_女将と話す(ARG)
+;  ARG = 女将。来店回数と好意で会話が深まる（バー.ERB @バー_マスターと話す と同型）。
+;================================================================
+@銭湯_女将と話す(ARG)
+#DIM 女将
+女将 = ARG
+CFLAG:MASTER:待機時間 += 15
+EXP:MASTER:会話経験 += 1
+TA:MASTER:女将:3 += 2
+TA:女将:MASTER:3 += 2
+PRINTL
+IF CFLAG:MASTER:3525 >= 20 && TA:女将:MASTER:3 >= 40
+	PRINTFORML %CALLNAME:女将%は番台の下から茶請けの菓子を出し、あなたの隣に置いた。
+	PRINTL 「うちに毎日来る子はね、たいてい家に居場所がないんだよ。……ま、余計なお世話か」
+	PRINTFORMW 図星を突かれて言葉に詰まったあなたを、女将は追及しなかった。
+	DOWNBASE:MASTER:ストレス += 450
+ELSEIF CFLAG:MASTER:3525 >= 5
+	PRINTFORML %CALLNAME:女将%は湯加減の話から、いつのまにか町内の話を始めていた。
+	PRINTFORMW 誰と誰が別れただの、どの店が畳んだだの――どうでもいい話ほど、よく効く。
+	DOWNBASE:MASTER:ストレス += 250
+ELSE
+	PRINTFORML 世間話を振ると、%CALLNAME:女将%は「そうかい」と短く笑った。
+	PRINTFORMW それ以上は詮索してこない。番台の距離感というものらしい。
+	DOWNBASE:MASTER:ストレス += 100
+ENDIF
+;街が物騒なときは忠告してくれる
+IF FLAG:危険度 >= 3
+	PRINTFORMW 「……夜道はお気をつけ。近ごろ、この辺も物騒だからね」
+ENDIF
+RETURN
+
+;================================================================
+;@銭湯_同性を探す
+;  同じ場所に居て、あなたと同性のNPCを1人抽選して返す（-1＝居ない）。
+;  リザーバサンプリング（EVENT_覗き.ERB @覗き手を探す と同型）。
+;================================================================
+@銭湯_同性を探す
+#FUNCTION
+#DIM 候補
+#DIM 数
+#DIM 相手
+候補 = -1
+数 = 0
+FOR 相手,1,CHARANUM
+	SIF 相手 == MASTER
+		CONTINUE
+	SIF CFLAG:相手:現在地区 != CFLAG:MASTER:現在地区 || CFLAG:相手:現在位置 != CFLAG:MASTER:現在位置
+		CONTINUE
+	SIF CFLAG:相手:睡眠 || CFLAG:相手:衰弱
+		CONTINUE
+	;同性のみ（女湯／男湯で分かれているため）
+	SIF GETBIT(TALENT:相手:性別,0) != GETBIT(TALENT:MASTER:性別,0)
+		CONTINUE
+	数 += 1
+	SIF RAND(数) == 0
+		候補 = 相手
+NEXT
+RETURNF 候補
+
+;================================================================
+;@銭湯_異性を探す
+;  仕切りの向こう（＝異性の浴場）に居るNPCを1人抽選して返す（-1＝居ない）。
+;================================================================
+@銭湯_異性を探す
+#FUNCTION
+#DIM 候補
+#DIM 数
+#DIM 相手
+候補 = -1
+数 = 0
+FOR 相手,1,CHARANUM
+	SIF 相手 == MASTER
+		CONTINUE
+	SIF CFLAG:相手:現在地区 != CFLAG:MASTER:現在地区 || CFLAG:相手:現在位置 != CFLAG:MASTER:現在位置
+		CONTINUE
+	SIF CFLAG:相手:睡眠 || CFLAG:相手:衰弱
+		CONTINUE
+	SIF GETBIT(TALENT:相手:性別,0) == GETBIT(TALENT:MASTER:性別,0)
+		CONTINUE
+	数 += 1
+	SIF RAND(数) == 0
+		候補 = 相手
+NEXT
+RETURNF 候補
+
+;================================================================
+;@銭湯_流し合い
+;  同性のNPCと背中を流し合う。性行為ではない接触で距離を詰める経路。
+;  好意が高い相手とだけ、胸を触る／触られる程度まで進む。
+;================================================================
+@銭湯_流し合い
+#DIM 相手
+#DIM 増分
+相手 = 銭湯_同性を探す()
+IF 相手 < 0
+	PRINTFORMW 洗い場を見渡してみたが、声をかけられそうな相手はいなかった。
+	RETURN
+ENDIF
+PRINTL
+PRINTFORML 隣の洗い場にいるのは%CALLNAME:相手%だった。声をかけますか？
+PRINTL [0] - 背中を流してあげる
+PRINTL [1] - やめておく
+$SENTO_NAGASHI_INPUT
+INPUT
+SIF RESULT != 0 && RESULT != 1
+	GOTO SENTO_NAGASHI_INPUT
+IF RESULT == 1
+	PRINTL 結局、声はかけずに自分の体を流した。
+	RETURN
+ENDIF
+;嫌われていると断られる（居酒屋.ERB @居酒屋_相席する と同じ考え方）
+IF TA:相手:MASTER:3 < 5 && TA:相手:MASTER:0 < 5 && RAND(100) < 40
+	PRINTFORMW %CALLNAME:相手%は曖昧に笑って、桶を持って離れていった。
+	TA:MASTER:相手:4 += 3
+	RETURN
+ENDIF
+CFLAG:MASTER:待機時間 += 20
+CFLAG:相手:待機時間 += 20
+増分 = 6 + TA:相手:MASTER:3 / 50
+TA:MASTER:相手:3 += 増分
+TA:相手:MASTER:3 += 増分
+EXP:MASTER:会話経験 += 2
+EXP:相手:会話経験 += 2
+SOURCE:MASTER:歓楽 = 300
+SOURCE:相手:歓楽 = 300
+DOWNBASE:MASTER:ストレス += 200
+DOWNBASE:相手:ストレス += 200
+PRINTL
+PRINTFORML 泡立てたタオルで%CALLNAME:相手%の背中を擦ると、くすぐったそうに肩が跳ねた。
+PRINTFORMW 交代してもらうと、他人の手の圧というのは思いのほか気持ちがいい。
+;体つきを見てしまう（互いに裸なので当然目に入る）
+CALL 銭湯_裸を見る(相手)
+;打ち解けている相手とだけ、ふざけ合いが少しだけ際どくなる
+IF TA:相手:MASTER:3 >= 150 && TA:MASTER:相手:3 >= 150
+	PRINTL
+	PRINTFORML 「あんた、こんなに大きかったっけ」と%CALLNAME:相手%の手が不意に伸びてきた。
+	PRINTFORMW 悲鳴混じりに笑って払いのけたが、触られた場所だけが妙に熱を持っている。
+	PALAM:MASTER:快Ｂ += 30
+	PALAM:MASTER:恥情 += 60
+	TA:MASTER:相手:0 += 5
+	TA:相手:MASTER:0 += 5
+	EXP:MASTER:Ｂ経験 += 1
+ENDIF
+RETURN
+
+;================================================================
+;@銭湯_裸を見る(ARG)
+;  ARG = 見た相手。体格・胸のサイズを一言だけ描く。
+;  カップ番号は @GET_CUP_SIZE（MAXBASE参照）、文字への変換は
+;  @サイド領域_カップ文字（サイド領域描画.ERB。RESULTSに返る）を使う。
+;================================================================
+@銭湯_裸を見る(ARG)
+#DIM 相手
+#DIM カップ
+相手 = ARG
+;男性の裸に胸の話をしても仕方がないので分岐する
+IF !GETBIT(TALENT:相手:性別,0)
+	PRINTFORMW 湯気の向こうの%CALLNAME:相手%の体は、着衣で見るよりずっと厚みがあった。
+	EXP:MASTER:異常経験 += 1
+	RETURN
+ENDIF
+CALL GET_CUP_SIZE(相手)
+カップ = RESULT
+IF カップ > 0
+	CALL サイド領域_カップ文字(カップ)
+	PRINTFORMW 湯気の向こうの%CALLNAME:相手%は、%RESULTS%カップの胸を惜しげもなく晒していた。
+ELSE
+	PRINTFORMW 湯気の向こうの%CALLNAME:相手%は、慎ましい胸を隠しもせずに湯を浴びていた。
+ENDIF
+EXP:MASTER:異常経験 += 1
+RETURN
+
+;================================================================
+;@銭湯_覗く
+;  仕切りの向こう（異性の浴場）を覗く。1日1回。
+;  成否は「身のこなし＋度胸−混み具合」で決まる。
+;  見つかると評判が落ち、運が悪いと脱衣所へ引きずり込まれる。
+;================================================================
+@銭湯_覗く
+#DIM 相手
+#DIM 判定
+#DIM 人数
+TCVAR:MASTER:当日銭湯覗き済 = 1
+CFLAG:MASTER:待機時間 += 15
+相手 = 銭湯_異性を探す()
+人数 = 銭湯_同室人数()
+PRINTL
+PRINTL 洗い場のいちばん端。仕切り板の上のほうに、ひとつだけ節穴があいている。
+;身のこなしと度胸。人が多いほど見咎められやすい
+判定 = 40 + ABL:MASTER:運動能力 * 8 - 人数 * 6
+SIF TALENT:MASTER:度胸 == 1
+	判定 += 20
+SIF TALENT:MASTER:羞恥心 == 1
+	判定 -= 20
+SIF TALENT:MASTER:淫乱
+	判定 += 10
+判定 = LIMIT(判定, 5, 90)
+IF RAND(100) < 判定
+	CALL 銭湯_覗き成功(相手)
+ELSE
+	CALL 銭湯_覗き失敗(相手)
+ENDIF
+RETURN
+
+;================================================================
+;@銭湯_同室人数
+;  いま同じ場所に居るNPCの数（覗きの成功率と地の文に使う）。
+;================================================================
+@銭湯_同室人数
+#FUNCTION
+#DIM 数
+#DIM 相手
+数 = 0
+FOR 相手,1,CHARANUM
+	SIF 相手 == MASTER
+		CONTINUE
+	SIF CFLAG:相手:現在地区 != CFLAG:MASTER:現在地区 || CFLAG:相手:現在位置 != CFLAG:MASTER:現在位置
+		CONTINUE
+	数 += 1
+NEXT
+RETURNF 数
+
+;================================================================
+;@銭湯_覗き成功(ARG)
+;  ARG = 向こう側に居た相手（-1＝誰も居なかった）。
+;================================================================
+@銭湯_覗き成功(ARG)
+#DIM 相手
+相手 = ARG
+IF 相手 < 0
+	PRINTL 息を殺して片目を近づける。――誰も居ない。
+	PRINTFORMW 白いタイルと、蛇口から垂れる水滴だけが見えた。拍子抜けして、あなたは顔を離した。
+	RETURN
+ENDIF
+PRINTFORML 息を殺して片目を近づけると、湯気の向こうに%CALLNAME:相手%の姿があった。
+PRINTFORMW 見てはいけないものを見ている、という自覚だけが、やけに鮮明に胸を打つ。
+BASE:MASTER:興奮度 = MIN(BASE:MASTER:興奮度 + 300, MAXBASE:MASTER:興奮度)
+PALAM:MASTER:恥情 += 100
+PALAM:MASTER:欲情 += 80
+EXP:MASTER:異常経験 += 2
+;こちらの一方的な肉欲だけが上がる（相手は気づいていない）
+TA:MASTER:相手:0 += 20
+RETURN
+
+;================================================================
+;@銭湯_覗き失敗(ARG)
+;  ARG = 向こう側に居た相手（-1＝誰も居なかった）。
+;  見つかれば評判が落ちる。相手が異性で肉欲を持っていれば脱衣所へ連れ込まれる。
+;================================================================
+@銭湯_覗き失敗(ARG)
+#DIM 相手
+相手 = ARG
+CFLAG:MASTER:3526 += 1
+BASE:MASTER:評判 = MAX(BASE:MASTER:評判 - 30, 0)
+;公衆浴場での出来事＝人目がある。番台から話が回る（警察署.ERB @容疑加算）
+CALL 容疑加算(15)
+BASE:MASTER:ストレス = MIN(BASE:MASTER:ストレス + 400, MAXBASE:MASTER:ストレス)
+PALAM:MASTER:恥情 += 150
+IF 相手 < 0
+	PRINTL 背伸びをした拍子に、桶が音を立てて転がった。
+	PRINTFORMW 洗い場じゅうの視線が集まる。番台の女将にも、あとでこってり絞られた。
+	RETURN
+ENDIF
+PRINTFORML 節穴の向こうと、目が合った。%CALLNAME:相手%だった。
+PRINTFORMW 「――今、見てたよな？」壁越しの声には、怒りより先に愉しさが滲んでいた。
+;肉欲・欲情のある相手なら、脱衣所で待ち伏せされる
+IF TA:相手:MASTER:0 > 100 && TA:相手:MASTER:4 > 100
+	CALL 銭湯_覗き露見_本番(相手)
+ELSE
+	PRINTFORMW 相手は呆れたように笑い、番台へ告げ口をしにいった。あなたは逃げるように湯を出た。
+	TA:MASTER:相手:6 += 30
+ENDIF
+RETURN
+
+;================================================================
+;@銭湯_覗き露見_本番(ARG)
+;  ARG = 相手。覗きが露見して脱衣所へ引きずり込まれる。
+;  行為・PALAM・EXP・処女喪失・射精・受精・性病はすべて標準パイプライン任せ
+;  （EVENT_覗き.ERB @覗き_本番 / EVENT_路上遭遇.ERB @路上遭遇_本番 と同じ形）。
+;================================================================
+@銭湯_覗き露見_本番(ARG)
+#DIM 相手
+相手 = ARG
+PRINTL
+PRINTFORML 脱衣所へ戻ったあなたの腕を、待ち構えていた%CALLNAME:相手%が掴んだ。
+PRINTFORMW 「騒がれたくないだろ。……なあ？」ロッカーの陰へ、力ずくで引き込まれる。
+BASE:MASTER:体力 = MAX(BASE:MASTER:体力 - 400, 0)
+BASE:MASTER:気力 = MAX(BASE:MASTER:気力 - 700, 0)
+BASE:MASTER:ストレス = MIN(BASE:MASTER:ストレス + 500, MAXBASE:MASTER:ストレス)
+BASE:MASTER:興奮度 = MIN(BASE:MASTER:興奮度 + 200, MAXBASE:MASTER:興奮度)
+TA:MASTER:相手:6 += 250
+
+;性病リスク：見知らぬ男は感染者のことがある（シード。感染判定は SOURCE 側）
+IF FLAG:病気機能 && !性病持ち(相手) && NO:相手 == 41 && RAND(100) < 15
+	SETBIT CFLAG:(相手):病気,1
+	CFLAG:(相手):性病日数 = 1
+ENDIF
+
+;標準の行為ループへ接続
+J:115 = 1
+TFLAG:Ｎイベント = 8
+TFLAG:行為者 = 相手
+TCVAR:(相手):同室 = 1
+TEQUIP:MASTER:膣 = 0
+TEQUIP:MASTER:アナル = 0
+FOR G,0,5
+	TCVAR:(相手):行為対象 = MASTER
+	TCVAR:MASTER:行為対象 = 相手
+	CFLAG:(相手):受能動 = 1
+	CFLAG:MASTER:受能動 = 2
+	;H はコマンド実行時の ARG 変数に代入
+	H = 相手
+	CALL XCOM2820(相手,1)
+	TCVAR:(相手):行為対象 = MASTER
+	CALL SOURCE_CHECKS(相手)
+	TFLAG:行為者 = 相手
+	SIF !TFLAG:移動中
+		PRINTW
+NEXT
+;相手は必ず膣内射精する（ループ中に未発生なら強制中出し。量 2〜4 相当）
+IF CFLAG:MASTER:(3200 + 相手) != DAY && MAXBASE:(相手):射精 > 0
+	PRINTFORMW %CALLNAME:相手%は最後に奥まで突き入れると、欲望のすべてを注ぎ込んできた……！
+	TCVAR:(相手):行為対象 = MASTER
+	TCVAR:MASTER:行為対象 = 相手
+	TCVAR:(相手):挿入 = 1
+	BASE:(相手):射精 = MAXBASE:(相手):射精 * (2 + RAND(3)) + 1
+	CALL SOURCE_CHECKS(相手)
+ENDIF
+;後始末（行為状態リセット・着衣復帰）
+CALL EVENT_ESCAPE_NPC(相手, MASTER)
+TFLAG:Ｎイベント = 0
+J:115 = 0
+PRINTFORMW 何事もなかったように%CALLNAME:相手%は服を着て出ていった。濡れた床に、あなただけが残された。
+PRINTL
+CFLAG:MASTER:待機時間 += 20
+RETURN

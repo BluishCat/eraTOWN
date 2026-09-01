@@ -1,0 +1,337 @@
+﻿;=================================================
+; メイン画面（通常時）の描画部品
+; ・@メイン状態並列表示：▼あなた（バイタル）と▼PALAM（2列バー）を左右並列に描く
+;   （メイン画面イメージ.txt のレイアウト。イベント/調教中は INFO.ERB の従来表示を使う）
+; ・@メイン情報あなた：▼情報（あなた）セクション（性別/身長/BWH/妊娠/体内精液）
+; ・rect 単位は 100＝全角1文字（COLORBAR.ERB 参照）。div は行相対＆カーソル非前進のため
+;   必ず「行頭で HTML_PRINT → PRINTL」を1行ずつ行う
+;=================================================
+
+;-------------------------------------------------
+; 生理/妊娠の状態タグ（【妊娠中】【お腹：…】等）を文字列で返す
+; INFO.ERB の名前行の【】表示と同一の条件（妊娠自覚>=1 ゲート含む）
+;-------------------------------------------------
+@状態タグ文字列(ARG)
+#FUNCTIONS
+#DIMS OUT
+OUT =
+IF GETBIT(TALENT:ARG:性別,0) && !TALENT:ARG:妊娠
+	OUT '= @"%OUT%【%生理状態_名(ARG)%】"
+	SIF CFLAG:ARG:避妊 > 0
+		OUT '= @"%OUT%【避妊中(あと{CFLAG:ARG:避妊}日)】"
+ELSEIF (TALENT:ARG:妊娠 && CFLAG:ARG:妊娠自覚 >= 1) || CFLAG:ARG:出産回数 || (TALENT:ARG:妊娠 && CFLAG:ARG:切迫流産度 > 0) || (TALENT:ARG:妊娠 && CFLAG:ARG:陣痛 > 0) || CFLAG:ARG:流産回数
+	SIF TALENT:ARG:妊娠 && CFLAG:ARG:妊娠自覚 >= 1
+		OUT '= @"%OUT%【妊娠中】"
+	SIF TALENT:ARG:妊娠 && 腹段階(ARG) >= 1
+		OUT '= @"%OUT%【お腹：%腹段階_名(ARG)%】"
+	;切迫流産の警告（出血・腹痛・切迫）※赤系で強調
+	SIF TALENT:ARG:妊娠 && CFLAG:ARG:切迫流産度 > 0
+		OUT '= @"%OUT%<font color='#FF6666'>%切迫流産タグ(ARG)%</font>"
+	SIF TALENT:ARG:妊娠 && CFLAG:ARG:陣痛 == 0 && 臨月(ARG)
+		OUT '= @"%OUT%【臨月】"
+	SIF TALENT:ARG:妊娠 && CFLAG:ARG:陣痛 > 0 && !分娩中(ARG) && !CFLAG:ARG:破水済
+		OUT '= @"%OUT%<font color='#FF3333'>【陣痛中】</font>"
+	SIF TALENT:ARG:妊娠 && CFLAG:ARG:陣痛 > 0 && !分娩中(ARG) && CFLAG:ARG:破水済
+		OUT '= @"%OUT%<font color='#FF3333'>【陣痛中・破水済】</font>"
+	;多胎で1人産んだ後（次の児を待つ小休止）は残り人数を出す
+	SIF TALENT:ARG:妊娠 && 分娩中(ARG)
+		OUT '= @"%OUT%<font color='#FF3333'>【分娩中・あと{CFLAG:ARG:分娩残}人】</font>"
+	SIF TALENT:ARG:育児中
+		OUT '= @"%OUT%【育児中】"
+	SIF CFLAG:ARG:出産回数
+		OUT '= @"%OUT%【経産{CFLAG:ARG:出産回数}回】"
+	SIF CFLAG:ARG:流産回数
+		OUT '= @"%OUT%【流産{CFLAG:ARG:流産回数}回】"
+ENDIF
+;病気（風邪/性病）の状態タグ（性別を問わない）
+OUT '= @"%OUT%%病気状態タグ(ARG)%"
+;酔い・二日酔いの状態タグ（酔い.ERB）
+OUT '= @"%OUT%%酔い状態タグ(ARG)%"
+;デート中の状態タグ（デート.ERB）
+OUT '= @"%OUT%%逢瀬状態タグ(ARG)%"
+RETURNF OUT
+
+;-------------------------------------------------
+; 性別＋処女/Ａ処女の表記（例：女性（処女／Ａ処女））
+; Ａ処女は素質ではなく EXP:Ａ性交経験==0 から導出
+;-------------------------------------------------
+@性別処女文字列(ARG)
+#FUNCTIONS
+#DIMS OUT
+IF TALENT:ARG:性別 == 3
+	OUT '= "ふたなり"
+ELSEIF TALENT:ARG:性別 == 2
+	OUT '= "オトコ"
+ELSE
+	OUT '= "女性"
+ENDIF
+LOCALS =
+SIF TALENT:ARG:処女
+	LOCALS '= "処女"
+IF EXP:ARG:Ａ性交経験 == 0
+	IF STRLENS(LOCALS)
+		LOCALS '= LOCALS + "／Ａ処女"
+	ELSE
+		LOCALS '= "Ａ処女"
+	ENDIF
+ENDIF
+SIF STRLENS(LOCALS)
+	OUT '= OUT + "（" + LOCALS + "）"
+RETURNF OUT
+
+;-------------------------------------------------
+; ▼あなた（バイタル）＋▼PALAM（2列）の左右並列ブロック
+; 左列：X0〜2300（性欲/興奮度/理性/体力/気力/疲労/ストレス/眠気）
+; 右列：PALAM を X2400 と X3500 の2列（PALAMセル_HTML を共用。セル実内容は開始X+50〜+950）
+; ※通常時（非イベント）専用。呼び出し元(SHOW_STATUS)で分岐する
+;-------------------------------------------------
+@メイン状態並列表示
+#DIM PIDX, 30
+#DIM 件数
+#DIM 列1数
+#DIM 行数
+#DIM 行N
+#DIMS 行S
+#DIMS 左, 16
+#DIM 左数
+
+;----- PALAM の実項目（名前があるもの）を収集して2列に割る -----
+件数 = 0
+FOR LOCAL,0,100
+	SIF !STRLENS(PALAMNAME:LOCAL)
+		CONTINUE
+	PIDX:件数 = LOCAL
+	件数 ++
+NEXT
+列1数 = (件数 + 1) / 2
+
+;----- 見出し行（▼あなた ／ ▼PALAM）※▼あなたの横には状態タグを出さない -----
+行S '= @"<div rect='0,0,6000,250'><font color='#8C8CAA'>▼あなた</font></div>"
+行S '= 行S + @"<div rect='2400,0,2000,250'><font color='#8C8CAA'>▼PALAM</font></div>"
+HTML_PRINT 行S, 1
+PRINTL
+
+;----- 左列の行を組み立て（INFO.ERB の従来表示から移植した閾値・色） -----
+左数 = 0
+;刺激度（衣装依存の外的な性的刺激値。最大1000で矩形バー表示）※性欲の上に表示
+MAXBASE:MASTER:刺激度 = 1000
+左:左数 '= BASEバー数値重ね_HTML(MASTER, 21, 0, "　刺激度：", 600, 1300)
+左数 ++
+;性欲（❤ 1個=1000。最大で桃色）
+LOCAL = LIMIT(BASE:MASTER:性欲 / 1000,0,10)
+IF BASE:MASTER:性欲 == MAXBASE:MASTER:性欲
+	左:左数 '= @"<div rect='0,0,2300,250'>　　性欲：<font color='#FF3399'>%UNICODE(0x2665) * LOCAL%</font></div>"
+ELSE
+	左:左数 '= @"<div rect='0,0,2300,250'>　　性欲：%UNICODE(0x2665) * LOCAL%</div>"
+ENDIF
+左数 ++
+;興奮度（❤ 1個=100。最大で桃色）
+LOCAL = LIMIT(BASE:MASTER:興奮度 / 100,0,10)
+IF BASE:MASTER:興奮度 == MAXBASE:MASTER:興奮度
+	左:左数 '= @"<div rect='0,0,2300,250'>　興奮度：<font color='#FF3399'>%UNICODE(0x2665) * LOCAL%</font></div>"
+ELSE
+	左:左数 '= @"<div rect='0,0,2300,250'>　興奮度：%UNICODE(0x2665) * LOCAL%</div>"
+ENDIF
+左数 ++
+;理性（★ 1個=100。100未満で黄色）
+LOCAL = MAX(BASE:MASTER:理性 / 100,1)
+LOCALS '= "★" * LOCAL
+IF BASE:MASTER:理性 < 100
+	左:左数 '= @"<div rect='0,0,2300,250'>　　理性：<font color='#FFFF00'>%LOCALS%</font></div>"
+ELSE
+	左:左数 '= @"<div rect='0,0,2300,250'>　　理性：%LOCALS%</div>"
+ENDIF
+左数 ++
+;空行（区切り）
+左:左数 '= ""
+左数 ++
+;体力/気力/疲労/ストレス（矩形バー＋数値重ね）
+左:左数 '= BASEバー数値重ね_HTML(MASTER, 0, 0, "　　体力：", 600, 1300)
+左数 ++
+左:左数 '= BASEバー数値重ね_HTML(MASTER, 1, 0, "　　気力：", 600, 1300)
+左数 ++
+;気力と疲労の間はデザイン上の空行1行（メイン画面イメージ.txt）
+左:左数 '= ""
+左数 ++
+左:左数 '= BASEバー数値重ね_HTML(MASTER, 24, 0, "　　疲労：", 600, 1300)
+左数 ++
+左:左数 '= BASEバー数値重ね_HTML(MASTER, 23, 0, "ストレス：", 600, 1300)
+左数 ++
+;眠気（◆ 1個=200。1000以上で黄・1600以上で赤）
+LOCAL = LIMIT(BASE:MASTER:眠気 / 200,0,10)
+IF BASE:MASTER:眠気 >= 1600
+	左:左数 '= @"<div rect='0,0,2300,250'>　　眠気：<font color='#FF0000'>%UNICODE(0x2666) * LOCAL%</font></div>"
+ELSEIF BASE:MASTER:眠気 >= 1000
+	左:左数 '= @"<div rect='0,0,2300,250'>　　眠気：<font color='#FFFF00'>%UNICODE(0x2666) * LOCAL%</font></div>"
+ELSE
+	左:左数 '= @"<div rect='0,0,2300,250'>　　眠気：%UNICODE(0x2666) * LOCAL%</div>"
+ENDIF
+左数 ++
+;精力・勃起・射精（男性器持ちのみ）
+IF GETBIT(TALENT:MASTER:性別,1)
+	左:左数 '= BASEバー数値重ね_HTML(MASTER, 6, 0, "　　精力：", 600, 1300)
+	左数 ++
+	左:左数 '= BASEバー数値重ね_HTML(MASTER, 5, 0, "　　勃起：", 600, 1300)
+	左数 ++
+	左:左数 '= BASEバー数値重ね_HTML(MASTER, 2, 0, "　　射精：", 600, 1300)
+	左数 ++
+ENDIF
+;母乳（母乳体質のみ。最大値は従来表示と同じ暫定固定）
+IF TALENT:MASTER:母乳体質
+	MAXBASE:MASTER:3 = 10000
+	SIF TALENT:MASTER:淫乳
+		MAXBASE:MASTER:3 /= 2
+	左:左数 '= BASEバー数値重ね_HTML(MASTER, 3, 0, "　　母乳：", 600, 1300)
+	左数 ++
+ENDIF
+
+;----- 行単位で左列＋PALAM2列を合成して出力 -----
+行数 = MAX(左数, 列1数)
+FOR 行N,0,行数
+	行S =
+	SIF 行N < 左数
+		行S '= 左:行N
+	SIF 行N < 列1数
+		行S '= 行S + PALAMセル_HTML(MASTER, PIDX:行N, 2400)
+	SIF 行N + 列1数 < 件数
+		行S '= 行S + PALAMセル_HTML(MASTER, PIDX:(行N + 列1数), 3500)
+	SIF STRLENS(行S)
+		HTML_PRINT 行S, 1
+	PRINTL
+NEXT
+PRINTL
+
+;-------------------------------------------------
+; ▼情報（あなた）：性別/アルバイト/身長体重/BWH/妊娠/体内精液
+; サイドバーの□情報□と重複表示（モック準拠・ユーザー指定）
+;-------------------------------------------------
+@メイン情報あなた
+#DIM 整数
+#DIM 小数
+SETCOLOR 140,140,170
+PRINTL ▼情報（あなた）
+RESETCOLOR
+;性別・処女／アルバイト
+PRINTFORM 　性別：%性別処女文字列(MASTER)%
+SIF CFLAG:MASTER:職業
+	PRINTFORM 　　アルバイト：%JOB_NAME(CFLAG:MASTER:職業)%
+SIF CFLAG:MASTER:部活
+	PRINTFORM 　　部活：%CLUB_NAME(CFLAG:MASTER:部活)%
+PRINTL
+;所持しているお弁当（COMF1011で作成、COMF1010で消費。あるときだけ表示）
+IF EQUIP:MASTER:美味しそうなお弁当 || EQUIP:MASTER:普通のお弁当 || EQUIP:MASTER:やばそうなお弁当
+	PRINTFORM 　お弁当：
+	IF EQUIP:MASTER:美味しそうなお弁当
+		PRINTFORM 美味しそうなお弁当×{EQUIP:MASTER:美味しそうなお弁当}
+		SIF EQUIP:MASTER:普通のお弁当 || EQUIP:MASTER:やばそうなお弁当
+			PRINT ／
+	ENDIF
+	IF EQUIP:MASTER:普通のお弁当
+		PRINTFORM 普通のお弁当×{EQUIP:MASTER:普通のお弁当}
+		SIF EQUIP:MASTER:やばそうなお弁当
+			PRINT ／
+	ENDIF
+	SIF EQUIP:MASTER:やばそうなお弁当
+		PRINTFORM やばそうなお弁当×{EQUIP:MASTER:やばそうなお弁当}
+	PRINTL
+ENDIF
+;身長・体重（実値は10倍格納）
+IF BASE:MASTER:身長 > 0
+	整数 = BASE:MASTER:身長 / 10
+	小数 = BASE:MASTER:身長 % 10
+	PRINTFORM 　身長：{整数}.{小数}cm
+ENDIF
+;体重を身長・BWH・カップから最新の値に更新してから表示（非妊娠時も常に反映）
+CALL 体重_更新(MASTER)
+IF BASE:MASTER:体重 > 0
+	整数 = BASE:MASTER:体重 / 10
+	小数 = BASE:MASTER:体重 % 10
+	PRINTFORM 　　体重：{整数}.{小数}kg
+ENDIF
+PRINTL
+;B/W/H（胸囲はカップ文字を併記）
+IF BASE:MASTER:胸囲 > 0 && BASE:MASTER:胴囲 > 0
+	;カップサイズ番号（CFLAG:36）が未算出なら取得
+	IF CFLAG:MASTER:36 == 0
+		CALL GET_CUP_SIZE(MASTER)
+		SIF RESULT > 0
+			CFLAG:MASTER:36 = RESULT
+	ENDIF
+	CALL サイド領域_カップ文字(CFLAG:MASTER:36)
+	LOCALS '= RESULTS
+	整数 = BASE:MASTER:胸囲 / 10
+	小数 = BASE:MASTER:胸囲 % 10
+	PRINTFORM 　B/W/H：{整数}.{小数}cm(%LOCALS%)
+	整数 = BASE:MASTER:胴囲 / 10
+	小数 = BASE:MASTER:胴囲 % 10
+	PRINTFORM  / {整数}.{小数}cm
+	整数 = BASE:MASTER:腰囲 / 10
+	小数 = BASE:MASTER:腰囲 % 10
+	PRINTFORML  / {整数}.{小数}cm
+ENDIF
+;体型と妊娠・精液情報の間はデザイン上の空行1行（メイン画面イメージ.txt）
+PRINTL
+;生理状態（非妊娠の女性のみ）。回復期＞生理位相。危険日（排卵期）だけピンクで強調
+IF GETBIT(TALENT:MASTER:性別,0) && !TALENT:MASTER:妊娠
+	IF CFLAG:MASTER:産後回復 <= 0 && CFLAG:MASTER:生理周期 >= 12 && CFLAG:MASTER:生理周期 <= 16
+		SETCOLOR 255,120,160
+		PRINTFORM 　状態：【%生理状態_名(MASTER)%】
+		RESETCOLOR
+	ELSE
+		PRINTFORM 　状態：【%生理状態_名(MASTER)%】
+	ENDIF
+	SIF CFLAG:MASTER:避妊 > 0
+		PRINTFORM 【避妊中(あと{CFLAG:MASTER:避妊}日)】
+	PRINTL
+ENDIF
+;妊娠（自覚がある場合のみ。胎内人数は健診済のときだけ）
+IF TALENT:MASTER:妊娠 && CFLAG:MASTER:妊娠自覚 >= 1
+	PRINTFORM 　妊娠中
+	SIF 腹段階(MASTER) >= 1
+		PRINTFORM 【お腹：%腹段階_名(MASTER)%】
+	SIF CFLAG:MASTER:健診済
+		PRINTFORM 【胎内人数：{CFLAG:MASTER:胎児数}人】
+	PRINTFORM 【父親（推定）：%CALLNAME:(CFLAG:MASTER:父親)%】
+	PRINTL
+ENDIF
+;妊娠中の急性状態（陣痛/破水/切迫流産）を赤系で強調。自覚に依らず表示
+IF TALENT:MASTER:妊娠
+	IF CFLAG:MASTER:陣痛 > 0
+		SETCOLOR 255,51,51
+		;多胎で1人産んだ後（次の児を待つ小休止）は残り人数を出す
+		IF 分娩中(MASTER)
+			PRINTFORML 　状態：【分娩中・あと{CFLAG:MASTER:分娩残}人】
+		ELSEIF CFLAG:MASTER:破水済
+			PRINTFORML 　状態：【陣痛中・破水済】
+		ELSE
+			PRINTFORML 　状態：【陣痛中】
+		ENDIF
+		RESETCOLOR
+	ELSEIF CFLAG:MASTER:切迫流産度 > 0
+		SETCOLOR 255,102,102
+		PRINTFORML 　状態：%切迫流産タグ(MASTER)%
+		RESETCOLOR
+	ENDIF
+ENDIF
+;流産歴（履歴カウンタ・色なし）
+SIF CFLAG:MASTER:流産回数
+	PRINTFORML 　流産：{CFLAG:MASTER:流産回数}回
+;体内の精液（相手別内訳つき）
+IF CFLAG:MASTER:膣内精液 > 0
+	PRINTFORM 　腟内：
+	CALL 精液内訳表示(MASTER, 3000)
+	PRINTL
+ENDIF
+IF CFLAG:MASTER:子宮内精液 > 0
+	PRINTFORM 　子宮内：
+	CALL 精液内訳表示(MASTER, 3600)
+	PRINTL
+ENDIF
+IF CFLAG:MASTER:肛内精液 > 0
+	PRINTFORM 　肛内：
+	CALL 精液内訳表示(MASTER, 3100)
+	PRINTL
+ENDIF
+;情報セクションとコマンド欄の間はデザイン上の空行2行（メイン画面イメージ.txt）
+PRINTL
+PRINTL

@@ -1,0 +1,582 @@
+﻿@SHOW_STATUS
+VARSET LOCAL
+;直前の行動結果とステータス（日付）表示の間に空行を2行入れて見やすくする
+PRINTL
+PRINTL
+DRAWLINE
+IF TCVAR:MASTER:イベント == 1 || TCVAR:MASTER:イベント == 2
+	IF TFLAG:騒ぎ
+		PRINTFORML 　　　　騒ぎ：{TFLAG:騒ぎ}
+	ELSE
+		PRINTL
+	ENDIF
+	IF CFLAG:MASTER:乗車 == 1
+		PRINT 電車到着地:
+		PRINTFORM %PLACE_NAME(CFLAG:MASTER:到着地区,CFLAG:MASTER:到着位置)%
+		PRINTFORML （到着時間:{CFLAG:MASTER:到着時間 / 60}時{CFLAG:MASTER:到着時間 % 60}分）
+	ENDIF
+ENDIF
+PRINTFORM {DAY:1}年目{DAY:2}月{DAY:3}日
+CALL PRINT_WEEK_COLORED
+SETCOLOR 0xFFAA00
+PRINTFORM  %TSTR:11%
+RESETCOLOR
+PRINTFORM  {TIME / 60}時{TIME % 60}分
+;身分別の勤務時間タグ（授業中／勤務中／営業中など）。中身はCOM_PROFILE.ERB @勤務時間タグ
+PRINTFORM %勤務時間タグ()%
+PRINTFORM   所持金:%金額(MONEY:MASTER)%円
+;容疑を抱えている間だけ警告を出す（警察署.ERB）。
+;水準に達していると人前に出た時点で職務質問が飛ぶので、色を変えて分かるようにする
+IF FLAG:容疑 > 0
+	IF FLAG:容疑 >= 容疑水準()
+		SETCOLOR 0xFF4040
+		PRINTFORM   容疑:{FLAG:容疑}（手配中）
+	ELSE
+		SETCOLOR 0xFFAA00
+		PRINTFORM   容疑:{FLAG:容疑}
+	ENDIF
+	RESETCOLOR
+ENDIF
+
+PRINTL
+
+;現在位置＋エリア情報（NPC人数・支配者）を続けて表示（メイン画面イメージ.txt の並び）
+PRINTFORM 現在位置:
+SETCOLOR 0xFFAA00
+IF CFLAG:MASTER:乗車 == 1
+	PRINT 電車内(乗車中)
+ELSE
+	PRINTFORM %PLACE_NAME(CFLAG:MASTER:現在地区,CFLAG:MASTER:現在位置)%
+ENDIF
+RESETCOLOR
+SIF GETBIT(DA:(CFLAG:MASTER:現在地区):(CFLAG:MASTER:現在位置),3)
+	PRINT (室内)
+;現在位置直後の部活表示は非表示（▼情報欄に移動）
+;SIF CFLAG:MASTER:部活
+;	PRINTFORM   部活:%CLUB_NAME(CFLAG:MASTER:部活)%
+;現在位置直後のバイト先表示は非表示（▼情報欄のアルバイト表示は残す）
+;SIF CFLAG:MASTER:職業
+;	PRINTFORM   バイト先:%JOB_NAME(CFLAG:MASTER:職業)%
+SIF CFLAG:MASTER:所属
+	PRINTFORM   所属:%DANTAI_NAME(CFLAG:MASTER:所属)%
+
+;この場所の顔役（縄張り.ERB）。月末の発表と同じ基準＝支配度×評判で判定する
+;（以前は素の支配度で最大を取っており、月末に発表される支配者と食い違うことがあった）
+J:102 = 場所支配者(CFLAG:MASTER:現在地区, CFLAG:MASTER:現在位置)
+PRINTFORM 　　NPCの人数:{N:101}
+J:103 = 縄張り差(CFLAG:MASTER:現在地区, CFLAG:MASTER:現在位置)
+IF !J:102
+	PRINTFORM 　顔役:まだ誰もいない
+ELSEIF J:102 == MASTER
+	SETCOLOR 0xFFCC00
+	PRINTFORM 　顔役:あなた
+	RESETCOLOR
+ELSEIF J:103 < 0
+	;評判が0だと支配度をいくら稼いでも換算値が0のままで顔役になれない
+	PRINTFORM 　顔役:%CALLNAME:(J:102)%（評判が要る）
+ELSE
+	PRINTFORM 　顔役:%CALLNAME:(J:102)%（あと{J:103}）
+ENDIF
+;先に集計を走らせる（この中で FLAG:全エリア数 も更新されるため、同じ式の中で読むと順序に依存する）
+J:104 = 自分の縄張り数()
+PRINTFORM 　縄張り:{J:104}/{FLAG:全エリア数}
+PRINTL
+
+IF CFLAG:1:現在地区 == 2 && CFLAG:1:現在位置 == 22
+	SETCOLOR 0xFFAA00
+	PRINTL 宿泊費：3,000円
+	RESETCOLOR
+ENDIF
+
+DRAWLINE
+;同室者（同じ部屋に居るNPC。会話中/衰弱/睡眠中は従来どおり非表示）
+;名前はクリックできる。押すとコマンド「声をかける」(XCOM1020)と同じ処理が走る
+;（受け口は USERCOM.ERB @PLAYER_USERCOM の $INPUT_LOOP。値は "声かけ_登録番号"）
+PRINT 同室者：
+FOR LOCAL,1,CHARANUM
+	SIF LOCAL == MASTER
+		CONTINUE
+	SIF CFLAG:LOCAL:会話 || CFLAG:LOCAL:現在地区 != CFLAG:MASTER:現在地区 || CFLAG:LOCAL:現在位置 != CFLAG:MASTER:現在位置 || CFLAG:LOCAL:衰弱 || CFLAG:LOCAL:睡眠
+		CONTINUE
+	;イベント中は声かけコマンド自体が出ないので、その場合は従来どおり素のテキストで並べる
+	IF !TCVAR:MASTER:イベント && 声かけ可能(LOCAL)
+		PRINTBUTTON @"[%CALLNAME:LOCAL%]", @"声かけ_{LOCAL}"
+	ELSE
+		PRINTFORM [%CALLNAME:LOCAL%]
+	ENDIF
+NEXT
+PRINTL
+;同室者行とステータスの間はデザイン上の空行1行（メイン画面イメージ.txt）
+PRINTL
+
+;イベント/調教中（TARGETあり）は従来のペア表示、通常時は▼あなた＋▼PALAM並列レイアウト
+IF TARGET || TCVAR:MASTER:イベント
+PRINTFORM 名前:%CALLNAME:MASTER%
+;生理/妊娠の状態を名前の横に【】で表示（中央の空きをなくしスッキリさせる）
+IF GETBIT(TALENT:MASTER:性別,0) && !TALENT:MASTER:妊娠
+	PRINTFORM 【%生理状態_名(MASTER)%】
+	SIF CFLAG:MASTER:避妊 > 0
+		PRINTFORM 【避妊中(あと{CFLAG:MASTER:避妊}日)】
+ELSEIF (TALENT:MASTER:妊娠 && CFLAG:MASTER:妊娠自覚 >= 1) || CFLAG:MASTER:出産回数 || (TALENT:MASTER:妊娠 && CFLAG:MASTER:切迫流産度 > 0) || (TALENT:MASTER:妊娠 && CFLAG:MASTER:陣痛 > 0) || CFLAG:MASTER:流産回数
+	SIF TALENT:MASTER:妊娠 && CFLAG:MASTER:妊娠自覚 >= 1
+		PRINTFORM 【妊娠中】
+	SIF TALENT:MASTER:妊娠 && 腹段階(MASTER) >= 1
+		PRINTFORM 【お腹：%腹段階_名(MASTER)%】
+	;切迫流産の警告（出血・腹痛・切迫）※朱色で強調
+	IF CFLAG:MASTER:切迫流産度 > 0
+		SETCOLOR 255,102,102
+		PRINTFORM %切迫流産タグ(MASTER)%
+		RESETCOLOR
+	ENDIF
+	SIF TALENT:MASTER:妊娠 && CFLAG:MASTER:陣痛 == 0 && 臨月(MASTER)
+		PRINTFORM 【臨月】
+	;陣痛/破水は赤で強調
+	IF TALENT:MASTER:妊娠 && CFLAG:MASTER:陣痛 > 0
+		SETCOLOR 255,51,51
+		;多胎で1人産んだ後（次の児を待つ小休止）は残り人数を出す
+		IF 分娩中(MASTER)
+			PRINTFORM 【分娩中・あと{CFLAG:MASTER:分娩残}人】
+		ELSEIF CFLAG:MASTER:破水済
+			PRINTFORM 【陣痛中・破水済】
+		ELSE
+			PRINTFORM 【陣痛中】
+		ENDIF
+		RESETCOLOR
+	ENDIF
+	SIF TALENT:MASTER:育児中
+		PRINTFORM 【育児中】
+	SIF CFLAG:MASTER:出産回数
+		PRINTFORM 【経産{CFLAG:MASTER:出産回数}回】
+	SIF CFLAG:MASTER:流産回数
+		PRINTFORM 【流産{CFLAG:MASTER:流産回数}回】
+ENDIF
+PRINTL
+
+LOCAL:1 = STRLENS(CALLNAME:MASTER)
+
+DRAWLINE
+SETCOLOR 140,140,170
+PRINTFORML ▼ステータス
+RESETCOLOR
+
+LOCAL = LIMIT(BASE:MASTER:性欲 / 1000,0,10)
+PRINTFORM   性欲(%CALLNAME:MASTER%):
+SIF BASE:MASTER:性欲 == MAXBASE:MASTER:性欲
+	SETCOLOR 255,51,153
+PRINTFORM %UNICODE(0x2665) * LOCAL%
+PRINTFORM %" " * (30 - LOCAL)%
+RESETCOLOR
+
+IF TARGET
+	LOCAL = LIMIT(BASE:TARGET:性欲 / 1000,0,10)
+	PRINTFORM   性欲(%CALLNAME:TARGET%):
+	SIF BASE:TARGET:性欲 == MAXBASE:TARGET:性欲
+		SETCOLOR 255,51,153
+	PRINTFORM %UNICODE(0x2665) * LOCAL%
+	RESETCOLOR
+
+ENDIF
+PRINTL 
+
+
+LOCAL = LIMIT(BASE:MASTER:興奮度 / 100,0,10)
+PRINTFORM 興奮度(%CALLNAME:MASTER%):
+SIF BASE:MASTER:興奮度 == MAXBASE:MASTER:興奮度
+	SETCOLOR 255,51,153
+PRINTFORM %UNICODE(0x2665) * LOCAL%
+PRINTFORM %" " * (30 - LOCAL)%
+RESETCOLOR
+
+IF TARGET
+	LOCAL = LIMIT(BASE:TARGET:興奮度 / 100,0,10)
+	PRINTFORM 興奮度(%CALLNAME:TARGET%):
+	SIF BASE:TARGET:興奮度 == MAXBASE:TARGET:興奮度
+		SETCOLOR 255,51,153
+	PRINTFORM %UNICODE(0x2665) * LOCAL%
+	RESETCOLOR
+
+ENDIF
+PRINTL 
+LOCAL = MAX(BASE:MASTER:理性 / 100,1)
+PRINTFORM   理性(%CALLNAME:MASTER%):
+SIF BASE:MASTER:理性 < 100
+	SETCOLOR 255,255,0
+PRINTFORM %"★" * LOCAL%
+PRINTFORM %" " * (30 - LOCAL * 2)%
+RESETCOLOR
+
+IF TARGET
+	LOCAL = MAX(BASE:TARGET:理性 / 100,1)
+	PRINTFORM   理性(%CALLNAME:TARGET%):
+	SIF BASE:TARGET:理性 < 100
+		SETCOLOR 255,255,0
+	PRINTFORM %"★" * LOCAL%
+	RESETCOLOR
+
+ENDIF
+
+PRINTL 
+IF TCVAR:MASTER:イベント == 2
+	;IF CFLAG:MASTER:受能動 == 2
+		LOCAL = MAX(BASE:MASTER:抵抗 / 100,1)
+		PRINTFORM   抵抗(%CALLNAME:MASTER%):
+		SIF BASE:MASTER:抵抗 == 0
+			SETCOLOR 255,255,0
+		;PRINTFORM %"★" * LOCAL%
+		PRINTFORM %UNICODE(0x2715) * LOCAL%
+		PRINTFORM %" " * (30 - LOCAL * 2)%
+		RESETCOLOR
+
+	;ELSE
+	;	PRINTFORM %" " * (30 - LOCAL * 2)%
+	;ENDIF
+
+	;IF CFLAG:TARGET:受能動 == 2
+		LOCAL = MAX(BASE:TARGET:抵抗 / 100,1)
+		PRINTFORM   抵抗(%CALLNAME:TARGET%):
+		SIF BASE:TARGET:抵抗 == 0
+			SETCOLOR 255,255,0
+		;PRINTFORM %"★" * LOCAL%
+		PRINTFORM %UNICODE(0x2715) * LOCAL%
+		RESETCOLOR
+	;ENDIF
+	PRINTL 
+ENDIF
+CALL PRINT_BASEBAR行(0, 1, 1)
+
+CALL PRINT_BASEBAR行(1, 1, 1)
+
+CALL PRINT_BASEBAR行(24, 1, 1)
+
+CALL PRINT_BASEBAR行(23, 1, 1)
+
+;眠気（気力の下に配置）
+LOCAL = LIMIT(BASE:MASTER:眠気 / 200,0,10)
+PRINTFORM     眠気:
+SIF BASE:MASTER:眠気 >= 1000
+	SETCOLOR 255,255,0
+SIF BASE:MASTER:眠気 >= 1600
+	SETCOLOR 255,0,0
+PRINTFORM %UNICODE(0x2666) * LOCAL%
+PRINTFORM %" " * (24 - LOCAL)%
+RESETCOLOR
+PRINTL
+
+;精力ゲージ（男性のみ。MASTER・TARGET共に非該当なら行ごと省略）
+IF GETBIT(TALENT:MASTER:性別,1) || (TARGET && GETBIT(TALENT:TARGET:性別,1))
+	CALL PRINT_BASEBAR行(6, GETBIT(TALENT:MASTER:性別,1), TARGET && GETBIT(TALENT:TARGET:性別,1))
+ENDIF
+
+
+;勃起ゲージ（男性のみ。MASTER・TARGET共に非該当なら行ごと省略）
+IF GETBIT(TALENT:MASTER:性別,1) || (TARGET && GETBIT(TALENT:TARGET:性別,1))
+	CALL PRINT_BASEBAR行(5, GETBIT(TALENT:MASTER:性別,1), TARGET && GETBIT(TALENT:TARGET:性別,1))
+ENDIF
+
+;射精ゲージ（男性のみ。MASTER・TARGET共に非該当なら行ごと省略）
+IF GETBIT(TALENT:MASTER:性別,1) || (TARGET && GETBIT(TALENT:TARGET:性別,1))
+	CALL PRINT_BASEBAR行(2, GETBIT(TALENT:MASTER:性別,1), TARGET && GETBIT(TALENT:TARGET:性別,1))
+ENDIF
+
+;母乳ゲージ（母乳体質のみ。MASTER・TARGET共に非該当なら行ごと省略）
+IF TALENT:MASTER:母乳体質 || (TARGET && TALENT:TARGET:母乳体質)
+IF TALENT:MASTER:母乳体質
+	;今のところは最大値を常にチェック
+	MAXBASE:MASTER:3 = 10000
+	SIF TALENT:MASTER:淫乳
+		MAXBASE:MASTER:3 /= 2
+ENDIF
+IF TARGET && TALENT:TARGET:母乳体質
+	;今のところは最大値を常にチェック
+	MAXBASE:TARGET:3 = 10000
+	SIF TALENT:TARGET:淫乳
+		MAXBASE:TARGET:3 /= 2
+ENDIF
+CALL PRINT_BASEBAR行(3, TALENT:MASTER:母乳体質, TARGET && TALENT:TARGET:母乳体質)
+ENDIF
+
+;バイタルと生理/妊娠/精液セクションの間の区切り（空行1行）
+PRINTL
+;生理/妊娠の状態は上部の名前行に【】で表示するため、ここでは出さない
+;傍から見て分かる範囲の妊娠（お腹が目立つ段階2以上、または既に妊娠を知っている相手）
+IF TARGET && ((TALENT:TARGET:妊娠 && (腹段階(TARGET) >= 2 || CFLAG:MASTER:(3300 + TARGET))) || CFLAG:TARGET:出産回数)
+	PRINTFORM %CALLNAME:TARGET%：
+	SIF TALENT:TARGET:妊娠 && (腹段階(TARGET) >= 2 || CFLAG:MASTER:(3300 + TARGET))
+		PRINTFORM 妊娠しているようだ
+	SIF TALENT:TARGET:妊娠 && 腹段階(TARGET) >= 1
+		PRINTFORM 　お腹：%腹段階_名(TARGET)%
+	SIF TALENT:TARGET:妊娠 && CFLAG:TARGET:陣痛 == 0 && 臨月(TARGET)
+		PRINTFORM 　【臨月】
+	SIF TALENT:TARGET:妊娠 && CFLAG:TARGET:陣痛 > 0 && !CFLAG:TARGET:破水済
+		PRINTFORM 　【陣痛中】
+	SIF TALENT:TARGET:妊娠 && CFLAG:TARGET:陣痛 > 0 && CFLAG:TARGET:破水済
+		PRINTFORM 　【陣痛中・破水済】
+	SIF TALENT:TARGET:育児中
+		PRINTFORM 　育児中
+	SIF CFLAG:TARGET:出産回数
+		PRINTFORM 　経産{CFLAG:TARGET:出産回数}回
+	PRINTL
+ENDIF
+;腟内・肛内の精液量（相手別の内訳）
+IF CFLAG:MASTER:膣内精液 > 0
+	PRINTFORM %CALLNAME:MASTER%の膣内：
+	CALL 精液内訳表示(MASTER, 3000)
+	PRINTL
+ENDIF
+IF CFLAG:MASTER:子宮内精液 > 0
+	PRINTFORM %CALLNAME:MASTER%の子宮内：
+	CALL 精液内訳表示(MASTER, 3600)
+	PRINTL
+ENDIF
+IF CFLAG:MASTER:肛内精液 > 0
+	PRINTFORM %CALLNAME:MASTER%の肛内：
+	CALL 精液内訳表示(MASTER, 3100)
+	PRINTL
+ENDIF
+IF TARGET && CFLAG:TARGET:膣内精液 > 0
+	PRINTFORM %CALLNAME:TARGET%の膣内：
+	CALL 精液内訳表示(TARGET, 3000)
+	PRINTL
+ENDIF
+IF TARGET && CFLAG:TARGET:子宮内精液 > 0
+	PRINTFORM %CALLNAME:TARGET%の子宮内：
+	CALL 精液内訳表示(TARGET, 3600)
+	PRINTL
+ENDIF
+IF TARGET && CFLAG:TARGET:肛内精液 > 0
+	PRINTFORM %CALLNAME:TARGET%の肛内：
+	CALL 精液内訳表示(TARGET, 3100)
+	PRINTL
+ENDIF
+PRINTL
+
+
+
+SIF CFLAG:MASTER:前回行動
+PRINTFORML <前回行動:%TRAINNAME:(CFLAG:MASTER:前回行動)%>
+SIF CFLAG:MASTER:前回被行動
+PRINTFORML <前回行動:%TRAINNAME:(CFLAG:MASTER:前回被行動)%>
+;Hシーン中の能力表示は廃止（能力はサイド能力タブで参照）。PALAMはバー一覧で表示
+CALL SHOW_INFO_PALAM
+PRINTL
+ELSE
+;通常時：▼あなた＋▼PALAM（並列）→ ▼情報（あなた）（メイン画面描画.ERB）
+CALL メイン状態並列表示
+DRAWLINE
+CALL メイン情報あなた
+ENDIF
+
+@PRINT_WEEK_COLORED
+;曜日を色付きで表示（日曜=赤 / 土曜=青 / 祝日=赤）。末尾で RESETCOLOR まで行う
+IF (DAY % 7 == 0) || (HOLIDAY() >= 2)
+	SETCOLOR 0xFF6060
+ELSEIF DAY % 7 == 6
+	SETCOLOR 0x6699FF
+ENDIF
+PRINTFORM % WEEK(DAY)%曜日
+RESETCOLOR
+
+@WEEK(ARG)
+#FUNCTIONS
+SELECTCASE ARG % 7
+	CASE 0
+		RETURNF "日"
+	CASE 1
+		RETURNF "月"
+	CASE 2
+		RETURNF "火"
+	CASE 3
+		RETURNF "水"
+	CASE 4
+		RETURNF "木"
+	CASE 5
+		RETURNF "金"
+	CASE 6
+		RETURNF "土"
+ENDSELECT
+
+@TIME_NAME(ARG)
+#FUNCTIONS
+SELECTCASE TIME
+	CASE 0
+		RETURNF "朝"
+	CASE 1
+		RETURNF "放課後"
+	CASE 2
+		RETURNF "夜"
+ENDSELECT
+
+@NEXT_DAY
+VARSET LOCAL
+;次の日に進むときの処理
+IF !HOLIDAY()
+	;身分システム：勤怠評価を身分別に分岐（出席ビット cflag:63 は学生・教師・会社員で共通運用。
+	;フリーター・主婦・キャバ嬢・ソープ嬢は自由業/歩合制のため勤怠評価なし）
+	IF CFLAG:MASTER:仕事 == 1
+		;教師の勤怠評価（皆勤で信頼が上がり、欠勤で信頼が下がる）
+		SELECTCASE CFLAG:MASTER:出席
+			CASE 0
+				PRINTL 無断で授業を休んでしまった。教師としての信頼が下がった･･････
+				BASE:MASTER:評判 -= 100
+				CFLAG:MASTER:欠席日数++
+			CASE 1
+				PRINTL 午後の授業を休んでしまった･･････
+				BASE:MASTER:評判 -= 30
+			CASE 2
+				PRINTL 午前の授業を休んでしまった･･････
+				BASE:MASTER:評判 -= 30
+			CASE 3
+				PRINTL しっかりと授業をこなした。教師としての信頼が上がった。
+				BASE:MASTER:評判 += 10
+		ENDSELECT
+	ELSEIF CFLAG:MASTER:仕事 == 5
+		;会社員の勤怠評価
+		SELECTCASE CFLAG:MASTER:出席
+			CASE 0
+				PRINTL 無断欠勤してしまった。会社での信用が下がった･･････
+				BASE:MASTER:評判 -= 100
+				CFLAG:MASTER:欠席日数++
+			CASE 1
+				PRINTL 午後の仕事をさぼってしまった･･････
+				BASE:MASTER:評判 -= 30
+			CASE 2
+				PRINTL 午前の仕事をさぼってしまった･･････
+				BASE:MASTER:評判 -= 30
+			CASE 3
+				PRINTL 一日しっかり働いた。会社での信用が上がった。
+				BASE:MASTER:評判 += 10
+		ENDSELECT
+	ELSEIF TALENT:MASTER:160
+		;学生の勤怠評価（従来）
+		SELECTCASE CFLAG:MASTER:出席
+			CASE 0
+				PRINTL 大学をさぼった為評判が悪くなった･･････
+				BASE:MASTER:評判 -= 100
+				CFLAG:MASTER:欠席日数++
+			CASE 1
+				PRINTL 午後の授業をさぼった為評判が悪くなった･･････
+				BASE:MASTER:評判 -= 30
+			CASE 2
+				PRINTL 午前の授業をさぼった為評判が悪くなった･･････
+				BASE:MASTER:評判 -= 30
+			CASE 3
+				BASE:MASTER:評判 += 5
+		ENDSELECT
+	ENDIF
+ENDIF
+FOR D,2,CHARANUM
+	BASE:D:評判 += 1
+NEXT
+
+PRINTW 日付が変わりました
+;CFLAG:MASTER:現在位置 = 1
+BASE:MASTER:学力 -= 3
+EQUIP:MASTER:やばそうなお弁当 = 0
+EQUIP:MASTER:普通のお弁当 = 0
+EQUIP:MASTER:美味しそうなお弁当 = 0
+FOR LOCAL,1,CHARANUM
+	CFLAG:LOCAL:食事 = 0
+	CFLAG:LOCAL:出席 = 0
+	CFLAG:LOCAL:痴漢発見 = 0
+	;酔いは日を跨げば醒める。深酒していたら翌日は二日酔い（酔い.ERB）
+	CALL 酔い_日跨ぎ(LOCAL)
+NEXT
+DAY += 1
+DAY:3 += 1
+
+;妊娠・出産の日次処理（妊娠日数の進行・出産・生理周期・避妊/育児カウント）
+CALL 妊娠_日次_ALL
+;病気の日次処理（風邪の発症/進行・性病の進行・NPCの自然回復）
+CALL 病気_日次_ALL
+;;;TIME -= 1440
+TIME = 0
+;次の月になるときの処理
+;;;悪いけど-29や-30や-12は1を代入に直させていただきます。
+SELECTCASE DAY:2
+	CASE 2
+		IF DAY:1 % 4 == 0 && DAY:3 > 29
+;;;			DAY:3 -= 29
+			DAY:3 = 1
+			DAY:2++
+			CFLAG:MASTER:お小遣い = 0
+		ELSEIF DAY:3 > 28
+;;;			DAY:3 -= 28
+			DAY:3 = 1
+			DAY:2++
+			CFLAG:MASTER:お小遣い = 0
+		ENDIF
+	CASE 4,6,9,11
+		IF DAY:3 > 30
+;;;			DAY:3 -= 30
+			DAY:3 = 1
+			DAY:2++
+			CFLAG:MASTER:お小遣い = 0
+		ENDIF
+	CASEELSE
+		IF DAY:3 > 31
+;;;			DAY:3 -= 31
+			DAY:3 = 1
+			DAY:2++
+			CFLAG:MASTER:お小遣い = 0
+		ENDIF
+ENDSELECT
+
+;次の年になるときの処理
+IF DAY:2 > 12
+;;;	DAY:2 -= 12
+	DAY:2 = 1
+	DAY:1 += 1
+ENDIF
+;;;ここに月集計を入れます
+IF DAY:3 == 1
+	CALL SHIHAI_SYUUKEI
+ENDIF
+
+D:101 = 0
+TSTR:11 = 
+D:101 = HOLIDAY()
+SELECTCASE D:101
+	CASE 1
+		TSTR:11 = 休み
+	CASE 2
+		TSTR:11 = 春休み
+	CASE 3
+		TSTR:11 = 夏休み
+	CASE 4
+		TSTR:11 = 冬休み
+	CASE 5
+		TSTR:11 = 正月
+	CASE 6
+		TSTR:11 = 成人の日
+	CASE 7
+		TSTR:11 = 建国記念の日
+	CASE 8
+		TSTR:11 = 春分の日
+	CASE 9
+		TSTR:11 = 昭和の日
+	CASE 10
+		TSTR:11 = 憲法記念日
+	CASE 11
+		TSTR:11 = みどりの日
+	CASE 12
+		TSTR:11 = こどもの日
+	CASE 13
+		TSTR:11 = 海の日
+	CASE 14
+		TSTR:11 = 敬老の日
+	CASE 15
+		TSTR:11 = 秋分の日
+	CASE 16
+		TSTR:11 = 体育の日
+	CASE 17
+		TSTR:11 = 文化の日
+	CASE 18
+		TSTR:11 = 勤労感謝の日
+	CASE 19
+		TSTR:11 = 天皇誕生日
+	CASE 20
+		TSTR:11 = クリスマスイブ
+ENDSELECT
+SIF FLAG:お弁当 == 1
+	CALL BENTO
+CALL Beloved

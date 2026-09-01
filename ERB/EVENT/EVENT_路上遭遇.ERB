@@ -1,0 +1,156 @@
+﻿;================================================================
+; 路上ランダム遭遇イベント（見知らぬ男 / Chara041）
+;  繁華街(地区2)でのプレイヤー行動後、低確率で見知らぬ男に襲われる。
+;  抵抗/服従を選択でき、中出し→受精判定まで既存システムに接続する。
+;  相手はCSV番号41を検索して解決するため、家族選択による登録順のズレに強い。
+;================================================================
+
+;----------------------------------------------------------------
+;見知らぬ男(CSV番号41)の実行番号を返す。未登録なら-1
+;----------------------------------------------------------------
+@見知らぬ男番号
+#FUNCTION
+VARSET LOCAL
+FOR LOCAL,1,CHARANUM
+	SIF NO:LOCAL == 41
+		RETURNF LOCAL
+NEXT
+RETURNF -1
+
+;----------------------------------------------------------------
+;路上遭遇の発生判定（EVENTCOMENDのマスター行動後から呼ぶ）
+; 発生したら1を返す
+;----------------------------------------------------------------
+@路上遭遇チェック
+;イベント中・電車・睡眠・衰弱中は除外
+SIF TCVAR:MASTER:イベント || CFLAG:MASTER:乗車 || CFLAG:MASTER:睡眠 || CFLAG:MASTER:衰弱
+	RETURN 0
+;繁華街(地区2)にいる女性のみ対象
+SIF CFLAG:MASTER:現在地区 != 2
+	RETURN 0
+;屋内・プライベート空間では発生しない（本文が路地=屋外前提のため）
+SIF GETBIT(DA:2:(CFLAG:MASTER:現在位置),3) || IS_PRIVATE_PLACE(CFLAG:MASTER:現在地区,CFLAG:MASTER:現在位置)
+	RETURN 0
+SIF !GETBIT(TALENT:MASTER:性別,0)
+	RETURN 0
+;見知らぬ男が登録されている事
+SIF 見知らぬ男番号() < 0
+	RETURN 0
+;1日1回まで（CFLAG:MASTER:3500=前回発生DAY）
+SIF CFLAG:MASTER:3500 == DAY
+	RETURN 0
+;発生確率：日中3%、夜間(21時以降/早朝)10%
+VARSET LOCAL
+LOCAL = 3
+SIF TIME >= 1260 || TIME < 360
+	LOCAL = 10
+SIF RAND(100) >= LOCAL
+	RETURN 0
+CFLAG:MASTER:3500 = DAY
+CALL 路上遭遇イベント
+RETURN 1
+
+;----------------------------------------------------------------
+;路上遭遇イベント本体（抵抗選択）
+;----------------------------------------------------------------
+@路上遭遇イベント
+VARSET LOCAL
+;LOCAL:0 = 見知らぬ男の実行番号
+LOCAL:0 = 見知らぬ男番号()
+SIF LOCAL:0 < 0
+	RETURN
+PRINTL
+PRINTFORML %"=" * 107%
+PRINTFORMW 人通りの少ない路地に差し掛かった時、見知らぬ男に突然腕を掴まれた。
+PRINTL どうしますか？
+PRINTL [0] - 抵抗して逃げる
+PRINTL [1] - されるがままにする
+$ROAD_INPUT
+INPUT
+SIF RESULT != 0 && RESULT != 1
+	GOTO ROAD_INPUT
+IF RESULT == 0
+	;抵抗判定：気力＋運動能力
+	LOCAL:1 = BASE:MASTER:気力 / 20 + ABL:MASTER:運動能力 * 15 + 15
+	IF RAND(100) < LOCAL:1
+		PRINTFORMW 渾身の力で振りほどき、人通りのある方へ逃げ出した！
+		PRINTL
+		BASE:MASTER:気力 = MAX(BASE:MASTER:気力 - 500, 0)
+		BASE:MASTER:ストレス = MIN(BASE:MASTER:ストレス + 300, MAXBASE:MASTER:ストレス)
+		CFLAG:MASTER:待機時間 += 10
+		RETURN
+	ENDIF
+	PRINTFORMW 振りほどこうとしたが、力ずくで暗がりへ引きずり込まれてしまった……！
+	BASE:MASTER:気力 = MAX(BASE:MASTER:気力 - 800, 0)
+ELSE
+	PRINTFORMW 恐怖で足がすくみ、抵抗できなかった。
+ENDIF
+;強姦本番
+CALL 路上遭遇_本番(MASTER, LOCAL:0)
+RETURN
+
+;----------------------------------------------------------------
+;路上遭遇の性行為本体
+; ARG=被害者(母)、ARG:1=見知らぬ男の実行番号
+; 行為・PALAM・EXP・処女喪失・射精・受精・性病は標準パイプライン
+; （XCOM2820→SOURCE_CHECKS→EVENT_SHOOT）に接続する
+; （NPC_KAN.ERBの強姦ループの挿入行為中心・短縮版）
+;----------------------------------------------------------------
+@路上遭遇_本番(ARG,ARG:1)
+#DIM 男
+男 = ARG:1
+PRINTFORMW 見知らぬ男は乱暴に下着を剥ぎ取り、強引に押し入ってきた。
+;体力・気力・ストレス・興奮
+BASE:ARG:体力 = MAX(BASE:ARG:体力 - 400, 0)
+BASE:ARG:気力 = MAX(BASE:ARG:気力 - 800, 0)
+BASE:ARG:ストレス = MIN(BASE:ARG:ストレス + 500, MAXBASE:ARG:ストレス)
+BASE:ARG:興奮度 = MIN(BASE:ARG:興奮度 + 200, MAXBASE:ARG:興奮度)
+;敵対心・評判
+TA:ARG:(男):6 += 500
+BASE:ARG:評判 = MAX(BASE:ARG:評判 - 20, 0)
+;性病リスク：見知らぬ男は感染者のことがある（シード。感染判定はEVENT_SHOOT側）
+IF FLAG:病気機能 && !性病持ち(男) && RAND(100) < 15
+	SETBIT CFLAG:(男):病気,1
+	CFLAG:(男):性病日数 = 1
+ENDIF
+;標準の強姦ループへ接続
+J:115 = 1
+TFLAG:Ｎイベント = 8
+TFLAG:行為者 = 男
+;男を現場（被害者の現在地）に合わせる
+CFLAG:(男):現在地区 = CFLAG:ARG:現在地区
+CFLAG:(男):現在位置 = CFLAG:ARG:現在位置
+TCVAR:(男):同室 = 1
+TEQUIP:ARG:膣 = 0
+TEQUIP:ARG:アナル = 0
+FOR G,0,5
+	TCVAR:(男):行為対象 = ARG
+	TCVAR:ARG:行為対象 = 男
+	CFLAG:(男):受能動 = 1
+	CFLAG:ARG:受能動 = 2
+;Hはコマンド実行時のARG変数に代入
+	H = 男
+	CALL XCOM2820(男,1)
+	TCVAR:(男):行為対象 = ARG
+	CALL SOURCE_CHECKS(男)
+	TFLAG:行為者 = 男
+	SIF !TFLAG:移動中
+		PRINTW
+NEXT
+;見知らぬ男は必ず膣内射精する（ループ中に未発生なら強制中出し。量2〜4相当）
+IF CFLAG:ARG:(3200 + 男) != DAY && MAXBASE:(男):射精 > 0
+	PRINTFORMW 男は最後に奥まで突き入れると、欲望のすべてを注ぎ込んできた……！
+	TCVAR:(男):行為対象 = ARG
+	TCVAR:ARG:行為対象 = 男
+	TCVAR:(男):挿入 = 1
+	BASE:(男):射精 = MAXBASE:(男):射精 * (2 + RAND(3)) + 1
+	CALL SOURCE_CHECKS(男)
+ENDIF
+;後始末（行為状態リセット・着衣復帰）
+CALL EVENT_ESCAPE_NPC(男, ARG)
+TFLAG:Ｎイベント = 0
+J:115 = 0
+PRINTFORMW 男は満足げに去っていった。あなたはその場に座り込んだ。
+PRINTL
+CFLAG:ARG:待機時間 += 20
+RETURN

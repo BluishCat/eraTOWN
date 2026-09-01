@@ -1,0 +1,57 @@
+﻿;================================================
+; 唇を食む（キス中のみ）
+;  既にキスしているときだけ選べる、唇を甘噛みするスキンシップ。
+;  情愛・屈従を積み、軽い苦痛と逸脱を伴う。
+;================================================
+@XCOM_ABLE22(ARG)
+VARSET LOCAL
+LOCAL = ARG
+VARSET ARG
+SIF !TCVAR:LOCAL:行為対象
+	RETURN 0
+;キス中のときのみ
+SIF !口キス中(LOCAL)
+	RETURN 0
+;ボールギャグ装着時は不可
+SIF TEQUIP:LOCAL:ボールギャグ
+	RETURN 0
+RETURN GLOBAL_COMABLE(22)
+
+;-------------------------------------------------
+;唇を食む
+;-------------------------------------------------
+@XCOM22(ARG)
+#DIM 相手
+VARSET LOCAL
+相手 = TCVAR:ARG:行為対象
+PRINTL
+PRINTFORML %"=" * 107%
+PRINTFORML 唇を食む(%CALLNAME:ARG%)
+IF ARG == MASTER || 相手 == MASTER
+	PRINTFORML %CALLNAME:ARG%は%CALLNAME:相手%の下唇をやわらかく食み、甘く歯を立てた。
+	CALL 汎用口上(2, 相手, ARG)
+ENDIF
+;-------------------------------------------------
+;ソース追加処理
+;-------------------------------------------------
+DOWNBASE:相手:体力 += 0
+DOWNBASE:相手:気力 += 20
+SOURCE:ARG:性行動 = 20
+SOURCE:相手:情愛 = 60
+SOURCE:相手:屈従 = 40
+SOURCE:相手:苦痛 = 20
+SOURCE:相手:逸脱 = 20
+SOURCE:相手:性行動 = 10
+SOURCE:相手:反感 = 10
+;抑圧・抵抗持ちには抑鬱ソース
+SIF TALENT:相手:自己愛 < 0 || TALENT:相手:抵抗
+	SOURCE:相手:鬱屈 += 20
+;-------------------------------------------------
+;経験の処理
+;-------------------------------------------------
+CALL HETEROSEX_EXP(ARG, 相手, 2)
+EXP:相手:キス経験 ++
+EXP:ARG:キス経験 ++
+CFLAG:ARG:待機時間 += 2
+VARSET ARG
+RETURN 1

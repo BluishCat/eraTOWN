@@ -1,0 +1,34 @@
+﻿;何もしない
+@XCOM_ABLE199(ARG)
+VARSET LOCAL
+LOCAL = ARG
+VARSET ARG
+SIF !TCVAR:LOCAL:行為対象
+	RETURN 0
+
+RETURN GLOBAL_COMABLE(199)
+
+;-------------------------------------------------
+;何もしない
+;-------------------------------------------------
+@XCOM199(ARG)
+VARSET LOCAL
+IF ARG == MASTER || TCVAR:ARG:行為対象 == MASTER
+	PRINTL 
+	PRINTFORML %"=" * 107%
+	PRINTFORML 何もしない(%CALLNAME:ARG%)
+ENDIF
+;-------------------------------------------------
+;ソース追加処理
+;-------------------------------------------------
+;消費体力、気力
+DOWNBASE:ARG:体力 -= 100
+DOWNBASE:ARG:気力 -= 100
+;-------------------------------------------------
+;経験の処理
+;-------------------------------------------------
+CFLAG:ARG:待機時間 += 2
+
+VARSET ARG
+RETURN 1
+

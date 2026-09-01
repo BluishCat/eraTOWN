@@ -1,0 +1,581 @@
+﻿@EVENTFIRST
+DAY = 8
+DAY:1 = 1
+DAY:2 = 4
+DAY:3 = 8
+REPEAT MAX_MAP()
+	CALLFORM PLACE_SET_{COUNT}
+REND
+;;;FOR LOCAL,1,100
+;;;	SIF EXISTCSV(LOCAL,0)
+;;;		ADDCHARA LOCAL
+;;;NEXT
+ADDCHARA 1
+MASTER = 1
+CALL CUSTOM_CHARAMAKE(MASTER)
+CALL CUSTOM_FAMILY
+
+CALL CUSTM_OTHER
+
+;妊娠システム：設定の既定値を投入し、全女性の生理周期を初期化（非同期化）
+CALL 妊娠設定_INIT
+CALL 生理周期_INIT
+;病気システム：設定の既定値を投入
+CALL 病気設定_INIT
+
+;口上：可変呼称（一人称・二人称）の既定値を設定
+CALL 呼称_初期化
+
+CFLAG:MASTER:起床時間 = 420
+CFLAG:MASTER:就寝時間 = 22 * 60
+
+;キャラ毎に初期TA値を設定
+TA:009:001:3 = 50
+
+FOR LOCAL,0,CHARANUM
+	FOR LOCAL:1,0,27
+		IF !MAXBASE:LOCAL:(LOCAL:1)
+			SELECTCASE LOCAL:1
+				CASE 0,1
+					MAXBASE:LOCAL:(LOCAL:1) = 2000
+				CASE 2,6,15,23,24
+					MAXBASE:LOCAL:(LOCAL:1) = 10000
+				CASE 5,10
+					MAXBASE:LOCAL:(LOCAL:1) = 1500
+				CASE 16
+					MAXBASE:LOCAL:(LOCAL:1) = 2000
+				CASE 11 TO 26
+					MAXBASE:LOCAL:(LOCAL:1) = 1000
+			ENDSELECT
+					
+		ENDIF
+	NEXT
+	BASE:LOCAL:疲労 = 0
+	BASE:LOCAL:ストレス = 0
+	BASE:LOCAL:性欲 = 0
+	BASE:LOCAL:興奮度 = 0
+	BASE:LOCAL:勃起 = 0
+	BASE:LOCAL:射精 = 0
+	BASE:LOCAL:眠気 = 0
+;	BASE:LOCAL:精力 = MAXBASE:LOCAL:精力 / 2
+	BASE:LOCAL:精力 = MAXBASE:LOCAL:精力
+	CFLAG:LOCAL:睡眠 = 1
+	CFLAG:LOCAL:主睡眠 = 1
+
+	;身分システム：年齢未設定(0)なら身分・学年から既定値を入れる
+	;（既定値の定義は SHOP_CUSTOM.ERB の @身分年齢_既定 に一元化。式をここに複製しない）
+	SIF !CFLAG:LOCAL:年齢
+		CALL 身分年齢_既定(LOCAL)
+
+	SIF CFLAG:LOCAL:モラル == 0
+		CFLAG:LOCAL:モラル = 1000
+	IF LOCAL != MASTER && !CFLAG:LOCAL:起床時間 && !CFLAG:LOCAL:就寝時間
+		CFLAG:LOCAL:起床時間 = 7 * 60
+		CFLAG:LOCAL:就寝時間 = 22 * 60
+	ENDIF
+
+	;所持金と初期衣装（服装の既定値は CLOTHES/CHANGE_CLOTHES.ERB の @INIT_CLOTHES に一元化。
+	;役職別の指定服は CLOTHES/CLOTHES_DATA.ERB の @初期衣装_既定。式をここに複製しない）
+	IF TALENT:LOCAL:学生
+		MONEY:LOCAL = 22000
+	ELSE
+		MONEY:LOCAL = 50000
+	ENDIF
+	;刺激度・容姿チェック(@SUGGESTIVE_CHECK)も@INIT_CLOTHESの中で行う
+	CALL INIT_CLOTHES(LOCAL)
+	SELECTCASE CFLAG:LOCAL:タイプ
+		CASE 0
+			TA:LOCAL:0:5 = 100
+			TA:LOCAL:1:5 = 120
+			TA:LOCAL:2:5 = 140
+			TA:LOCAL:3:5 = 100
+			TA:LOCAL:4:5 = 140
+			TA:LOCAL:5:5 = 080
+			TA:LOCAL:6:5 = 030
+			TA:LOCAL:7:5 = 060
+			TA:LOCAL:8:5 = 100
+			TA:LOCAL:9:5 = 100
+		CASE 1
+			TA:LOCAL:0:5 = 120
+			TA:LOCAL:1:5 = 100
+			TA:LOCAL:2:5 = 120
+			TA:LOCAL:3:5 = 100
+			TA:LOCAL:4:5 = 100
+			TA:LOCAL:5:5 = 100
+			TA:LOCAL:6:5 = 100
+			TA:LOCAL:7:5 = 120
+			TA:LOCAL:8:5 = 120
+			TA:LOCAL:9:5 = 120
+		CASE 2
+			TA:LOCAL:0:5 = 140
+			TA:LOCAL:1:5 = 120
+			TA:LOCAL:2:5 = 140
+			TA:LOCAL:3:5 = 100
+			TA:LOCAL:4:5 = 080
+			TA:LOCAL:5:5 = 120
+			TA:LOCAL:6:5 = 060
+			TA:LOCAL:7:5 = 040
+			TA:LOCAL:8:5 = 080
+			TA:LOCAL:9:5 = 100
+		CASE 3
+			TA:LOCAL:0:5 = 100
+			TA:LOCAL:1:5 = 100
+			TA:LOCAL:2:5 = 100
+			TA:LOCAL:3:5 = 100
+			TA:LOCAL:4:5 = 120
+			TA:LOCAL:5:5 = 140
+			TA:LOCAL:6:5 = 040
+			TA:LOCAL:7:5 = 060
+			TA:LOCAL:8:5 = 120
+			TA:LOCAL:9:5 = 120
+		CASE 4
+			TA:LOCAL:0:5 = 140
+			TA:LOCAL:1:5 = 100
+			TA:LOCAL:2:5 = 080
+			TA:LOCAL:3:5 = 120
+			TA:LOCAL:4:5 = 120
+			TA:LOCAL:5:5 = 080
+			TA:LOCAL:6:5 = 020
+			TA:LOCAL:7:5 = 020
+			TA:LOCAL:8:5 = 100
+			TA:LOCAL:9:5 = 100
+		CASE 5
+			TA:LOCAL:0:5 = 080
+			TA:LOCAL:1:5 = 100
+			TA:LOCAL:2:5 = 120
+			TA:LOCAL:3:5 = 140
+			TA:LOCAL:4:5 = 080
+			TA:LOCAL:5:5 = 100
+			TA:LOCAL:6:5 = 080
+			TA:LOCAL:7:5 = 040
+			TA:LOCAL:8:5 = 080
+			TA:LOCAL:9:5 = 100
+		CASE 6
+			TA:LOCAL:0:5 = 030
+			TA:LOCAL:1:5 = 100
+			TA:LOCAL:2:5 = 060
+			TA:LOCAL:3:5 = 040
+			TA:LOCAL:4:5 = 020
+			TA:LOCAL:5:5 = 080
+			TA:LOCAL:6:5 = 100
+			TA:LOCAL:7:5 = 080
+			TA:LOCAL:8:5 = 040
+			TA:LOCAL:9:5 = 080
+		CASE 7
+			TA:LOCAL:0:5 = 060
+			TA:LOCAL:1:5 = 120
+			TA:LOCAL:2:5 = 040
+			TA:LOCAL:3:5 = 060
+			TA:LOCAL:4:5 = 020
+			TA:LOCAL:5:5 = 040
+			TA:LOCAL:6:5 = 080
+			TA:LOCAL:7:5 = 080
+			TA:LOCAL:8:5 = 080
+			TA:LOCAL:9:5 = 100
+		CASE 8
+			TA:LOCAL:0:5 = 100
+			TA:LOCAL:1:5 = 120
+			TA:LOCAL:2:5 = 080
+			TA:LOCAL:3:5 = 120
+			TA:LOCAL:4:5 = 100
+			TA:LOCAL:5:5 = 080
+			TA:LOCAL:6:5 = 040
+			TA:LOCAL:7:5 = 080
+			TA:LOCAL:8:5 = 120
+			TA:LOCAL:9:5 = 100
+		CASE 9
+			TA:LOCAL:0:5 = 100
+			TA:LOCAL:1:5 = 120
+			TA:LOCAL:2:5 = 100
+			TA:LOCAL:3:5 = 120
+			TA:LOCAL:4:5 = 100
+			TA:LOCAL:5:5 = 100
+			TA:LOCAL:6:5 = 080
+			TA:LOCAL:7:5 = 100
+			TA:LOCAL:8:5 = 100
+			TA:LOCAL:9:5 = 100
+		CASEELSE
+			CONTINUE
+	ENDSELECT
+
+
+NEXT
+MONEY:1 = 30000
+BASE:MASTER:容姿 = 300
+BASE:MASTER:学力 = 300
+CALL SUGGESTIVE_CHECK(MASTER)
+CALL SET_DANGEROUS
+CALL SET_BENTO
+CALL SET_TIKAN
+CALL DEFAULT_OPTION
+;サイドバーは能力表示タブ（1・■あなたパネル）で開始（0のままだとマップタブになる）
+FLAG:サイドタブ = 1
+TARGET = -1
+FOR LOCAL,1,CHARANUM
+	IF LOCAL == MASTER
+			EQUIP:LOCAL:17 = 1
+			EQUIP:LOCAL:18 = 1
+			EQUIP:LOCAL:19 = 1
+			EQUIP:LOCAL:77 = 1
+			EQUIP:LOCAL:78 = 1
+			EQUIP:LOCAL:79 = 1
+	ELSE
+	FOR LOCAL:1,1,1000
+		SIF EQUIPNAME:(LOCAL:1) != ""
+			EQUIP:LOCAL:(LOCAL:1) = 1
+	NEXT
+	ENDIF
+NEXT
+FOR LOCAL,1,CHARANUM
+	FOR LOCAL:1,200,218
+		LOCALS = /%TOSTR(LOCAL:1)%,%TOSTR(CFLAG:LOCAL:(LOCAL:1))%
+		CSTR:LOCAL:0 += LOCALS
+	NEXT
+	CSTR:LOCAL:0 += "/"
+	CSTR:LOCAL:10 = 初期服装
+NEXT
+$INPUT_LOOP02
+PRINTL オープニングを見ますか？
+PRINTL [0] - はい
+PRINTL [1] - いいえ
+INPUT
+IF RESULT == 0
+	DRAWLINE
+	PRINTW （この街を支配しろ！）
+	CLEARLINE 1
+	PRINTW 夢の中で誰かが叫んだ。
+	PRINTW 支配？？？
+	CLEARLINE 2
+	PRINTW 何を言ってるんだろう？………ん！今日から大学だよ、支度しなくちゃ。
+	PRINTFORMW %CALLNAME:1%は起きて支度をし、大学へ向かう。
+	CLEARLINE 2
+	PRINTW 家を出ると近所のおばさんが居る。
+	CLEARLINE 1
+	PRINTL 「おはようございます」
+	PRINTW 「あらおはよう。今日から高校生かしら、いいわねぇ」
+	CLEARLINE 2
+	PRINTW （そうだ支配だ）
+	CLEARLINE 1
+	PRINTL なんの声だろう？不思議に思っていると、
+	PRINTW 清清しい音がし、ここら辺を少し支配した気がした。
+	CLEARLINE 2
+	PRINTL へぇ、なんか知らないけど面白い。
+	PRINTW 誰かと話すと支配になるのかな？
+	CLEARLINE 2
+	PRINTW そう思い電車に乗っていると、
+	CLEARLINE 1
+	PRINTW 「やめてください……」
+	PRINTW かすかな声がする。
+	CLEARLINE 2
+	PRINTL かわいそうに、痴漢かぁ。
+	PRINTL システム的に助ける事は出来ない。
+	PRINTW しかし、痴漢に支配された気はしない。
+	CLEARLINE 3
+	PRINTL でも痴漢が困ってる時に助ける気は無いなぁ。
+	PRINTW ・・・そうか、なんていうか評価みたいなものもあるのかな？
+	CLEARLINE 2
+	PRINTW ………
+	CLEARLINE 1
+	PRINTW 大学に着いた。
+	CLEARLINE 1
+	PRINTW 休み時間に誰かがケンカしている。
+	CLEARLINE 1
+	PRINTL まあ、勝った方が支配だよね。
+	PRINTW ん？そういえばライバルとか居るのかな？
+	CLEARLINE 2
+	PRINTW ………
+	CLEARLINE 1
+	PRINTW 帰り道でＨしている人が居た。
+	CLEARLINE 1
+	PRINTL 見えないとこでしろよ、でも
+	PRINTL 止められない私は支配されてるって事なのかな？
+	PRINTW こんなやつらは助けないけどね。
+	CLEARLINE 3
+	PRINTW ………
+	CLEARLINE 1
+	PRINTW 寄り道してハンバーガー屋に入る。
+	CLEARLINE 1
+	PRINTL バイトの子にはここではかなわないよなぁ。
+	PRINTW そう思い１００円バーガーをかぶりつく。
+	CLEARLINE 2
+	PRINTW ………
+	CLEARLINE 1
+	PRINTW 家に帰りＴＶを見る。
+	CLEARLINE 1
+	PRINTW プロレス中継だ。
+	PRINTW やはりガチンコ勝負ではレスラーには敵わないよね
+	PRINTW そんな事をふと考えた。
+	CLEARLINE 3
+	PRINTW ・
+	CLEARLINE 1
+	PRINTW ・
+	CLEARLINE 1
+	PRINTW 目が覚めた！
+	CLEARLINE 1
+	PRINTW う〜ん、昨日はなんか変な日だったなぁ
+	CLEARLINE 1
+	PRINTW ………
+	CLEARLINE 1
+	PRINTW ………
+	CLEARLINE 1
+	PRINTW ………
+	CLEARLINE 1
+	PRINTW え？今日から大学？！
+	CLEARLINE 1
+	PRINTW え？どういう………
+	CLEARLINE 1
+	PRINTW ………
+	CLEARLINE 1
+	PRINTW ………
+	CLEARLINE 1
+	PRINTW ………
+	CLEARLINE 1
+	PRINTW 高校生活が今始まる
+	CLEARLINE 1
+	BEGIN TRAIN
+ELSEIF RESULT == 1
+	BEGIN SHOP
+ELSE
+	GOTO INPUT_LOOP02
+ENDIF
+;;;BEGIN SHOP
+
+
+
+
+@SET_DANGEROUS
+DRAWLINE
+PRINTL 街の危険度を設定して下さい
+
+PRINTL [0] - 低い 普通にしてれば襲われたりしません
+PRINTL [1] - 普通 普通にしててもたまに襲われます
+PRINTL [2] - 高い 危険なところには行かないほうが良いです
+PRINTL [3] - 激高 毎日襲われたい人はどうぞ
+$INPUT_LOOP
+INPUT
+
+IF RESULT >= 0 && RESULT <= 3
+	FLAG:危険度 = RESULT
+	FOR LOCAL,1,CHARANUM
+		SIF LOCAL == MASTER
+			CONTINUE
+		ABL:LOCAL:欲望 = MIN(ABL:LOCAL:欲望 + FLAG:危険度,5)
+		CFLAG:LOCAL:モラル = MAX(CFLAG:LOCAL:モラル - FLAG:危険度 * 200,0)
+	NEXT
+ELSE
+	CLEARLINE 1
+	GOTO INPUT_LOOP
+ENDIF
+
+@SET_BENTO
+DRAWLINE
+PRINTL 母が存在するとき平日にお弁当を時々作ってもらえます
+PRINTL 作ってもらいますか？
+
+PRINTL [0] - いらない
+PRINTL [1] - 作ってもらう
+PRINTL [2] - むしろ作ってあげる
+$INPUT_LOOP50
+INPUT
+IF RESULT == 0
+	FLAG:お弁当 = RESULT
+	PRINTW お弁当はいらないといいました
+ELSEIF RESULT == 1
+	FLAG:お弁当 = RESULT
+	PRINTW お弁当を作って欲しいといいました
+ELSEIF RESULT == 2
+	FLAG:お弁当 = RESULT
+	PRINTL その場にいる家族にもお弁当を作ってあげることにしました
+	PRINTW 一人分より経験が多く手に入ります　が、料理難易度が上がります
+ELSE
+	CLEARLINE 1
+	GOTO INPUT_LOOP50
+ENDIF
+
+@SET_EQUIP
+PRINTL 断世紀のないキャラへの個別ペニスバンドの有無
+FOR LOCAL,1,CHARANUM
+;	SIF LOCAL == MASTER
+;		CONTINUE
+	SIF GETBIT(TALENT:LOCAL:2,1)
+		CONTINUE
+	PRINTFORML [{LOCAL,2}] - %CALLNAME:LOCAL%
+NEXT
+PRINTL [80] - 全て0
+PRINTL [81] - 全て1
+PRINTL [99] - 戻る
+$INPUT_LOOP
+INPUT
+IF RESULT == 99
+	RETURN 0
+ELSEIF EXISTCSV(RESULT,0) && !EQUIP:RESULT:ペニスバンド
+	PRINTFORML %CALLNAME:RESULT%にペニスバンドを与えた
+	EQUIP:RESULT:ペニスバンド++
+	GOTO INPUT_LOOP
+ELSEIF EXISTCSV(RESULT,0) && EQUIP:RESULT:ペニスバンド
+	PRINTFORML %CALLNAME:RESULT%からペニスバンドを取り上げた
+	EQUIP:RESULT:ペニスバンド--
+	GOTO INPUT_LOOP
+ELSEIF RESULT == 80
+	PRINTFORML 全員からペニスバンドを取り上げた
+	CVARSET EQUIP, 12, 0
+	GOTO INPUT_LOOP
+ELSEIF RESULT == 81
+	PRINTFORML 全員にペニスバンドを与えた
+	CVARSET EQUIP, 12, 1
+	GOTO INPUT_LOOP
+ELSE
+	GOTO INPUT_LOOP
+ENDIF
+
+@SET_TIKAN
+LOCALS:0 = [痴漢]持ちのみ（デフォルト）
+LOCALS:1 = 全員
+LOCALS:2 = 異性のみ
+LOCALS:3 = 同性のみ
+LOCALS:12 = 異性かつ素質[痴漢]持ちのみ
+LOCALS:13 = 同性かつ素質[痴漢]持ちのみ
+
+$INPUT_LOOP
+DRAWLINE
+PRINTFORML 痴漢してくる可能性のあるキャラ:%LOCALS:(FLAG:痴漢付与フラグ)%
+PRINTL  
+PRINTFORML [0] - %LOCALS:0%
+PRINTFORML [1] - %LOCALS:1%
+PRINTFORML [2] - %LOCALS:2%　[12] - %LOCALS:12%
+PRINTFORML [3] - %LOCALS:3%　[13] - %LOCALS:13%
+PRINTL [99] - 戻る
+INPUT
+SELECTCASE RESULT
+CASE 0 TO 3, 12, 13
+	FLAG:痴漢付与フラグ = RESULT
+	GOTO INPUT_LOOP
+CASE 99
+	RETURN
+CASEELSE
+	GOTO INPUT_LOOP
+ENDSELECT
+
+
+@EVENTTURNEND
+VARSET LOCAL
+;LOCAL = 1440 - TIME
+;BASE:MASTER:体力 = LIMIT(BASE:MASTER:体力 + (LOCAL / 60) * 100 ,0,MAXBASE:MASTER:体力)
+;BASE:MASTER:気力 = LIMIT(BASE:MASTER:気力 + (LOCAL / 60) * 200 ,0,MAXBASE:MASTER:気力)
+;FOR LOCAL:1 , 1, CHARANUM
+;	BASE:(LOCAL:1):体力 = MAXBASE:(LOCAL:1):体力
+;	BASE:(LOCAL:1):気力 = MAXBASE:(LOCAL:1):気力
+;NEXT
+BEGIN SHOP
+
+@EVENTCOM
+
+;セーブ実行時にエンジンが自動呼び出しする関数。ここで組み立てた SAVEDATA_TEXT が
+;セーブファイルへ書き込まれ、セーブ／ロード一覧のコメント欄に表示される。
+;（@SHOW_SHOP 側で代入してもここで上書きされるため、必ずこの関数で設定すること）
+;この関数を定義するとエンジン既定の日時表示は出なくなるため、%GETTIMES()% で自前に付ける。
+;表示例: 2026/07/21 10:07:42 あなた（学生） 9日目・火曜
+@SAVEINFO
+SAVEDATA_TEXT = %GETTIMES()% %NAME:MASTER%（%身分名()%） {DAY}日目・%WEEK(DAY)%曜
+
+@EVENTLOAD
+REPEAT MAX_MAP()
+	CALLFORM PLACE_SET_{COUNT}
+REND
+;妊娠システム：既定値未投入の旧セーブに設定の標準値を投入
+CALL 妊娠設定_INIT
+;病気システム：既定値未投入の旧セーブに設定の標準値を投入
+CALL 病気設定_INIT
+;きょうだい削除：旧セーブに残る兄(014)姉(015)弟(012)妹(013)をDELCHARAで取り除く。
+;登録番号が詰まるので、下のADDCHARAループより「前」に必ず実行すること。
+CALL 兄弟姉妹_削除移行
+;店主キャラ(Chara041〜058)＋見知らぬ男＋キャバクラ客(Chara059)＋ソープ嬢(Chara060)＋劇場の支配人(Chara061)＋看板ダンサー(Chara062)
+;＋ホストクラブの店長(Chara063)・Ｎｏ．１ホスト(Chara064)・新人ホスト(Chara065)
+;＋居酒屋の大将(Chara066)・バーのマスター(Chara067)・常連(Chara068/069)
+;＋銭湯の番台(Chara070)＋映画館の支配人(Chara071)
+;＋オフィスの上司(Chara072)・先輩社員(Chara073)・後輩社員(Chara074)
+;＋定食屋の大将(Chara075)を既存セーブにも追加登録＋既定値投入（未登録/未初期化時のみ）
+;新規ゲームは@CUSTOM_FAMILYのADDCHARAループが自動登録するため、ここは旧セーブ救済用。
+;精力MAX=0のまま保存された過去セーブの修復も兼ねる（0だとTIME_COUNTで0除算）。
+FOR LOCAL:9,41,76
+	SIF GETCHARA(LOCAL:9) == -1 && EXISTCSV(LOCAL:9,0)
+		ADDCHARA LOCAL:9
+	IF GETCHARA(LOCAL:9) != -1 && !MAXBASE:(GETCHARA(LOCAL:9)):精力
+		LOCAL = GETCHARA(LOCAL:9)
+		FOR LOCAL:1,0,28
+			IF !MAXBASE:LOCAL:(LOCAL:1)
+				SELECTCASE LOCAL:1
+					CASE 0,1
+						MAXBASE:LOCAL:(LOCAL:1) = 2000
+					CASE 2,6,15,23,24
+						MAXBASE:LOCAL:(LOCAL:1) = 10000
+					CASE 5,10
+						MAXBASE:LOCAL:(LOCAL:1) = 1500
+					CASE 16
+						MAXBASE:LOCAL:(LOCAL:1) = 2000
+					;27=酔い（2026-07-21追加。上限1000）
+					CASE 11 TO 27
+						MAXBASE:LOCAL:(LOCAL:1) = 1000
+				ENDSELECT
+			ENDIF
+		NEXT
+		BASE:LOCAL:精力 = MAXBASE:LOCAL:精力
+	ENDIF
+NEXT
+;旧セーブ救済：初期着衣処理を通らずに登録されたキャラ（上のADDCHARAループで後から追加された
+;店主・スタッフ系NPCなど）が全裸のままなので服を着せる（2026-07-29）。
+;対象はCFLAGの服装200〜203が全て空のキャラだけ。プレイヤーが脱がせただけの状態は
+;CFLAG(設定服)が残るので巻き込まない。条件が自己限定的なので何度ロードしても安全。
+FOR LOCAL,0,CHARANUM
+	SIF CFLAG:LOCAL:上半身上着 || CFLAG:LOCAL:下半身上着 || CFLAG:LOCAL:上半身下着 || CFLAG:LOCAL:下半身下着
+		CONTINUE
+	CALL INIT_CLOTHES(LOCAL)
+NEXT
+;FOR LOCAL,1,100
+;	SIF GETCHARA(LOCAL) == -1 && EXISTCSV(LOCAL,0)
+;		ADDCHARA LOCAL
+;NEXT
+;旧セーブ救済：営業時間システム導入に伴い、店主(Chara042〜058)の定位置を
+;大学前駅から各自の店(JOB_AREA/JOB_PLACE)へ移す（開始地区/開始位置は毎朝EVENTTRAINが参照。
+;常00〜23の時間別スケジュール表 cflag100-123/130-153 も店に揃える。CSVは変更済みで新規ゲームは自動反映）
+IF !FLAG:営業時間店主配置済
+	FOR LOCAL:9,42,59
+		SIF GETCHARA(LOCAL:9) == -1
+			CONTINUE
+		LOCAL = GETCHARA(LOCAL:9)
+		CFLAG:LOCAL:開始地区 = JOB_AREA(LOCAL:9 - 41)
+		CFLAG:LOCAL:開始位置 = JOB_PLACE(LOCAL:9 - 41)
+		CFLAG:LOCAL:現在地区 = CFLAG:LOCAL:開始地区
+		CFLAG:LOCAL:現在位置 = CFLAG:LOCAL:開始位置
+		FOR LOCAL:1,0,24
+			CFLAG:LOCAL:(100 + LOCAL:1) = CFLAG:LOCAL:開始地区
+			CFLAG:LOCAL:(130 + LOCAL:1) = CFLAG:LOCAL:開始位置
+		NEXT
+	NEXT
+	FLAG:営業時間店主配置済 = 1
+ENDIF
+;旧セーブ救済：アンダーバスト(BASE:36)未設定のキャラへ身長から算出して恒久化（カップ計算の新方式用）
+FOR LOCAL,0,CHARANUM
+	IF MAXBASE:LOCAL:身長 > 0 && MAXBASE:LOCAL:アンダーバスト <= 0
+		MAXBASE:LOCAL:アンダーバスト = UNDER_BUST_STD(LOCAL)
+		BASE:LOCAL:アンダーバスト = MAXBASE:LOCAL:アンダーバスト
+	ENDIF
+NEXT
+;身分システム：年齢(cflag:78)未設定の旧セーブへ身分・学年から既定値を投入
+;あわせて高校時代のセーブ（学生が16〜18歳）を大学の年齢へ繰り上げる。
+;登場人物は全員20歳以上なので、20未満のキャラは身分から引き直す
+;（既定値の定義は SHOP_CUSTOM.ERB の @身分年齢_既定）
+FOR LOCAL,0,CHARANUM
+	SIF !CFLAG:LOCAL:年齢 || CFLAG:LOCAL:年齢 < 20
+		CALL 身分年齢_既定(LOCAL)
+NEXT
+;旧セーブ救済：下限クランプが無かった頃にマイナスへ沈んだ関係値TAを0へ戻す（2026-07-25）
+;戦闘のたびの肉欲-500/-1000が累積して-20000に達すると、@GET_REVISIONの分母
+;（上昇率20000＋肉欲）が0になりゼロ除算で落ちていた。負のままでは+1ずつしか戻らず
+;そのペアの肉欲・好意が実質永久に0になるため、ロード時に一度だけ掃除する。
+;@TA_CLAMPが両方向を見るので、ペアは片側だけ回せばよい
+FOR LOCAL,0,CHARANUM
+	FOR LOCAL:1,LOCAL,CHARANUM
+		CALL TA_CLAMP(LOCAL, LOCAL:1)
+	NEXT
+NEXT

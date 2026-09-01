@@ -1,0 +1,90 @@
+﻿@XCOM_ABLE1020(ARG)
+SIF !TFLAG:同室
+	RETURN 0
+RETURN GLOBAL_COMABLE(1020)
+
+;=================================================
+; その相手に今なら声をかけられるか
+; 番号入力の候補一覧（XCOM1020）とサイドバー同室者タブのボタン化で
+; 同じ基準を使うためのヘルパ。食い違うと「押せるのに弾かれる」ボタンが出る
+;=================================================
+@声かけ可能(ARG)
+#FUNCTION
+SIF ARG == MASTER
+	RETURNF 0
+SIF !TCVAR:ARG:同室 || CFLAG:ARG:睡眠 || CFLAG:ARG:衰弱 || CFLAG:ARG:会話
+	RETURNF 0
+RETURNF 1
+
+;=================================================
+; 相手が確定したあとの声かけ本体（敵対判定→妊娠露見→部活補正→会話イベント）
+; ARG = 相手の登録番号
+; 呼び出し元: XCOM1020（番号入力）/ USERCOM.ERB @PLAYER_USERCOM の "声かけ_" 分岐
+;             （メイン画面の同室者行と、サイドバー同室者タブの名前クリック。値は共通）
+;=================================================
+@声をかける実行(ARG)
+#DIM 相手
+#DIM 露見済
+相手 = ARG
+IF TA:相手:MASTER:6 > 500 || TA:MASTER:相手:6 > 500
+	PRINTFORML %CALLNAME:MASTER%と%CALLNAME:相手%は敵対しています
+	TA:1:相手:0 -= 10
+	TA:1:相手:1 -= 1
+	TA:1:相手:2 -= 10
+	TA:1:相手:3 -= 10
+	TA:1:相手:4 -= 10
+	TA:1:相手:6 -= 10
+	TA:相手:1:0 -= 10
+	TA:相手:1:1 -= 1
+	TA:相手:1:2 -= 10
+	TA:相手:1:3 -= 10
+	TA:相手:1:4 -= 10
+	TA:相手:1:6 -= 10
+	SIF EQUIP:MASTER:上手な謝り方 && (TA:1:相手:6 < TA:相手:1:6)
+		CALL DOGEZA(相手)
+	SIF EQUIP:MASTER:広い心の持ち方 && (TA:1:相手:6 > TA:相手:1:6)
+		CALL YURUSU(相手)
+	CFLAG:MASTER:待機時間 += 10
+	RETURN 1
+ENDIF
+;お腹を見ての気づき（双方向）。相手が既に知っていたかを控えておく
+露見済 = CFLAG:相手:(3300 + MASTER)
+CALL 妊娠露見チェック(相手, MASTER)
+CALL 妊娠露見チェック(MASTER, 相手)
+;既に知っていた相手は専用反応。この場で気づいた場合は気づき口上のみ（二重表示回避）
+IF 露見済 && 腹段階(MASTER) >= 2
+	CALL 汎用口上(11, 相手, MASTER)
+ELSEIF !CFLAG:相手:(3300 + MASTER)
+	CALL 汎用口上(1, 相手, MASTER)
+ENDIF
+;;;20260716 追加　同じ部活だと会話が続きやすい（COMF800の成功率式が会話累積値を減算するため）
+SIF 部活一致(MASTER, 相手)
+	TCVAR:MASTER:会話累積値 -= 10
+CALL EVENT_JOIN(MASTER, 相手, 3)
+RETURN 1
+
+@XCOM1020(ARG)
+VARSET LOCAL
+PRINTL
+PRINTFORML %"=" * 107%
+;声をかける
+PRINTL 誰に声をかけますか？
+FOR LOCAL,1,CHARANUM
+	SIF !声かけ可能(LOCAL)
+		CONTINUE
+	PRINTFORML [{LOCAL,2}] - %CALLNAME:LOCAL%
+NEXT
+PRINTL [99] - 戻る
+$INPUT_LOOP
+INPUT
+IF RESULT == 99
+	RETURN 0
+ELSEIF EXISTCSV(RESULT,0) && TCVAR:RESULT:同室
+	;声をかけた相手番号を退避（CALL先の RETURN で RESULT が壊れるため）
+	LOCAL:1 = RESULT
+	CALL 声をかける実行(LOCAL:1)
+ELSE
+	CLEARLINE 1
+	GOTO INPUT_LOOP
+ENDIF
+RETURN 1

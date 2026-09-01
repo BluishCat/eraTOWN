@@ -1,0 +1,45 @@
+﻿;=================================================
+; 専業主婦・家事手伝いの日課コマンド「家事をする」（身分システム：cflag:仕事==7）
+; 場所=自宅（COM_PROFILE.ERBで宣言）。時間制限なし・勤怠なし・収入なし。
+; 家事で料理・清掃の経験を積み、在宅の家族からの好意が上がる。
+;=================================================
+@XCOM_ABLE1052(ARG)
+SIF !COM_PLACE_OK(1052) || !COM_TIME_OK(1052)
+	RETURN 0
+RETURN GLOBAL_COMABLE(1052)
+
+@XCOM1052(ARG)
+VARSET LOCAL
+PRINTL
+PRINTFORML %"=" * 107%
+PRINTL 家事
+;2時間かけて掃除・洗濯・食事の支度をする
+CFLAG:MASTER:待機時間 = 120
+DOWNBASE:ARG:体力 += CFLAG:ARG:待機時間 * 20 / 60
+DOWNBASE:ARG:気力 += CFLAG:ARG:待機時間 * 15 / 60
+DOWNBASE:ARG:疲労 -= CFLAG:ARG:待機時間 * 25 / 60
+;家を整えると気持ちも落ち着く
+DOWNBASE:ARG:ストレス += CFLAG:ARG:待機時間 * 20 / 60
+;料理と掃除の腕が上がる（獲得表示はSOURCE_CHECK_2が行う）
+EXP:ARG:料理経験 += 2
+EXP:ARG:清掃経験 += 2
+;同じ家にいる家族は、家を守るあなたへの好意を深める
+FOR LOCAL,1,CHARANUM
+	SIF LOCAL == MASTER || !TALENT:LOCAL:家族
+		CONTINUE
+	SIF CFLAG:LOCAL:現在地区 != CFLAG:MASTER:現在地区 || CFLAG:LOCAL:現在位置 != CFLAG:MASTER:現在位置
+		CONTINUE
+	TA:LOCAL:MASTER:3 += 5
+NEXT
+M:103 = 0
+M:101 = 0
+RETURN 1
+
+;家事結果の地の文
+@COM_MESSAGE_1052
+SIF M:101 == 1
+	RETURN 0
+PRINTL
+PRINTL あなたは家の掃除や洗濯を済ませ、食事の支度を整えた。
+PRINTL 部屋が綺麗になると、心なしか気分も軽くなる。
+M:101 = 1

@@ -1,0 +1,68 @@
+﻿;===============================================================================
+; 「注文する」(COM1015) の地の文
+; 店ごとの単価・所要時間は COMF1015 側の SELECTCASE が持つ。ここは描写だけ。
+; 注文可(bit5)の店を増やした時はここにも文言を足す（漏れてもCASEELSEの汎用文に落ちる）。
+; 居酒屋(54)・バー(55) は専用メニュー（居酒屋.ERB／バー.ERB）が別にあるので軽く流す。
+;===============================================================================
+@COM_MESSAGE_1015
+;--------------------------------------------------------------------------
+;注文する
+;--------------------------------------------------------------------------
+PRINTFORML ＜注文する＞
+IF CFLAG:MASTER:現在地区 == 2 && TCVAR:MASTER:行為対象
+	SELECTCASE CFLAG:MASTER:現在位置
+		CASE 6
+			PRINTFORML %CALLNAME:MASTER%は%CALLNAME:(TCVAR:MASTER:行為対象)%とトレイを挟んで向かい合い、手早く食事を済ませた。
+		CASE 12
+			PRINTFORML %CALLNAME:MASTER%は%CALLNAME:(TCVAR:MASTER:行為対象)%とボックス席に落ち着き、料理そっちのけで話し込んだ。
+		CASE 14
+			PRINTFORML %CALLNAME:MASTER%は%CALLNAME:(TCVAR:MASTER:行為対象)%と静かな席でコーヒーを傾け、ゆっくりと言葉を交わした。
+		CASE 54, 55
+			PRINTFORML %CALLNAME:MASTER%は%CALLNAME:(TCVAR:MASTER:行為対象)%と軽くつまみを頼んだ。
+		CASEELSE
+			PRINTFORML %CALLNAME:MASTER%は%CALLNAME:(TCVAR:MASTER:行為対象)%と食事を注文した。
+	ENDSELECT
+ELSEIF CFLAG:MASTER:現在地区 == 2
+	SELECTCASE CFLAG:MASTER:現在位置
+		CASE 6
+			PRINTFORML %CALLNAME:MASTER%はカウンターで注文を済ませ、窓際の席で手早く腹を満たした。
+		CASE 12
+			PRINTFORML %CALLNAME:MASTER%はドリンクバー付きの定食を頼み、しばらく席でくつろいだ。
+		CASE 14
+			PRINTFORML %CALLNAME:MASTER%は一杯のコーヒーを頼み、流れる時間に身を任せた。
+		CASE 54, 55
+			PRINTFORML %CALLNAME:MASTER%は軽くつまみを頼んだ。
+		CASEELSE
+			PRINTFORML %CALLNAME:MASTER%は食事を注文した。
+	ENDSELECT
+ELSEIF CFLAG:MASTER:現在地区 == 0 && TCVAR:MASTER:行為対象
+	SELECTCASE CFLAG:MASTER:現在位置
+		CASE 14
+			PRINTFORML %CALLNAME:MASTER%は%CALLNAME:(TCVAR:MASTER:行為対象)%と小上がりに向かい合い、温かい定食をつついた。
+		CASEELSE
+			PRINTFORML %CALLNAME:MASTER%は%CALLNAME:(TCVAR:MASTER:行為対象)%と食事を注文した。
+	ENDSELECT
+ELSEIF CFLAG:MASTER:現在地区 == 0
+	SELECTCASE CFLAG:MASTER:現在位置
+		CASE 14
+			PRINTFORML %CALLNAME:MASTER%は日替わり定食を頼み、腹一杯になるまで箸を進めた。
+		CASEELSE
+			PRINTFORML %CALLNAME:MASTER%は食事を注文した。
+	ENDSELECT
+ELSEIF CFLAG:MASTER:現在地区 == 1 && TCVAR:MASTER:行為対象
+	SELECTCASE CFLAG:MASTER:現在位置
+		CASE 25
+			PRINTFORML %CALLNAME:MASTER%は%CALLNAME:(TCVAR:MASTER:行為対象)%と定食を受け取り、混み合った長机に並んで座った。
+		CASEELSE
+			PRINTFORML %CALLNAME:MASTER%は%CALLNAME:(TCVAR:MASTER:行為対象)%と食事を注文した。
+	ENDSELECT
+ELSEIF CFLAG:MASTER:現在地区 == 1
+	SELECTCASE CFLAG:MASTER:現在位置
+		CASE 25
+			PRINTFORML %CALLNAME:MASTER%は食券を買って定食を受け取り、空いた席で腹を満たした。
+		CASEELSE
+			PRINTFORML %CALLNAME:MASTER%は食事を注文した。
+	ENDSELECT
+ELSE
+	PRINTFORML %CALLNAME:MASTER%は食事を注文した。
+ENDIF

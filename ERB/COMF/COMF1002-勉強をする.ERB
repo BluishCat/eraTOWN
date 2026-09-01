@@ -1,0 +1,28 @@
+﻿@XCOM_ABLE1002(ARG)
+;自宅のほか、大学の図書館・ゼミ室でも勉強できる（@勉強場所か COMMON.ERB）
+SIF !IS_MASTER_HOME() && !勉強場所か(CFLAG:MASTER:現在地区, CFLAG:MASTER:現在位置)
+	RETURN 0
+RETURN GLOBAL_COMABLE(1002)
+
+
+@XCOM1002(ARG)
+VARSET LOCAL
+PRINTL
+PRINTFORML %"=" * 107%
+;勉強をする
+;LOCAL 場所ごとの捗り方（自宅=100 / 図書館=150 / ゼミ室=120。@勉強効率 COMMON.ERB）
+LOCAL = 勉強効率(CFLAG:MASTER:現在地区, CFLAG:MASTER:現在位置)
+CFLAG:MASTER:待機時間 = 60
+EXP:MASTER:学習経験++
+;図書館は資料に当たれる分だけ経験の入りも良い
+SIF LOCAL >= 150
+	EXP:MASTER:学習経験++
+BASE:MASTER:学力 = LIMIT(BASE:MASTER:学力 + (ABL:MASTER:教養 + 1) * LOCAL / 100,0,1000)
+DOWNBASE:ARG:体力 += CFLAG:ARG:待機時間 * 50 / 60
+DOWNBASE:ARG:気力 += CFLAG:ARG:待機時間 * 100 / 60
+DOWNBASE:ARG:ストレス -= CFLAG:ARG:待機時間 * 200 / 60
+CALL 支配度加算(ARG, 2)
+VARSET LOCAL
+M:101 = 0
+RETURN 1
+

@@ -1,0 +1,1203 @@
+﻿@HOLIDAY
+;;;1	土日
+;;;2	春休み
+;;;3	夏休み
+;;;4	冬休み
+;;;5	正月
+;;;6	成人の日	１月第２月曜日
+;;;7	建国記念の日	２月１１日
+;;;8	春分の日	３月２１日ころ
+;;;9	昭和の日	４月２９日
+;;;10	憲法記念日	５月３日
+;;;11	みどりの日	５月４日
+;;;12	こどもの日	５月５日
+;;;13	海の日		7月第3月曜日
+;;;14	敬老の日	9月第3月曜日
+;;;15	秋分の日	９月２３日ころ
+;;;16	体育の日	10月第2月曜日
+;;;17	文化の日	１１月３日
+;;;18	勤労感謝の日	１１月２３日
+;;;19	天皇誕生日	１２月２３日
+;;;20	国民の休日は再現しません、クリスマスイブが休みとなります。（リア・・・・ろ）
+#FUNCTION
+DAY:4 = DAY:3 + 6
+SELECTCASE DAY:2
+	CASE 1
+		SIF DAY:3 < 4
+			RETURNF 5
+		SIF ((DAY:4 / 7) == 2) && ((DAY % 7) == 1)
+			RETURNF 6
+		SIF DAY:3 < 7
+			RETURNF 4
+	CASE 2
+		SIF DAY:3 == 11
+			RETURNF 7
+	CASE 3
+		IF DAY:1 % 4 == 0 || DAY:1 % 4 == 1
+			SIF DAY:3 == 20
+				RETURNF 8
+		ELSE
+			SIF DAY:3 == 21
+				RETURNF 8
+		ENDIF
+		SIF DAY:3 > 24
+			RETURNF 2
+	CASE 4
+		SIF DAY:3 < 6
+			RETURNF 2
+		SIF DAY:3 == 29
+			RETURNF 9
+	CASE 5
+		SIF DAY:3 == 3
+			RETURNF 10
+		SIF DAY:3 == 4
+			RETURNF 11
+		SIF DAY:3 == 5
+			RETURNF 12
+	CASE 7
+		SIF ((DAY:4 / 7) == 3) && ((DAY % 7) == 1)
+			RETURNF 13
+		SIF DAY:3 > 20
+			RETURNF 3
+	CASE 8
+		RETURNF 3
+	CASE 9
+		SIF ((DAY:4 / 7) == 3) && ((DAY % 7) == 1)
+			RETURNF 14
+		SIF DAY:3 == 22
+			RETURNF 15
+	CASE 10
+		SIF ((DAY:4 / 7) == 2) && ((DAY % 7) == 1)
+			RETURNF 16
+	CASE 11
+		SIF DAY:3 == 3
+			RETURNF 17
+		SIF DAY:3 == 23
+			RETURNF 18
+	CASE 12
+		SIF DAY:3 == 23
+			RETURNF 19
+		SIF DAY:3 == 24
+			RETURNF 20
+		SIF DAY:3 > 24
+			RETURNF 4
+ENDSELECT
+;土日、休日だと1を返す
+SIF DAY % 7 == 0 || DAY % 7 == 6
+	RETURNF 1	
+
+RETURNF 0
+
+@MAX_MAP
+#FUNCTION
+RETURNF 3
+
+
+;部屋番号の上限。31以降は賃貸の号室（マップ非表示、マンション.ERB参照）に使用
+@MAX_ROOM
+#FUNCTION
+RETURNF 60
+
+@GETMAP(ARG)
+;現在地＝緑 / 閉店中＝暗赤 / 勤務先の開店準備中＝黄土色 / そこから移動可＝水色 / 移動不可＝暗いグレーで色分け
+IF CFLAG:MASTER:現在位置 == ARG
+	SETCOLOR 0 , 255, 0
+ELSEIF !入店可(CFLAG:MASTER:現在地区, ARG)
+	SETCOLOR 153 , 102, 102
+ELSEIF 開店準備中(CFLAG:MASTER:現在地区, ARG)
+	SETCOLOR 200 , 180, 110
+ELSE
+	CALLFORM CAN_MOVE_{CFLAG:MASTER:現在地区}(CFLAG:MASTER:現在位置,ARG)
+	IF RESULT
+		SETCOLOR 120 , 220, 255
+	ELSE
+		SETCOLOR 96 , 96, 96
+	ENDIF
+ENDIF
+PRINTBUTTON (ARG > 9 ? TOSTR(ARG) # TOFULL(TOSTR(ARG))),ARG
+RESETCOLOR
+
+;*************************************************
+;@場所表示名(ARG,ARG:1) 一覧・マップ共通の場所表示名
+;ARG 地区 \ ARG:1 位置
+;賃貸の号室（アパート/マンション/高級マンション）は、その建物の中に立っているときだけ
+;建物名の接頭辞を落として「101号室」に短縮する（マンション101号室 → 101号室）。
+;号室番号の算出式は PLACE_NAME 側にしか無いので、ここでは接頭辞を削るだけにして二重管理を避ける。
+;*************************************************
+@場所表示名(ARG,ARG:1)
+#FUNCTIONS
+#DIM 建物
+#DIMS 名前
+#DIMS 建物名
+名前 '= @"%PLACE_NAME(ARG,ARG:1)%"
+建物 = 所属物件(ARG, ARG:1)
+;号室でない／その建物に居ない場合はフルネームのまま
+SIF !建物
+	RETURNF 名前
+SIF CFLAG:MASTER:現在地区 != ARG || CFLAG:MASTER:現在位置 != 建物
+	RETURNF 名前
+建物名 '= @"%PLACE_NAME(ARG,建物)%"
+;先頭が建物名で始まっているときだけ削る（名前を変えられても壊れないように）
+SIF STRLENSU(建物名) == 0 || STRLENSU(名前) <= STRLENSU(建物名)
+	RETURNF 名前
+SIF SUBSTRINGU(名前, 0, STRLENSU(建物名)) != 建物名
+	RETURNF 名前
+RETURNF SUBSTRINGU(名前, STRLENSU(建物名), STRLENSU(名前) - STRLENSU(建物名))
+
+;*************************************************
+;@場所名_整形(ARGS,ARG) 半角換算 ARG 桁ちょうどに揃える（長ければ切り、短ければ半角空白で埋める）
+;Emuera の %式,幅,LEFT% は短い側を詰めるだけで長い側は切らないため、
+;固定幅の列に流し込む前に必ずこれを通す（幅を変数で渡せるようパディングも自前で行う）。
+;*************************************************
+@場所名_整形(ARGS,ARG)
+#FUNCTIONS
+#DIMS 文字列
+#DIMS 埋め
+文字列 '= ARGS
+WHILE STRLENS(文字列) > ARG && STRLENSU(文字列) > 0
+	文字列 '= SUBSTRINGU(文字列, 0, STRLENSU(文字列) - 1)
+WEND
+埋め '= " " * (ARG - STRLENS(文字列))
+RETURNF @"%文字列%%埋め%"
+
+;*************************************************
+;@金額(ARG) 金額を3桁カンマ区切りの文字列にする
+;所持金・価格・料金・給料・借金残高など、画面に出るお金は必ずこれを通す
+;（{MONEY:MASTER}円 → %金額(MONEY:MASTER)%円）
+;TOSTR(値,"#,##0") でも書けるが、書式付きTOSTRに依存せず既存の文字列関数だけで組む
+;*************************************************
+@金額(ARG)
+#FUNCTIONS
+#DIM 値
+#DIMS 符号
+#DIMS 残り
+#DIMS 結果
+値 = ARG
+符号 '= ""
+IF 値 < 0
+	符号 '= "-"
+	値 = -値
+ENDIF
+残り '= TOSTR(値)
+結果 '= ""
+;末尾から3桁ずつ切り出して先頭にカンマで繋ぐ
+WHILE STRLENSU(残り) > 3
+	結果 '= @",%SUBSTRINGU(残り, STRLENSU(残り) - 3, 3)%%結果%"
+	残り '= SUBSTRINGU(残り, 0, STRLENSU(残り) - 3)
+WEND
+RETURNF @"%符号%%残り%%結果%"
+
+;*************************************************
+;@一覧表示対象(ARG,ARG:1) その部屋を場所一覧（マップ凡例・移動画面）に出すか
+;ARG 地区 \ ARG:1 位置
+;賃貸の号室は数が多く（地区0で28件・地区2で20件）常時出すと一覧が埋まるので、
+;その建物の中に居るとき／その号室に居るとき／自室のときだけ出す。
+;*************************************************
+@一覧表示対象(ARG,ARG:1)
+#FUNCTION
+#DIM 建物
+SIF PLACE_NAME(ARG, ARG:1) == ""
+	RETURNF 0
+建物 = 所属物件(ARG, ARG:1)
+SIF !建物
+	RETURNF 1
+;建物のエントランスに居る（＝そこからしか号室へ行けない）
+SIF CFLAG:MASTER:現在地区 == ARG && CFLAG:MASTER:現在位置 == 建物
+	RETURNF 1
+;その号室に居る
+SIF CFLAG:MASTER:現在地区 == ARG && CFLAG:MASTER:現在位置 == ARG:1
+	RETURNF 1
+;自室（開始地区/開始位置＝実家または契約中の賃貸）
+SIF CFLAG:MASTER:開始地区 == ARG && CFLAG:MASTER:開始位置 == ARG:1
+	RETURNF 1
+RETURNF 0
+
+;*************************************************
+;@MAP_NAME_BUTTON(ARG,ARG:1,ARG:2) マップ／一覧の1行分の表示文字列
+;ARG 地区 \ ARG:1 位置 \ ARG:2 名前の表示幅（半角換算。0なら従来の16）
+;「マーカー(2桁) + 番号(2桁) + ：(2桁) + 名前(ARG:2桁)」の固定幅なので、
+;呼び出し側は 6 + ARG:2 桁で列を組める。
+;*************************************************
+@MAP_NAME_BUTTON(ARG,ARG:1,ARG:2)
+#FUNCTIONS
+#DIMS マーカー
+#DIMS 表示名
+#DIM 幅
+#DIM 主
+幅 = ARG:2
+SIF 幅 <= 0
+	幅 = 16
+;先頭に現在地マーカー（★）／閉店マーカー（×）／勤務先の開店準備中（△）／全角空白を付ける。いずれも全角1文字ぶんで整列を保つ
+IF ARG == CFLAG:MASTER:現在地区 && ARG:1 == CFLAG:MASTER:現在位置
+	マーカー '= "★"
+ELSEIF !入店可(ARG, ARG:1)
+	マーカー '= "×"
+ELSEIF 開店準備中(ARG, ARG:1)
+	マーカー '= "△"
+ELSE
+	;縄張りマーカー：■＝あなたが顔役 / □＝他の誰かが顔役 / 空白＝まだ誰のものでもない（縄張り.ERB）
+	主 = 場所支配者(ARG, ARG:1)
+	IF 主 == MASTER
+		マーカー '= "■"
+	ELSEIF 主
+		マーカー '= "□"
+	ELSE
+		マーカー '= "　"
+	ENDIF
+ENDIF
+;区切りは全角「：」で2桁ぶん（旧実装の半角 \: は桁数が読めず列揃えの計算に乗らないため変更）
+表示名 '= 場所名_整形(場所表示名(ARG,ARG:1), 幅)
+RETURNF @"%マーカー%\@ARG:1 > 9 ? %TOSTR(ARG:1)% # %TOFULL(TOSTR(ARG:1))%\@：%表示名%"
+
+@EXP_UP(ARG,ARG:1)
+#FUNCTION
+IF ARG == 1 && TALENT:(ARG:1):処女 == 1
+	SIF !(TCVAR:(ARG:1):被挿入)
+		RETURNF 0
+ENDIF
+RETURNF EXP:(ARG:1):ARG - TCVAR:(ARG:1):(400 + ARG)
+
+;-------------------------------------------------
+;関数名:SOURCE_REVISION1
+;快楽系SOURCEの快楽系ABLによる補正
+;1/10される
+;-------------------------------------------------
+@SOURCE_REVISION1(ARG)
+#FUNCTION
+SELECTCASE ARG
+	CASE 0
+		RETURNF 5
+	CASE 1 TO 3
+		RETURNF 10 * ARG
+	CASE 4 TO 9
+		RETURNF 20 * ARG - 30
+	CASEELSE
+		RETURNF 150
+ENDSELECT
+;-------------------------------------------------
+;関数名:SOURCE_REVISION2
+;快楽系SOURCEに依存するUP:欲望のABL:欲望による補正
+;1/100される
+;-------------------------------------------------
+@SOURCE_REVISION2(ARG)
+#FUNCTION
+SELECTCASE ARG
+	CASE 0 TO 5
+		RETURNF 50 + 10 * ARG
+	CASE 6 TO 9
+		RETURNF 75 + 5 * ARG
+	CASEELSE
+		RETURNF 140
+ENDSELECT
+
+;-------------------------------------------------
+;関数名:GET_REVISION
+;概　要:汎用補正値取得関数
+;引　数:ARG:0…参照する数値
+;       ARG:1…上限
+;       ARG:2…上昇率
+;戻り値:補正後の値
+;備　考:式中関数
+;ある数値を、上限値に漸近していく数値に変換したいときに
+;ARG:2が小さいとすぐに上限に達する、大きいと逆になかなか上限まで近づかない
+;ARG:0（参照する数値）は0以上が前提。負値はMAXで0に丸める
+;（TAの下限クランプ漏れや、理性がMAXBASE1500のキャラで1000-理性が負になる等で
+; 分母 ARG:2 + ARG:0 が0になりゼロ除算していた。負に振れると補正の符号も反転する）
+;-------------------------------------------------
+@GET_REVISION(ARG:0, ARG:1, ARG:2)
+#FUNCTION
+;ARG:2が0で呼ばれても落ちないよう分母は最低1に丸める
+RETURNF ARG:1 - ARG:2 * ARG:1 / MAX(ARG:2 + MAX(ARG:0, 0), 1)
+
+@GET_REVISION2(ARG:0, ARG:1, ARG:2)
+#FUNCTION
+RETURNF ARG:1 * (MAX(ARG:0, 0) + 1) / MAX(ARG:2 + MAX(ARG:0, 0) + 1, 1)
+
+;-------------------------------------------------
+;関数名:TA_CLAMP
+;概　要:関係値TAの下限クランプ（ARG→ARG:1・ARG:1→ARGの両方向）
+;引　数:ARG…キャラA
+;       ARG:1…キャラB
+;備　考:0肉欲/1愛情/2服従/3好意/4欲情/6敵対 は負を想定していない。
+;       負のまま放置すると@GET_REVISIONの分母が壊れる（-20000でゼロ除算）上に、
+;       +1ずつしか戻らないので実質永久に0のままになる。
+;       5=相性は「相手のタイプ番号」を索引にする別用途、
+;       7=セフレ関係(0/1)・8=ペアの挿入H回数も意味が違うので触らない。
+;       TAを100以上減らす処理（戦闘・襲撃・援交拒否・絶頂）はこれを呼ぶこと。
+;-------------------------------------------------
+@TA_CLAMP(ARG, ARG:1)
+#DIM 項目
+FOR 項目,0,7
+	SIF 項目 == 5
+		CONTINUE
+	SIF TA:ARG:(ARG:1):項目 < 0
+		TA:ARG:(ARG:1):項目 = 0
+	SIF TA:(ARG:1):ARG:項目 < 0
+		TA:(ARG:1):ARG:項目 = 0
+NEXT
+
+;-------------------------------------------------
+;関数名:HETEROSEX
+;ARGとARG:1の性別が同じかどうかを返すほんとはHOMOSEXだけど語感が悪いので
+;女性器を持つものは女、持たないものを男とする
+;戻り値0=異性
+;戻り値1=同性(レズ)
+;戻り値2=同性(ゲイ)
+;-------------------------------------------------
+@HETEROSEX(ARG,ARG:1)
+#FUNCTION
+IF GETBIT(TALENT:ARG:2,0) == GETBIT(TALENT:(ARG:1):2,0)
+	IF GETBIT(TALENT:ARG:2,0)
+		RETURNF 1
+	ELSE
+		RETURNF 2
+	ENDIF
+ELSE
+	RETURNF 0
+ENDIF
+
+@HETEROSEX_EXP(ARG,ARG:1,ARG:2)
+;同性愛　レズなら戻り値1ゲイなら戻り値2
+SELECTCASE HETEROSEX(ARG,ARG:1)
+	CASE 1
+		EXP:ARG:レズ経験 += ARG:2
+		EXP:(TCVAR:ARG:行為対象):レズ経験 += ARG:2
+	CASE 2
+		EXP:ARG:ゲイ経験 += ARG:2
+		EXP:(TCVAR:ARG:行為対象):ゲイ経験 += ARG:2
+ENDSELECT
+
+@SAME_ROOM_CHECK
+VARSET LOCAL
+FOR LOCAL,1,CHARANUM
+	SIF LOCAL == MASTER
+		CONTINUE
+;;;	SIF NO:LOCAL == 34
+;;;		CONTINUE
+;;;	SIF TALENT:LOCAL:200
+;;;		CONTINUE
+;※睡眠者は同室扱いのまま維持（就寝中キャラへの直接指定=夜這いを許容する現行仕様）。旧 !TCVAR:LOCAL:睡眠 は未代入の死に変数だったため削除
+	IF !TCVAR:LOCAL:衰弱 && TCVAR:LOCAL:イベント == TCVAR:MASTER:イベント && CFLAG:LOCAL:現在位置 == CFLAG:MASTER:現在位置 && CFLAG:LOCAL:現在地区 == CFLAG:MASTER:現在地区
+		IF (CFLAG:LOCAL:現在位置 != 30 || CFLAG:LOCAL:現在地区 != 0)
+;;;20120211 追加　同室で欲情度に＋１（マスター）まだマスター分は未実装
+;;;			TA:MASTER:LOCAL:4 += 1
+			TCVAR:LOCAL:同室 = 1
+			LOCAL:1++
+		ENDIF
+	ELSE
+		TCVAR:LOCAL:同室 = 0
+	ENDIF
+NEXT
+IF LOCAL:1
+	TFLAG:同室 = 1
+ELSE
+	TFLAG:同室 = 0
+ENDIF
+
+
+@LOVE_CHECK(ARG,ARG:1)
+#FUNCTION
+IF TA:ARG:(ARG:1):3 > 200 && TA:ARG:(ARG:1):4 > 200
+	RETURNF 1
+ELSE
+	RETURNF 0
+ENDIF
+
+@OBEY_CHECK(ARG,ARG:1)
+#FUNCTION
+SELECTCASE TA:ARG:(ARG:1):2 - TA:(ARG:1):ARG:2
+	CASE IS < 80
+		RETURNF 0
+	CASE IS < 150
+		RETURNF 1
+	CASEELSE
+		RETURNF 2
+ENDSELECT
+
+@WAKE_UP_CHECK
+VARSET LOCAL
+FOR LOCAL,1,CHARANUM
+	SIF !CFLAG:LOCAL:睡眠 || CFLAG:LOCAL:待機時間
+		CONTINUE
+	IF (((CFLAG:LOCAL:主睡眠 || CFLAG:LOCAL:衰弱 || LOCAL != MASTER) && TIME >= CFLAG:LOCAL:起床時間 && TIME <= CFLAG:LOCAL:起床時間 + 180) || (BASE:LOCAL:眠気 == 0 && !CFLAG:LOCAL:主睡眠 )) && BASE:LOCAL:眠気 < 1000 && (!CFLAG:LOCAL:衰弱 || BASE:LOCAL:体力 >= MAXBASE:LOCAL:体力 * 8 / 10)
+			CFLAG:LOCAL:睡眠 = 0
+			CFLAG:LOCAL:衰弱 = 0
+			CFLAG:LOCAL:主睡眠 = 0
+	ENDIF
+NEXT
+
+[SKIPSTART]
+FOR LOCAL,1,CHARANUM
+	SIF !CFLAG:LOCAL:睡眠
+		CONTINUE
+	IF CFLAG:LOCAL:就寝時間 >= CFLAG:LOCAL:起床時間
+		IF TIME >= CFLAG:LOCAL:起床時間 && TIME < CFLAG:LOCAL:就寝時間 && (!CFLAG:LOCAL:衰弱 || BASE:LOCAL:体力 == MAXBASE:LOCAL:体力)
+			CFLAG:LOCAL:睡眠 = 0
+			CFLAG:LOCAL:衰弱 = 0
+			;PRINTFORML %CALLNAME:LOCAL%起きた
+		ENDIF
+	ELSE
+		IF TIME >= CFLAG:LOCAL:起床時間 || TIME < CFLAG:LOCAL:就寝時間 && (!CFLAG:LOCAL:衰弱 || BASE:LOCAL:体力 == MAXBASE:LOCAL:体力)
+			CFLAG:LOCAL:睡眠 = 0
+			CFLAG:LOCAL:衰弱 = 0
+			;PRINTFORML %CALLNAME:LOCAL%起きた
+		ENDIF
+	ENDIF
+NEXT
+[SKIPEND]
+@SLEEP_CHECK
+VARSET LOCAL
+FOR LOCAL,1,CHARANUM
+	SIF CFLAG:LOCAL:睡眠 || TCVAR:LOCAL:イベント
+		CONTINUE
+	SIF LOCAL == MASTER
+		CONTINUE
+	;拘留中の者は夜になっても帰宅させない（この先で現在位置を開始位置へ戻すため）。
+	;署へ置き直すのは @NPC_ACTION と @警察_日次 の担当（警察署.ERB）
+	SIF CFLAG:LOCAL:拘留日数 > 0
+		CONTINUE
+	IF CFLAG:LOCAL:就寝時間 >= CFLAG:LOCAL:起床時間
+		IF TIME < CFLAG:LOCAL:起床時間 || TIME >= CFLAG:LOCAL:就寝時間
+			CFLAG:LOCAL:睡眠 = 1
+			CFLAG:LOCAL:現在位置 = CFLAG:LOCAL:開始位置
+			CFLAG:LOCAL:現在地区 = CFLAG:LOCAL:開始地区
+			CFLAG:LOCAL:乗車 = 0
+			TCVAR:LOCAL:目的地区 = 0
+			TCVAR:LOCAL:目的位置 = 0
+			CFLAG:LOCAL:到着地区 = 0
+			CFLAG:LOCAL:到着位置 = 0
+			;PRINTFORML %CALLNAME:LOCAL%寝た
+		ENDIF
+
+	ELSE
+		IF TIME < CFLAG:LOCAL:起床時間 && TIME >= CFLAG:LOCAL:就寝時間
+			CFLAG:LOCAL:睡眠 = 1
+			CFLAG:LOCAL:現在位置 = CFLAG:LOCAL:開始位置
+			CFLAG:LOCAL:現在地区 = CFLAG:LOCAL:開始地区
+			CFLAG:LOCAL:乗車 = 0
+			TCVAR:LOCAL:目的地区 = 0
+			TCVAR:LOCAL:目的位置 = 0
+			CFLAG:LOCAL:到着地区 = 0
+			CFLAG:LOCAL:到着位置 = 0
+			;PRINTFORML %CALLNAME:LOCAL%寝た
+		ENDIF
+	ENDIF
+	
+NEXT
+@WEAKNESS_CHECK
+VARSET LOCAL
+FOR LOCAL,1,CHARANUM
+	SIF CFLAG:LOCAL:睡眠 || CFLAG:LOCAL:衰弱 || TCVAR:LOCAL:イベント == 2
+		CONTINUE
+	IF BASE:LOCAL:体力 < 500
+		J:115 = 0
+		J:116 = 0
+		CFLAG:LOCAL:睡眠 = 1
+		CFLAG:LOCAL:衰弱 = 1
+		TCVAR:LOCAL:衰弱 = 1
+		CFLAG:LOCAL:現在位置 = CFLAG:LOCAL:開始位置
+		CFLAG:LOCAL:現在地区 = CFLAG:LOCAL:開始地区
+		CFLAG:LOCAL:乗車 = 0
+		TCVAR:LOCAL:目的地区 = 0
+		TCVAR:LOCAL:目的位置 = 0
+		CFLAG:LOCAL:到着地区 = 0
+		CFLAG:LOCAL:到着位置 = 0
+		CFLAG:LOCAL:到着時間 = 0
+		IF TCVAR:LOCAL:イベント
+			CALL EVENT_ESCAPE(LOCAL)
+			SIF LOCAL != MASTER
+				PRINTFORMW %CALLNAME:LOCAL%は疲れたので帰っていった
+		ENDIF
+		TCVAR:LOCAL:イベント = 0
+		SIF LOCAL == MASTER
+			PRINTW 疲れて倒れてしまった･･････
+		;過労で倒れると母体に大きな負荷（非妊娠・男性・陣痛中は内部でRETURN）
+		CALL 妊娠中リスクチェック(LOCAL, 60)
+	ENDIF
+NEXT
+
+@EVENT_ESCAPE(ARG)
+VARSET LOCAL
+IF ARG == MASTER
+	CALL EVENT_ESCAPE_ALL
+ELSE
+	;デート相手が離脱する場合はデート終了評価を先に行う（デート.ERB）
+	SIF TCVAR:MASTER:デート中 == ARG
+		CALL デート終了(ARG)
+	TCVAR:ARG:イベント = 0
+	TCVAR:ARG:行為対象 = 0
+	TCVAR:ARG:同行 = 0
+	TCVAR:ARG:デート中 = 0
+	CFLAG:ARG:受能動 = 0
+	CFLAG:ARG:押さえつけ = 0
+	CALL SET_CLOTHES(ARG)
+	IF TARGET == ARG
+		TCVAR:MASTER:行為対象 = 0
+		TCVAR:MASTER:同行 = 0
+		TARGET = 0
+		FOR LOCAL,1,CHARANUM
+			IF TCVAR:LOCAL:行為対象 == MASTER
+				TCVAR:MASTER:行為対象 = LOCAL
+				TARGET = LOCAL
+				BREAK
+			ENDIF
+		NEXT
+		IF !TCVAR:MASTER:行為対象
+			CALL EVENT_ESCAPE_ALL
+		ENDIF
+	ENDIF
+ENDIF
+@EVENT_ESCAPE_ALL
+VARSET LOCAL
+
+;デート中なら同行解除の前に終了評価を行う（デート.ERB。会話終了/就寝/衰弱/逃走の全経路が通る）
+SIF TCVAR:MASTER:デート中
+	CALL デート終了(TCVAR:MASTER:デート中)
+FOR LOCAL,1,CHARANUM
+	TCVAR:LOCAL:イベント = 0
+	TCVAR:LOCAL:行為対象 = 0
+	TCVAR:LOCAL:同行 = 0
+	TCVAR:LOCAL:デート中 = 0
+	CFLAG:LOCAL:受能動 = 0
+	CFLAG:LOCAL:押さえつけ = 0
+	TCVAR:LOCAL:挿入 = 0
+	TCVAR:LOCAL:被挿入 = 0
+	TCVAR:LOCAL:キス中 = 0
+	TCVAR:LOCAL:現在体位 = 0
+	TEQUIP:LOCAL:縄 = 0
+	TEQUIP:LOCAL:ボールギャグ = 0
+	CFLAG:LOCAL:ＶオンリーＴ = 0
+	CFLAG:LOCAL:ＶオンリーＰ = 0
+	CFLAG:LOCAL:ＡオンリーＴ = 0
+	CFLAG:LOCAL:ＡオンリーＰ = 0
+	CALL SET_CLOTHES(LOCAL)
+	IF CFLAG:LOCAL:乗車 == 1
+		CFLAG:LOCAL:待機時間 = CFLAG:LOCAL:到着時間 - TIME
+	ENDIF
+NEXT
+
+TARGET = 0
+TFLAG:騒ぎ = 0
+;援交フラグの後始末（操作モード援交はここが唯一の終了経路）
+J:116 = 0
+@EVENT_ESCAPE_NPC(ARG,ARG:1)
+;当事者がMASTERのデート相手だった場合は終了評価を先に行う（デート.ERB）
+SIF TCVAR:MASTER:デート中 && (TCVAR:MASTER:デート中 == ARG || TCVAR:MASTER:デート中 == ARG:1)
+	CALL デート終了(TCVAR:MASTER:デート中)
+TCVAR:ARG:イベント = 0
+TCVAR:ARG:行為対象 = 0
+TCVAR:ARG:同行 = 0
+TCVAR:ARG:デート中 = 0
+CFLAG:ARG:受能動 = 0
+CFLAG:ARG:押さえつけ = 0
+TCVAR:ARG:挿入 = 0
+TCVAR:ARG:被挿入 = 0
+TCVAR:ARG:キス中 = 0
+TCVAR:ARG:現在体位 = 0
+TEQUIP:ARG:縄 = 0
+TEQUIP:ARG:ボールギャグ = 0
+CFLAG:ARG:ＶオンリーＴ = 0
+CFLAG:ARG:ＶオンリーＰ = 0
+CFLAG:ARG:ＡオンリーＴ = 0
+CFLAG:ARG:ＡオンリーＰ = 0
+CALL SET_CLOTHES(ARG)
+IF CFLAG:ARG:乗車 == 1
+	CFLAG:ARG:待機時間 = CFLAG:ARG:到着時間 - TIME
+ENDIF
+
+TCVAR:(ARG:1):イベント = 0
+TCVAR:(ARG:1):行為対象 = 0
+TCVAR:(ARG:1):同行 = 0
+TCVAR:(ARG:1):デート中 = 0
+CFLAG:(ARG:1):受能動 = 0
+CFLAG:(ARG:1):押さえつけ = 0
+TCVAR:(ARG:1):挿入 = 0
+TCVAR:(ARG:1):被挿入 = 0
+TCVAR:(ARG:1):キス中 = 0
+TCVAR:(ARG:1):現在体位 = 0
+TEQUIP:(ARG:1):縄 = 0
+TEQUIP:(ARG:1):ボールギャグ = 0
+CFLAG:(ARG:1):ＶオンリーＴ = 0
+CFLAG:(ARG:1):ＶオンリーＰ = 0
+CFLAG:(ARG:1):ＡオンリーＴ = 0
+CFLAG:(ARG:1):ＡオンリーＰ = 0
+CALL SET_CLOTHES((ARG:1))
+IF CFLAG:(ARG:1):乗車 == 1
+	CFLAG:(ARG:1):待機時間 = CFLAG:(ARG:1):到着時間 - TIME
+ENDIF
+
+@EVENT_JOIN(ARG,ARG:1,ARG:2)
+;ARG 実行者 ,ARG:1 対象者 ,ARG:2 イベント番号
+VARSET LOCAL
+TCVAR:ARG:イベント = ARG:2
+TCVAR:(ARG:1):イベント = ARG:2
+TCVAR:ARG:行為対象 = ARG:1
+CFLAG:ARG:受能動 = 1
+CFLAG:(ARG:1):受能動 = 2
+;新規シーン開始時に継続状態(挿入/被挿入/キス中/現在体位)をリセット（前シーンの残留防止）
+TCVAR:ARG:挿入 = 0
+TCVAR:ARG:被挿入 = 0
+TCVAR:ARG:キス中 = 0
+TCVAR:ARG:現在体位 = 0
+TCVAR:(ARG:1):挿入 = 0
+TCVAR:(ARG:1):被挿入 = 0
+TCVAR:(ARG:1):キス中 = 0
+TCVAR:(ARG:1):現在体位 = 0
+;MASTERが参加するイベントでは相手NPCを常にTARGETへ設定（残留したTARGETによる相手違いを防ぐ）
+;NPC同士イベント（どちらもMASTERでない）は既存TARGETを維持
+IF ARG:1 == MASTER
+	TARGET = ARG
+ELSEIF ARG == MASTER
+	TARGET = ARG:1
+ENDIF
+TCVAR:(ARG:1):行為対象 = ARG
+
+TCVAR:(ARG:1):目的位置 = 0
+TCVAR:(ARG:1):目的地区 = 0
+TCVAR:ARG:目的位置 = 0
+TCVAR:ARG:目的地区 = 0
+CFLAG:(ARG:1):待機時間 = 0
+SIF ARG:2 == 4 && K:104
+	CFLAG:ARG:待機時間 = 6
+
+@STATIN_POINT(ARG,ARG:1)
+#FUNCTION
+VARSET LOCAL
+;愛液の汚れ
+SIF STAIN:ARG:(ARG:1) & 1
+	LOCAL+= 1
+;精液の汚れ
+SIF STAIN:ARG:(ARG:1) & 4
+	LOCAL += 3
+;アナルの汚れ
+SIF STAIN:ARG:(ARG:1) & 8
+	LOCAL += 7
+SIF STAIN:ARG:(ARG:1) & 16
+	LOCAL += 15
+RETURNF LOCAL
+
+@FAVOR_RANK(ARG,ARG:1)
+;ARG 被行為者
+;ARG:1 行為者
+#FUNCTION
+SELECTCASE TA:ARG:(ARG:1):3
+	CASE IS <= 29
+		RETURNF 0
+	CASE 30 TO 99
+		RETURNF 1
+	CASE 100 TO 199
+		RETURNF 2
+	CASE 200 TO 499
+		RETURNF 3
+	CASE 500 TO 1999
+		RETURNF 4
+	CASEELSE
+		RETURNF 5
+ENDSELECT
+
+@OBEY_RANK(ARG,ARG:1)
+;ARG 被行為者
+;ARG:1 行為者
+#FUNCTION
+SELECTCASE TA:ARG:(ARG:1):2
+	CASE IS <= 0
+		RETURNF 0
+	CASE 1 TO 9
+		RETURNF 1
+	CASE 10 TO 29
+		RETURNF 2
+	CASE 30 TO 79
+		RETURNF 3
+	CASE 80 TO 149
+		RETURNF 4
+	CASEELSE
+		RETURNF 5
+ENDSELECT
+
+@PLACE_NAME(ARG,ARG:1)
+#FUNCTIONS
+SELECTCASE ARG
+CASE 0
+	RETURNF PLACE_NAME_0(ARG:1)
+CASE 1
+	RETURNF PLACE_NAME_1(ARG:1)
+CASE 2
+	RETURNF PLACE_NAME_2(ARG:1)
+ENDSELECT
+
+;*************************************************
+;@IS_PRIVATE_PLACE(ARG,ARG:1) プライベートな場所判定
+;ARG 地区 / ARG:1 位置
+;RETURN 1 家・ホテル・寮など無関係キャラが入るべきでない場所
+;*************************************************
+@IS_PRIVATE_PLACE(ARG,ARG:1)
+#FUNCTION
+SELECTCASE ARG
+	CASE 0
+		SIF ARG:1 == 1 || ARG:1 == 7 || ARG:1 == 9 || ARG:1 >= 30
+			RETURNF 1
+	CASE 1
+		SIF ARG:1 == 30
+			RETURNF 1
+	CASE 2
+		SIF ARG:1 == 22 || ARG:1 == 26 || ARG:1 >= 30
+			RETURNF 1
+ENDSELECT
+RETURNF 0
+
+;*************************************************
+;@IS_MASTER_HOME プレイヤーが自室に居るか
+;RETURN 1 実家(0,1)（引越後も帰れる） または 賃貸入居中の自宅（開始地区/開始位置）
+;物件一覧と家賃はマンション.ERB @物件家賃
+;*************************************************
+@IS_MASTER_HOME
+#FUNCTION
+SIF CFLAG:MASTER:現在地区 == 0 && CFLAG:MASTER:現在位置 == 1
+	RETURNF 1
+SIF FLAG:引越し && CFLAG:MASTER:現在地区 == CFLAG:MASTER:開始地区 && CFLAG:MASTER:現在位置 == CFLAG:MASTER:開始位置
+	RETURNF 1
+RETURNF 0
+
+;*************************************************
+;@浴場か(ARG,ARG:1) 湯船・シャワーのある場所か
+;ARG 地区 / ARG:1 位置
+;RETURN 1 入浴できる場所
+;自宅（実家・賃貸）は場所が可変なので @IS_MASTER_HOME で別途判定すること。
+;※プレイヤー入浴(COMF1008 @XCOM_ABLE1008)とNPC入浴(NPC_AUTOACTION1 CASE 701-750)で
+;　同じリストをコピペしていたのを、銭湯の追加(2026-07-22)に合わせてここへ一元化した。
+;　ラブホテル(2,22)の当日料金・銭湯(0,10)の入浴料といった「利用権」の判定は
+;　各呼び出し側が行う（NPCは料金の概念を持たないため）。
+;*************************************************
+@浴場か(ARG,ARG:1)
+#FUNCTION
+SELECTCASE ARG
+	CASE 0
+		;銭湯（銭湯.ERB） / ＮＰＣの家
+		SIF ARG:1 == 10 || ARG:1 == 30
+			RETURNF 1
+	CASE 1
+		;部室棟
+		SIF ARG:1 == 15
+			RETURNF 1
+	CASE 2
+		;ラブホテル / 寮 / プロレス事務所
+		SIF ARG:1 == 22 || ARG:1 == 26 || ARG:1 == 27
+			RETURNF 1
+ENDSELECT
+RETURNF 0
+
+;*************************************************
+;@噂話対象(ARG,ARG:1) 噂話（悪口）の種になる相手を1人返す
+;ARG 話し手（敵対感の持ち主） / ARG:1 聞き手（＝会話相手。候補から除外する）
+;RETURN 話し手が最も敵視している相手の登録番号。該当なしは0
+;※「本当に敵視している相手がいる時だけ噂話になる」ため敵対100以上に限る。
+;　NMKAIWA（NPC→プレイヤー）と COMF800（プレイヤー→NPC）で同じ選定を使うため
+;　ここへ一元化した。話し手自身と聞き手は候補にしない。
+;*************************************************
+@噂話対象(ARG,ARG:1)
+#FUNCTION
+;※ループ変数に I は使えない（Emueraの組み込み変数名と衝突してロードに失敗する）
+#DIM 話し手
+#DIM 聞き手
+#DIM 候補
+#DIM 走査
+話し手 = ARG
+聞き手 = ARG:1
+候補 = 0
+FOR 走査,1,CHARANUM
+	SIF 走査 == 話し手 || 走査 == 聞き手
+		CONTINUE
+	SIF TA:話し手:走査:6 >= 100 && TA:話し手:走査:6 > TA:話し手:候補:6
+		候補 = 走査
+NEXT
+RETURNF 候補
+
+;*************************************************
+;@会話累積値加算(ARG,ARG:1) 雑談後の会話累積値を進める
+;ARG 会話した本人 / ARG:1 話題（TCVAR:会話話題 と同じ番号）
+;会話累積値は COMF800 の成功率式から引かれる＝同じ相手に話しかけ続けると
+;話が続かなくなるための疲れ値。話題ごとの「連発の効かなさ」をここへ集約する
+;（従来 COMF800 に直書きされていた 90 / (3 + 話術技能) が話題0の基準値）。
+;*************************************************
+@会話累積値加算(ARG,ARG:1)
+#DIM 基準
+基準 = 90 / (3 + ABL:ARG:話術技能)
+SELECTCASE ARG:1
+	CASE 1
+		;褒める：効果は大きいが同じ手は続かない
+		基準 = 基準 * 150 / 100
+	CASE 2
+		;近況を聞く：聞き役に回るので疲れにくい＝繋ぎに使える
+		基準 = 基準 * 50 / 100
+	CASE 4
+		;部活の話：共通の話題なので弾む（COMF1020の部活補正と同じ思想）
+		基準 = 基準 * 50 / 100
+ENDSELECT
+TCVAR:ARG:会話累積値 += 基準
+RETURN
+
+;*************************************************
+;@昼食場所か(ARG,ARG:1) 昼休みに昼食をとれる場所か
+;ARG 地区 / ARG:1 位置
+;RETURN 1 昼食をとれる場所
+;※大学は学生食堂(25)・生協(26)限定(2026-08-31)。それ以前は学内どこでも食べられたため、
+;　食堂も購買部も名前だけの場所だった。昼休みに食堂まで歩かせるのが狙い。
+;　オフィスビルの社員食堂は会社員の昼休み(2026-07-25)に合わせて追加した。
+;　身分は見ない＝学食が誰でも使えるのと同じ扱い。時間帯（12:30〜13:30）・休日・
+;　二重昼食(cflag:食事 bit1)の判定は呼び出し側(COMF1010)の責任。
+;*************************************************
+@昼食場所か(ARG,ARG:1)
+#FUNCTION
+SELECTCASE ARG
+	CASE 1
+		;学生食堂 / 生協
+		SIF ARG:1 == 25 || ARG:1 == 26
+			RETURNF 1
+	CASE 2
+		;オフィスビルの社員食堂
+		SIF ARG:1 == 29
+			RETURNF 1
+ENDSELECT
+RETURNF 0
+
+;*************************************************
+;@昼食場所名(ARG) 昼食の選択肢・地の文で使う場所の呼び名
+;ARG 0=食事処の名前（学生食堂／購買部／社員食堂） / 1=同席して食べる場所（食堂の席／中庭／休憩スペース）
+;プレイヤーの現在地で切り替える。場所判定を呼び出し側にコピペしないための一枚。
+;対応する場所は @昼食場所か と対で増やすこと。
+;呼び出し元: COMF1010-お昼を食べる / COM_MESSAGE1010
+;*************************************************
+@昼食場所名(ARG)
+#FUNCTIONS
+;オフィスビル
+IF CFLAG:MASTER:現在地区 == 2 && CFLAG:MASTER:現在位置 == 29
+	SIF ARG == 1
+		RETURNF "休憩スペース"
+	RETURNF "社員食堂"
+ENDIF
+;大学の生協（購買部。買ったものは中庭で食べる）
+IF CFLAG:MASTER:現在地区 == 1 && CFLAG:MASTER:現在位置 == 26
+	SIF ARG == 1
+		RETURNF "中庭"
+	RETURNF "購買部"
+ENDIF
+;大学の学生食堂
+SIF ARG == 1
+	RETURNF "食堂の席"
+RETURNF "学生食堂"
+
+;*************************************************
+;@昼食代 昼休みに食事処で食べる時の代金
+;学生食堂は「注文する」(COMF1015)の定食と同額にしてある。
+;店を増やしたら @昼食場所か / @昼食場所名 と対で足すこと。
+;呼び出し元: COMF1010-お昼を食べる
+;*************************************************
+@昼食代
+#FUNCTION
+;大学の生協（パンと牛乳）
+SIF CFLAG:MASTER:現在地区 == 1 && CFLAG:MASTER:現在位置 == 26
+	RETURNF 200
+;大学の学生食堂
+SIF CFLAG:MASTER:現在地区 == 1 && CFLAG:MASTER:現在位置 == 25
+	RETURNF 300
+;オフィスビルの社員食堂
+RETURNF 500
+
+;*************************************************
+;@勉強場所か(ARG,ARG:1) 腰を据えて勉強できる場所か
+;ARG 地区 / ARG:1 位置
+;RETURN 1 「勉強をする」を選べる場所
+;自宅（実家・賃貸）は場所が可変なので @IS_MASTER_HOME で別途判定すること（@浴場かと同じ）。
+;大学の図書館・ゼミ室を追加(2026-08-30)。それまで勉強は自宅限定で、
+;図書館は名前だけの場所だった。捗り方の差は @勉強効率 が持つ。
+;講義室・大講義室は授業(COMF1001)の場所なので自習には開けていない。
+;*************************************************
+@勉強場所か(ARG,ARG:1)
+#FUNCTION
+SELECTCASE ARG
+	CASE 1
+		;図書館 / ゼミ室
+		SIF ARG:1 == 11 || ARG:1 == 8
+			RETURNF 1
+ENDSELECT
+RETURNF 0
+
+;*************************************************
+;@勉強効率(ARG,ARG:1) 勉強一回あたりの捗り方
+;ARG 地区 / ARG:1 位置
+;RETURN 自宅を100とした百分率。学力の伸びに掛ける（COMF1002）
+;わざわざ足を運ぶ以上は自宅より捗らないと意味がないので図書館を厚くしてある。
+;*************************************************
+@勉強効率(ARG,ARG:1)
+#FUNCTION
+SELECTCASE ARG
+	CASE 1
+		;図書館：資料が揃っていて静か
+		SIF ARG:1 == 11
+			RETURNF 150
+		;ゼミ室：机を広く使えるが人の出入りがある
+		SIF ARG:1 == 8
+			RETURNF 120
+ENDSELECT
+;自宅そのほか
+RETURNF 100
+
+;*************************************************
+;@入浴効果(ARG) 湯に浸かったときの状態変化
+;ARG 入浴するキャラの登録番号
+;体力を10%／気力を20%回復し、疲労・ストレスを落とし、汚れと精液を洗い流す。
+;待機時間・地の文は呼び出し側の責任（場所ごとに長さも描写も違うため）。
+;呼び出し元: COMF1008-入浴 / NPC_AUTOACTION1(CASE 701-750) / 銭湯.ERB
+;*************************************************
+@入浴効果(ARG)
+DOWNBASE:ARG:体力 -= (MAXBASE:ARG:体力 / 10)
+DOWNBASE:ARG:気力 -= (MAXBASE:ARG:気力 / 5)
+DOWNBASE:ARG:疲労 += 200
+DOWNBASE:ARG:ストレス += 200
+;PALAM[抑鬱][不快][反感]を10%減少
+PALAM:ARG:30 -= (PALAM:ARG:30 / 10)
+PALAM:ARG:31 -= (PALAM:ARG:31 / 10)
+PALAM:ARG:32 -= (PALAM:ARG:32 / 10)
+;汚れを取り除く
+VARSET STAIN:ARG:0
+;精液を洗い流す（腟内=全部／肛内=奥に残るため1/4に減衰。既に子宮内へ移行した分は影響を受けない）
+CALL 精液_入浴洗浄(ARG)
+RETURN
+
+@ATTACK_POWER(ARG,ARG:1)
+#FUNCTION
+
+;クリティカルとファンブル
+SELECTCASE RAND(20)
+	CASE 0
+		TIMES ARG , 3.50
+		RETURNF ARG
+	CASE 19
+		RETURNF 0
+ENDSELECT
+SELECTCASE ARG:1
+	CASE IS < 0
+		RETURNF 1
+	CASE 0
+		TIMES ARG , 0.50
+		RETURNF ARG
+	CASE 1
+		RETURNF ARG
+	CASE 2
+		TIMES ARG , 1.40
+		RETURNF ARG
+	CASE 3
+		TIMES ARG , 1.80
+		RETURNF ARG
+	CASE 4
+		TIMES ARG , 2.20
+		RETURNF ARG
+	CASE 5
+		TIMES ARG , 2.60
+		RETURNF ARG
+	CASE IS > 5
+		TIMES ARG , 3.00
+		RETURNF ARG
+ENDSELECT
+
+@ATTACK_SUCCESS_RATE(ARG)
+#FUNCTION
+;クリティカルとファンブル
+SELECTCASE RAND(10)
+	CASE 0
+		RETURNF 1
+	CASE 9
+		RETURNF 0
+ENDSELECT
+
+SELECTCASE ARG
+	CASE IS < 0
+		RETURNF 0
+	CASE 0
+		IF RAND(10) == 0
+			RETURNF 1
+		ELSE
+			RETURNF 0
+		ENDIF
+	CASE 1
+		IF RAND(10) == 0
+			RETURNF 1
+		ELSE
+			RETURNF 0
+		ENDIF
+	CASE 2
+		IF RAND(10) <= 2
+			RETURNF 1
+		ELSE
+			RETURNF 0
+		ENDIF
+	CASE 3
+		IF RAND(10) <= 4
+			RETURNF 1
+		ELSE
+			RETURNF 0
+		ENDIF
+	CASE 4
+		IF RAND(10) <= 6
+			RETURNF 1
+		ELSE
+			RETURNF 0
+		ENDIF
+	CASE 5
+		IF RAND(10) <= 8
+			RETURNF 1
+		ELSE
+			RETURNF 0
+		ENDIF
+	CASE IS > 5
+			RETURNF 1
+
+ENDSELECT
+
+
+@ATTACK_SUCCESS(ARG,ARG:1)
+#FUNCTION
+;ARG 攻撃基本値 ARG:1 技量差
+
+SELECTCASE ARG:1
+	CASE IS < 0
+		SELECTCASE RAND(10)
+			CASE 0 TO 2
+				TIMES ARG,0.50
+				TFLAG:COM用変数 = 1
+
+				RETURNF ARG
+			CASE 3 TO 4
+				TFLAG:COM用変数 = 2
+				RETURNF ARG
+			CASE 5 TO 9
+				TFLAG:COM用変数 = 0
+
+				RETURNF 0
+		ENDSELECT
+	CASE 0
+		SELECTCASE RAND(10)
+			CASE 0
+				TIMES ARG,2.00
+				TFLAG:COM用変数 = 3
+				RETURNF ARG
+			CASE 1 TO 4
+				TIMES ARG,0.50
+				TFLAG:COM用変数 = 1
+				RETURNF ARG
+			CASE 5 TO 6
+				TFLAG:COM用変数 = 2
+				RETURNF ARG
+			CASE 7 TO 9
+				TFLAG:COM用変数 = 0
+
+				RETURNF 0
+		ENDSELECT
+
+	CASE 1
+		SELECTCASE RAND(10)
+			CASE 0
+				TIMES ARG,2.00
+				TFLAG:COM用変数 = 3
+				RETURNF ARG
+			CASE 1 TO 3
+				TIMES ARG,0.50
+				TFLAG:COM用変数 = 1
+				RETURNF ARG
+			CASE 4 TO 7
+				TFLAG:COM用変数 = 2
+				RETURNF ARG
+			CASE 8 TO 9
+				TFLAG:COM用変数 = 0
+
+				RETURNF 0
+		ENDSELECT
+
+	CASE 2
+		SELECTCASE RAND(10)
+			CASE 0 TO 1
+				TIMES ARG,2.00
+				TFLAG:COM用変数 = 3
+				RETURNF ARG
+			CASE 2 TO 3
+				TIMES ARG,0.50
+				TFLAG:COM用変数 = 1
+				RETURNF ARG
+			CASE 4 TO 7
+				TFLAG:COM用変数 = 2
+				RETURNF ARG
+			CASE 8 TO 9
+				TFLAG:COM用変数 = 0
+
+				RETURNF 0
+		ENDSELECT
+
+	CASE 3
+		SELECTCASE RAND(10)
+			CASE 0 TO 2
+				TIMES ARG,2.00
+				TFLAG:COM用変数 = 3
+				RETURNF ARG
+			CASE 3 TO 4
+				TIMES ARG,0.50
+				TFLAG:COM用変数 = 1
+				RETURNF ARG
+			CASE 5 TO 8
+				TFLAG:COM用変数 = 2
+				RETURNF ARG
+			CASE 9
+				TFLAG:COM用変数 = 0
+
+				RETURNF 0
+		ENDSELECT
+
+	CASE 4
+		SELECTCASE RAND(10)
+			CASE 0 TO 3
+				TIMES ARG,2.00
+				TFLAG:COM用変数 = 3
+				RETURNF ARG
+			CASE 4 TO 5
+				TIMES ARG,0.50
+				TFLAG:COM用変数 = 1
+				RETURNF ARG
+			CASE 6 TO 8
+				TFLAG:COM用変数 = 2
+				RETURNF ARG
+			CASE 9
+				TFLAG:COM用変数 = 0
+
+				RETURNF 0
+		ENDSELECT
+
+	CASE 5
+		SELECTCASE RAND(10)
+			CASE 0 TO 4
+				TIMES ARG,2.00
+				TFLAG:COM用変数 = 3
+				RETURNF ARG
+			CASE 5 TO 6
+				TIMES ARG,0.50
+				TFLAG:COM用変数 = 1
+				RETURNF ARG
+			CASE 7 TO 9
+				TFLAG:COM用変数 = 2
+				RETURNF ARG
+		ENDSELECT
+
+	CASE IS > 5
+		SELECTCASE RAND(10)
+			CASE 0 TO 6
+				TIMES ARG,2.00
+				TFLAG:COM用変数 = 3
+				RETURNF ARG
+			CASE 7 TO 8
+				TFLAG:COM用変数 = 2
+				RETURNF ARG
+			CASE 9
+				TIMES ARG,0.50
+				TFLAG:COM用変数 = 1
+				RETURNF ARG
+		ENDSELECT
+
+ENDSELECT

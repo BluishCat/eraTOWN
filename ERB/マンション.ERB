@@ -1,0 +1,149 @@
+﻿;=================================================
+; 賃貸住居システム（2026-07追加）
+; ・物件: アパート(地区0/位置9) / マンション(地区0/位置7) / 高級マンション(地区2/位置30)
+; ・各物件の中に「号室」＝マップ部屋31番以降の隠し部屋がある
+;   アパート=地区0の31〜38（2階建て） / マンション=地区0の41〜60（5階建て） / 高級マンション=地区2の31〜50（5階建て）
+;   号室は建物エントランスとだけ接続（FIELD00/FIELD20）。NPC入居はキャラの開始位置を号室にする
+; ・入居状態は FLAG:引越し(2)。家賃は月初にEVENTTRAINが徴収（金額は@物件家賃）
+; ・自宅の実体は CFLAG:MASTER:開始地区/開始位置（契約時に空き号室を割当）
+; ・入居一時金は家賃1ヶ月分。解約時の返金なし。入居中の別物件契約=住み替え
+;=================================================
+
+;-------------------------------------------------
+; 号室が属する建物の部屋番号を返す。号室でなければ0
+; ARG=地区 / ARG:1=位置
+;-------------------------------------------------
+@所属物件(ARG,ARG:1)
+#FUNCTION
+SIF ARG == 0 && ARG:1 >= 31 && ARG:1 <= 38
+	RETURNF 9
+SIF ARG == 0 && ARG:1 >= 41 && ARG:1 <= 60
+	RETURNF 7
+SIF ARG == 2 && ARG:1 >= 31 && ARG:1 <= 50
+	RETURNF 30
+RETURNF 0
+
+;-------------------------------------------------
+; 物件の月額家賃。0なら賃貸物件ではない
+; ARG=地区 / ARG:1=位置（号室でも建物でも可）
+;-------------------------------------------------
+@物件家賃(ARG,ARG:1)
+#FUNCTION
+;号室なら所属建物に読み替え
+SIF 所属物件(ARG, ARG:1)
+	ARG:1 = 所属物件(ARG, ARG:1)
+;アパート（住宅街の安物件）
+SIF ARG == 0 && ARG:1 == 9
+	RETURNF 20000
+;マンション（住宅街）
+SIF ARG == 0 && ARG:1 == 7
+	RETURNF 50000
+;高級マンション（繁華街）
+SIF ARG == 2 && ARG:1 == 30
+	RETURNF 100000
+RETURNF 0
+
+;-------------------------------------------------
+; 建物の空き号室を探す。誰の自宅（開始地区/開始位置）でもない号室を返す。満室なら0
+; ARG=地区 / ARG:1=建物の部屋番号
+;-------------------------------------------------
+@空室検索(ARG,ARG:1)
+#FUNCTION
+#DIM 号室
+IF ARG == 0 && ARG:1 == 9
+	LOCAL:2 = 31
+	LOCAL:3 = 38
+ELSEIF ARG == 0 && ARG:1 == 7
+	LOCAL:2 = 41
+	LOCAL:3 = 60
+ELSEIF ARG == 2 && ARG:1 == 30
+	LOCAL:2 = 31
+	LOCAL:3 = 50
+ELSE
+	RETURNF 0
+ENDIF
+FOR 号室,LOCAL:2,LOCAL:3 + 1
+	LOCAL = 0
+	FOR LOCAL:1,1,CHARANUM
+		IF CFLAG:(LOCAL:1):開始地区 == ARG && CFLAG:(LOCAL:1):開始位置 == 号室
+			LOCAL = 1
+			BREAK
+		ENDIF
+	NEXT
+	SIF !LOCAL
+		RETURNF 号室
+NEXT
+RETURNF 0
+
+;-------------------------------------------------
+; 賃貸物件到着時の入居受付。到着フック(@到着時処理)から呼ばれる
+;-------------------------------------------------
+@住居受付
+#DIM 家賃
+#DIM 号室
+;建物エントランス以外（号室の中など）では受付しない
+SIF 所属物件(CFLAG:MASTER:現在地区, CFLAG:MASTER:現在位置)
+	RETURN
+家賃 = 物件家賃(CFLAG:MASTER:現在地区, CFLAG:MASTER:現在位置)
+;賃貸物件でなければ何もしない
+SIF !家賃
+	RETURN
+;既にこの物件（の号室）に入居中なら何もしない
+SIF FLAG:引越し && CFLAG:MASTER:現在地区 == CFLAG:MASTER:開始地区 && (所属物件(CFLAG:MASTER:開始地区, CFLAG:MASTER:開始位置) == CFLAG:MASTER:現在位置 || CFLAG:MASTER:開始位置 == CFLAG:MASTER:現在位置)
+	RETURN
+号室 = 空室検索(CFLAG:MASTER:現在地区, CFLAG:MASTER:現在位置)
+IF !号室
+	PRINTW エントランスの掲示を見ると、あいにく満室のようだ。
+	RETURN
+ENDIF
+PRINTL エントランスに「入居者募集中」の張り紙がある。
+PRINTFORML 家賃は月%金額(家賃)%円、入居時に一時金%金額(家賃)%円が必要らしい。
+IF MONEY:MASTER < 家賃
+	PRINTW （今の手持ちでは一時金が払えない……）
+	RETURN
+ENDIF
+IF FLAG:引越し
+	PRINTFORML [0] - 住み替える（一時金%金額(家賃)%円。今の部屋は解約）
+ELSE
+	PRINTFORML [0] - 契約する（一時金%金額(家賃)%円）
+ENDIF
+PRINTL [1] - やめておく
+$INPUT_LOOP_M
+INPUT
+SIF RESULT != 0 && RESULT != 1
+	GOTO INPUT_LOOP_M
+IF RESULT == 0
+	MONEY:MASTER -= 家賃
+	FLAG:引越し = 1
+	CFLAG:MASTER:開始地区 = CFLAG:MASTER:現在地区
+	CFLAG:MASTER:開始位置 = 号室
+	PRINTFORML 契約書にサインし、%PLACE_NAME(CFLAG:MASTER:開始地区, CFLAG:MASTER:開始位置)%の鍵を受け取った。
+	PRINTFORMW 今日からここがあなたの新しい家だ。家賃は毎月初めに%金額(家賃)%円引き落とされる。
+	PRINTL
+ELSE
+	PRINTL （一人暮らし、憧れはあるけれど……）
+ENDIF
+RETURN
+
+;-------------------------------------------------
+; 実家帰還（解約）。実家(0,1)到着時、入居中なら実家に戻るか選べる
+;-------------------------------------------------
+@実家帰省受付
+SIF CFLAG:MASTER:現在地区 != 0 || CFLAG:MASTER:現在位置 != 1 || !FLAG:引越し
+	RETURN
+PRINTL 久しぶりの実家だ。ここに戻って住むこともできる。
+PRINTL [0] - このまま（一人暮らしを続ける）
+PRINTL [1] - 実家に戻る（今の部屋を解約する）
+$INPUT_LOOP_J
+INPUT
+SIF RESULT != 0 && RESULT != 1
+	GOTO INPUT_LOOP_J
+IF RESULT == 1
+	FLAG:引越し = 0
+	CFLAG:MASTER:開始地区 = 0
+	CFLAG:MASTER:開始位置 = 1
+	PRINTL 今の部屋を解約し、荷物をまとめて実家に戻った。
+	PRINTW 明日からはまた実家で目覚めることになる。
+	PRINTL
+ENDIF
+RETURN

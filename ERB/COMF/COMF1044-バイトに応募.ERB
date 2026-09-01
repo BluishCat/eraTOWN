@@ -1,0 +1,48 @@
+﻿@XCOM_ABLE1044(ARG)
+VARSET LOCAL
+LOCAL = ARG
+VARSET ARG
+SIF !GETBIT(DA:(CFLAG:LOCAL:現在地区):(CFLAG:LOCAL:現在位置),8)
+	RETURN 0
+SIF CFLAG:LOCAL:職業 && CFLAG:LOCAL:現在地区 == JOB_AREA(CFLAG:LOCAL:職業) && CFLAG:LOCAL:現在位置 == JOB_PLACE(CFLAG:LOCAL:職業)
+	RETURN 0
+;営業時間外は面接を受けられない
+SIF !営業中(CFLAG:LOCAL:現在地区, CFLAG:LOCAL:現在位置)
+	RETURN 0
+
+RETURN GLOBAL_COMABLE(1044)
+
+@XCOM1044(ARG)
+VARSET LOCAL
+PRINTL 
+PRINTFORML %"=" * 107%
+PRINTL バイトに応募する
+;バイトに応募する
+PRINTFORML %CALLNAME:MASTER%は面接を受けている……
+PRINTFORMW ……
+;服屋、Aショップ、キャバクラ、劇場は厳しい
+IF CFLAG:ARG:現在地区 == 2 && (CFLAG:MASTER:現在位置 == 9 || CFLAG:MASTER:現在位置 == 19 || CFLAG:MASTER:現在位置 == 20 || CFLAG:MASTER:現在位置 == 52)
+	IF BASE:MASTER:容姿 <= 400
+		PRINTFORML %CALLNAME:MASTER%は面接に落ちました……
+		PRINTFORMW 店長「もっと自分を磨いてきてください」
+		VARSET ARG
+		RETURN 1
+	ENDIF
+ENDIF
+;※居酒屋(54)・バー(55)・映画館(57)の年齢制限は撤去した。
+;  登場人物が全員20歳以上になり、常に通過するだけの分岐になったため
+;  （同時に 酔い.ERB の @飲酒許可 系も撤去）。未成年の身分を復活させる場合はここも戻すこと。
+FOR LOCAL:1,1,MAX_JOB() + 1
+	IF CFLAG:ARG:現在地区 == JOB_AREA(LOCAL:1) && CFLAG:MASTER:現在位置 == JOB_PLACE(LOCAL:1)
+		LOCAL = LOCAL:1
+		BREAK
+	ENDIF
+NEXT
+PRINTFORML 合格した！
+PRINTFORMW %JOB_NAME(LOCAL)%のアルバイトをすることになりました。
+CFLAG:ARG:職業 = LOCAL
+
+CFLAG:ARG:待機時間 += 15
+
+VARSET ARG
+RETURN 1

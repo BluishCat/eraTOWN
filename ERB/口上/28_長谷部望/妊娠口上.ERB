@@ -1,0 +1,79 @@
+﻿;================================================
+; 長谷部望（キャラ番号 28）の妊娠・出産口上
+; 状況：1危険日 2妊娠中 3発覚 4陣痛開始 5出産 6陣痛激化 7いきみ 8破水
+;================================================
+
+;@妊娠口上_1_28(ARG,ARG:1)
+;;危険日の中出し
+;PRINTFORMW %CALLNAME:ARG%「（危険日の中出しの台詞）」
+;RETURN
+;@妊娠口上_2_28(ARG,ARG:1)
+;;妊娠中の中出し
+;PRINTFORMW %CALLNAME:ARG%「（妊娠中の中出しの台詞）」
+;RETURN
+@妊娠口上_3_28(ARG,ARG:1)
+;妊娠発覚
+SELECTCASE RAND(3)
+	CASE 0
+		PRINTFORMW %CALLNAME:ARG%「……嘘。あたし、妊娠……？」
+	CASE 1
+		PRINTFORMW %CALLNAME:ARG%「そう……あたしの中に、いるんだ。」
+	CASEELSE
+		PRINTFORMW %CALLNAME:ARG%「ふぅ……信じられないけど、本当なんだね。」
+ENDSELECT
+RETURN
+@妊娠口上_4_28(ARG,ARG:1)
+;陣痛・破水
+SELECTCASE RAND(3)
+	CASE 0
+		PRINTFORMW %CALLNAME:ARG%「っ……ふぅ、痛……。息継ぎみたいに、深呼吸……」
+	CASE 1
+		PRINTFORMW %CALLNAME:ARG%「くっ……水中より、息が苦しい……」
+	CASEELSE
+		PRINTFORMW %CALLNAME:ARG%「はぁ……もう少し……耐える……っ」
+ENDSELECT
+RETURN
+@妊娠口上_5_28(ARG,ARG:1)
+;出産
+SELECTCASE RAND(3)
+	CASE 0
+		PRINTFORMW %CALLNAME:ARG%「はぁ……ちゃんと、産めた……」
+	CASE 1
+		PRINTFORMW %CALLNAME:ARG%「ふぅ……無事で、よかった……」
+	CASEELSE
+		PRINTFORMW %CALLNAME:ARG%「……小さい。守らなきゃ、ね。」
+ENDSELECT
+RETURN
+@妊娠口上_6_28(ARG,ARG:1)
+;陣痛激化
+SELECTCASE RAND(2)
+	CASE 0
+		PRINTFORMW %CALLNAME:ARG%「っ……ふぅ、波が来る……深く、息を……」
+	CASEELSE
+		PRINTFORMW %CALLNAME:ARG%「くっ……水中で息を止める要領で……っ」
+ENDSELECT
+RETURN
+@妊娠口上_7_28(ARG,ARG:1)
+;いきみ
+SELECTCASE RAND(2)
+	CASE 0
+		PRINTFORMW %CALLNAME:ARG%「いくよ……ふぅ、ん――っ」
+	CASEELSE
+		PRINTFORMW %CALLNAME:ARG%「もう少し……そーれ……っ」
+ENDSELECT
+RETURN
+@妊娠口上_8_28(ARG,ARG:1)
+;破水
+SELECTCASE RAND(2)
+	CASE 0
+		PRINTFORMW %CALLNAME:ARG%「……破水。水みたいに、溢れた……」
+	CASEELSE
+		PRINTFORMW %CALLNAME:ARG%「っ……羊水ね。プールを思い出す……なんてね。」
+ENDSELECT
+RETURN
+
+@妊娠口上_9_28(ARG,ARG:1)
+;多胎に気づく（驚き）
+TSTR:(FLAG:口上候補数++) = %CALLNAME:ARG%「……まだ、いる。双子、だったんだ……」
+TSTR:(FLAG:口上候補数++) = %CALLNAME:ARG%「もう一人……完全に予想外だ……」
+RETURN

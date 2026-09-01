@@ -1,0 +1,54 @@
+﻿@SHOW_INFO_PALAM
+#DIM PIDX, 30
+#DIM 件数
+#DIM 列1数
+#DIM 行N
+#DIMS 行S
+PRINTL
+VARSET LOCAL
+IF TARGET
+	;Hシーン中はバー形式のPALAM一覧を左右並列で表示（左＝あなた／右＝☆現在の行為相手。旧数値テーブルは廃止）
+	;実項目（名前があるもの）を収集して各キャラ2列に割る（メイン画面描画.ERB @メイン状態並列表示と同方式）
+	件数 = 0
+	FOR LOCAL,0,100
+		SIF !STRLENS(PALAMNAME:LOCAL)
+			CONTINUE
+		PIDX:件数 = LOCAL
+		件数 ++
+	NEXT
+	列1数 = (件数 + 1) / 2
+	;見出し行（左右に▼PALAM（名前））
+	行S '= @"<div rect='0,0,2800,250'><font color='#8C8CAA'>▼PALAM（%CALLNAME:MASTER%）</font></div>"
+	行S '= 行S + @"<div rect='3000,0,2800,250'><font color='#8C8CAA'>▼PALAM（☆%CALLNAME:TARGET%）</font></div>"
+	HTML_PRINT 行S, 1
+	PRINTL
+	;行単位で MASTER 2列（X0/X1100）＋ TARGET 2列（X3000/X4100）を合成して出力
+	;（キャラ内の列間隔1100は通常時画面の▼PALAM 2列と同じ）
+	FOR 行N,0,列1数
+		行S '= PALAMセル_HTML(MASTER, PIDX:行N, 0)
+		SIF 行N + 列1数 < 件数
+			行S '= 行S + PALAMセル_HTML(MASTER, PIDX:(行N + 列1数), 1100)
+		行S '= 行S + PALAMセル_HTML(TARGET, PIDX:行N, 3000)
+		SIF 行N + 列1数 < 件数
+			行S '= 行S + PALAMセル_HTML(TARGET, PIDX:(行N + 列1数), 4100)
+		HTML_PRINT 行S, 1
+		PRINTL
+	NEXT
+	PRINTL
+	;TARGET以外の参加者が居れば相手切替ボタン（USERCOM側は TCVAR:X:行為対象 == MASTER を検証）
+	LOCAL:2 = 0
+	FOR LOCAL,1,CHARANUM
+		SIF LOCAL == MASTER || LOCAL == TARGET || TCVAR:LOCAL:行為対象 != MASTER
+			CONTINUE
+		SIF !LOCAL:2
+			PRINT 他の相手：
+		PRINTFORM [{LOCAL + 2000}]%CALLNAME:LOCAL%
+		PRINTS "　"
+		LOCAL:2 = 1
+	NEXT
+	IF LOCAL:2
+		PRINTL
+	ENDIF
+ELSE
+	CALL PRINT_PALAM_GAUGE(MASTER)
+ENDIF

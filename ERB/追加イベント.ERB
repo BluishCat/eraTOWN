@@ -1,0 +1,194 @@
+﻿@BENTO
+SIF CFLAG:MASTER:現在地区 != 0 && CFLAG:MASTER:現在位置 != 1
+	RETURN 0
+SIF	(D:101) != 0
+	RETURN 0
+;LOCAL=作ってくれる人、LOCAL:1=作ってくれる人の料理補正
+LOCAL = 0
+LOCAL:1 = 0
+IF RAND:4 == 1 && GETCHARA(11) != -1
+;母
+	LOCAL = GETCHARA(11)
+	LOCAL:1 = 1
+ELSE
+	RETURN 0
+ENDIF
+PRINTFORML %CALLNAME:LOCAL%がお弁当を作ってくれたようだ。
+IF RAND(15) - ABL:LOCAL:料理技能 * 3 - LOCAL:1 < 1
+	IF RAND(10) - (ABL:LOCAL:料理技能 - 2) * 2 < 1
+		PRINTW 特に美味しそうなお弁当だ！
+		EQUIP:MASTER:美味しそうなお弁当++
+		EXP:LOCAL:料理経験 += 3
+	ELSE
+		PRINTW 普通に美味しそうなお弁当だ
+		EQUIP:MASTER:普通のお弁当++
+		EXP:LOCAL:料理経験 += 2
+	ENDIF
+ELSE
+	PRINTW やばそうなお弁当だ･･････
+	EQUIP:MASTER:やばそうなお弁当++
+	EXP:LOCAL:料理経験 += 1
+ENDIF
+
+
+@DOGEZA(ARG)
+	PRINTFORML 今なら素直に%CALLNAME:ARG%に謝れる気がする。
+$INPUT_LOOP1000
+	SIF RESULT != 0 && RESULT != 1
+			GOTO INPUT_LOOP1000
+	PRINTFORML [0] - 素直に謝る
+	PRINTFORML [1] - やっぱやめる
+INPUT
+		IF RESULT == 0
+			EQUIP:MASTER:上手な謝り方--
+;反抗的
+			IF TALENT:ARG:態度 == 1
+				IF TA:ARG:1:4 > 200
+					PRINTW 体を%CALLNAME:ARG%の好きにさせれば許してくれるようだ
+					K:104 = 1
+					CALL EVENT_JOIN(1,ARG,4)
+					CFLAG:ARG:待機時間 += 2
+					TB:(CFLAG:ARG:現在地区):(CFLAG:ARG:現在位置):ARG -= 5
+					TB:(CFLAG:ARG:現在地区):(CFLAG:ARG:現在位置):1 -= 3
+					TA:1:ARG:2 += 30
+					TA:ARG:1:4 += 20
+					K:104 = 0
+				ELSEIF TA:ARG:1:4 > 100
+					PRINTW %CALLNAME:ARG%に奉仕すれば許してくれるようだ
+					K:104 = 1
+					CALL EVENT_JOIN(1,ARG,4)
+					CFLAG:ARG:待機時間 += 2
+					TB:(CFLAG:ARG:現在地区):(CFLAG:ARG:現在位置):ARG -= 5
+					TB:(CFLAG:ARG:現在地区):(CFLAG:ARG:現在位置):1 -= 3
+					TA:1:ARG:2 += 15
+					TA:ARG:1:4 += 10
+					K:104 = 0
+				ELSE
+					PRINTW 渋々許してくれた
+					TA:1:ARG:2 += 5
+					TA:ARG:1:4 += 1
+				ENDIF
+;素直
+			ELSEIF TALENT:ARG:態度 == -1
+				PRINTW 快く許してくれた
+				TA:1:ARG:1 += 1
+			ELSE
+				PRINTW 許してくれた
+			ENDIF
+			TA:1:ARG:6 == 0
+			TA:ARG:1:6 == 0
+		ELSEIF RESULT == 1
+			PRINTW やめた
+		ENDIF
+	RETURN
+
+@YURUSU(ARG)
+	PRINTFORML 今なら素直に%CALLNAME:ARG%を許してやれる気がする。
+$INPUT_LOOP1001
+	PRINTFORML [0] - 許す
+	PRINTFORML [1] - やっぱやめる
+INPUT
+	SIF RESULT != 0 && RESULT != 1
+			GOTO INPUT_LOOP1001
+		IF RESULT == 0
+			EQUIP:MASTER:広い心の持ち方--
+;反抗的
+			IF TALENT:1:態度 == 1
+				PRINTW 渋々許した
+				TA:1:ARG:6 == 0
+				TA:ARG:1:6 == 0
+;素直
+			ELSEIF TALENT:1:態度 == -1
+				PRINTW 快く許した
+				TA:1:ARG:6 == 0
+				TA:ARG:1:6 == 0
+			ELSE
+				PRINTW 許した
+				TA:1:ARG:6 == 0
+				TA:ARG:1:6 == 0
+			ENDIF
+		ELSEIF RESULT == 1
+			PRINTW やめた
+		ENDIF
+	RETURN
+
+@Beloved
+;(LOCAL:1)
+;(LOCAL:1)
+VARSET LOCAL
+FOR LOCAL:1,1,CHARANUM
+	FOR LOCAL:2,1,CHARANUM
+	;(LOCAL:1)が(LOCAL:2)のことを好きかどうか && (LOCAL:2)が存在しているか
+	IF TA:(LOCAL:1):(LOCAL:2):1 >= 0 && GETCHARA(LOCAL:2) != -1
+		;(LOCAL:3)に愛情度を代入、(LOCAL:6)に好意度を代入
+		LOCAL:3 = TA:(LOCAL:1):(LOCAL:2):1
+		LOCAL:6 = TA:(LOCAL:1):(LOCAL:2):3
+		;(LOCAL:4)が(LOCAL:3)の100倍＋(LOCAL:6)の値より大きいか
+		IF (LOCAL:3 * 100 + LOCAL:6) >= LOCAL:4
+			;(LOCAL:4)に(LOCAL:3)の100倍＋(LOCAL:6)を代入
+			LOCAL:4 = (LOCAL:3 * 100 + LOCAL:6)
+			;(LOCAL:5)にこの時点で好きな相手の番号を代入
+			LOCAL:5 = LOCAL:2
+		ENDIF
+	ENDIF
+	NEXT
+	;(LOCAL:4)が500以下
+	IF LOCAL:4 <= 500
+		CFLAG:(LOCAL:1):最愛 = 0
+	;そうでなくて相手が自分
+	ELSEIF LOCAL:5 == LOCAL:1
+		CFLAG:(LOCAL:1):最愛 = LOCAL:5
+	;そうでない
+	ELSE
+		CFLAG:(LOCAL:1):最愛 = LOCAL:5
+	ENDIF
+LOCAL:3 = 0
+LOCAL:4 = 0
+LOCAL:5 = 0
+LOCAL:6 = 0
+NEXT
+PRINTW 　
+
+
+;================================================================
+;@裏路地_拾い物
+;  裏路地(2,23)到着時のフック（ROOM_IN_OUT.ERB @到着時処理から呼ばれる。@質屋受付と同型）。
+;  裏通りから片道5分の袋小路で、それまで来る理由が何も無かった場所への動機づけ(2026-09-01)。
+;  1日1回（TCVAR:647 当日裏路地拾得済。BEGIN TRAINで自動クリア）。
+;  拾得物は少額の現金と市販薬のみ。媚薬・睡眠薬の類は、相手の抵抗を奪う用途に繋がるため
+;  無償入手の導線を作らない＝この表には入れないこと。
+;================================================================
+@裏路地_拾い物
+#DIM 出目
+#DIM 拾得額
+SIF CFLAG:MASTER:現在地区 != 2 || CFLAG:MASTER:現在位置 != 23
+	RETURN
+;イベント文脈からの到着では何もしない（通常コマンド文脈のみ）
+SIF TCVAR:MASTER:イベント
+	RETURN
+SIF TCVAR:MASTER:当日裏路地拾得済
+	RETURN
+TCVAR:MASTER:当日裏路地拾得済 = 1
+PRINTL
+PRINTFORML %"=" * 107%
+PRINTL 室外機の唸る狭い路地に、割れた蛍光灯の光が落ちている。
+出目 = RAND(100)
+IF 出目 < 55
+	PRINTW 足元を一応見て回ったが、めぼしいものは何も無かった。
+ELSEIF 出目 < 80
+	;少額の現金（100〜900円。100円単位）
+	拾得額 = (1 + RAND(9)) * 100
+	MONEY:MASTER += 拾得額
+	PRINTFORMW 自販機の下に手を入れると、小銭が指に触れた。%金額(拾得額)%円を拾った。（所持金：%金額(MONEY:MASTER)%円）
+ELSEIF 出目 < 90
+	EQUIP:MASTER:152 += 1
+	PRINTFORMW 未開封の%ITEMNAME:152%が段ボールの陰に転がっていた。拾っておいた。
+ELSEIF 出目 < 96
+	EQUIP:MASTER:153 += 1
+	PRINTFORMW 落とし物らしい%ITEMNAME:153%が一箱。持ち主の見当もつかない。
+ELSE
+	EQUIP:MASTER:159 += 1
+	PRINTFORMW 未使用の%ITEMNAME:159%が紙袋ごと置き去りにされていた。
+ENDIF
+CFLAG:MASTER:待機時間 += 10
+RETURN

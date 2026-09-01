@@ -1,0 +1,471 @@
+﻿;================================================================
+;@援交操作モード開始(ARG)
+;  ARG = 相手NPC（店主/ナンパ男/キャバ客）。対象は常にMASTER。
+;  前提: プレイヤーの場所移動・報酬等の先払いは呼び出し元で済ませてから呼ぶ。
+;        TCVAR:MASTER:イベント == 0（通常コマンド文脈からのみ遷移）
+;  処理: 相手をプレイヤーと同室へ移し、イベント4（押し倒すCOMF998と同型）で
+;        コマンド選択式の操作モードに合流する。
+;  終了は通常の 997行為を終える（EVENT_ESCAPE_ALL）に任せる。
+;================================================================
+@援交操作モード開始(ARG)
+;相手をプレイヤーと同じ部屋へ（寝ていた場合は起こす）
+CFLAG:ARG:現在地区 = CFLAG:MASTER:現在地区
+CFLAG:ARG:現在位置 = CFLAG:MASTER:現在位置
+CFLAG:ARG:乗車 = 0
+CFLAG:ARG:睡眠 = 0
+;援交フラグ（処女/童貞喪失時の異常経験+1判定用。EVENT_ESCAPE_ALLでクリア）
+J:116 = 1
+;K:104=1 で EVENT_JOIN が CFLAG:MASTER:待機時間=6 を設定し、
+;バイトの残り120分等の待機時間を上書きする（NMKAIWA/DOGEZAと同パターン）
+K:104 = 1
+CALL EVENT_JOIN(MASTER, ARG, 4)
+K:104 = 0
+
+@NPC_ENKOU(ARG,ARG:1)
+LOCAL:10 = 0
+I:16 = (BASE:(ARG:1):刺激度 * 2) + BASE:(ARG:1):容姿
+IF ARG:1 == 1
+	SELECTCASE I:16
+		CASE IS < 900
+			IF RAND(10) < 2
+			ELSE
+				RETURN 1
+			ENDIF
+		CASE 900 TO 1000
+			IF RAND(10) < 3
+			ELSE
+				RETURN 1
+			ENDIF
+		CASEELSE
+			IF RAND(10) < 4
+			ELSE
+				RETURN 1
+			ENDIF
+	ENDSELECT
+	PRINTL
+	PRINTFORML %"=" * 107%
+	PRINTFORM アルバイトが終わると%PLACE_NAME(CFLAG:(ARG:1):現在地区,CFLAG:(ARG:1):現在位置)%の店主が
+IF RAND:4 == 1
+	PRINTFORM %CALLNAME:(ARG:1)%の尻を撫でながら
+ELSEIF RAND:3 == 1
+	PRINTFORM %CALLNAME:(ARG:1)%の肩に腕を回して
+ELSEIF RAND:2 == 1
+	PRINTFORM %CALLNAME:(ARG:1)%の腰に手を添えながら
+ELSE
+	PRINTFORM %CALLNAME:(ARG:1)%に後ろから抱きつきながら
+ENDIF
+	PRINTFORML 援交を誘ってきた
+	PRINTL どうしますか？
+	PRINTFORML [0] - 誘いに乗る（自分で操作する）
+	PRINTFORML [1] - 誘いに乗る（おまかせ）
+	PRINTFORML [2] - 断る
+$INPUT_LOOP1
+	INPUT
+	SIF RESULT != 0 && RESULT != 1 && RESULT != 2
+		GOTO INPUT_LOOP1
+	IF RESULT == 2
+		PRINTFORML %CALLNAME:(ARG:1)%は断った。
+		TB:(CFLAG:(ARG:1):現在地区):(CFLAG:(ARG:1):現在位置):(ARG:1) -= 1
+		RETURN 1
+	ENDIF
+	SIF RESULT == 0
+		LOCAL:10 = 1
+ELSE
+	SELECTCASE I:16
+;;;違和感ありますが、1,2=処女、0=童貞なので
+		CASE IS < 900
+			IF RAND(10) == 0 && ((!TALENT:(ARG:1):処女 && GETBIT(TALENT:(ARG:1):2,0)) || (TALENT:(ARG:1):童貞 && GETBIT(TALENT:(ARG:1):2,1)))
+			ELSE
+				RETURN 1
+			ENDIF
+		CASE 900 TO 1000
+			IF RAND(10) < 2 && ((!TALENT:(ARG:1):処女 && GETBIT(TALENT:(ARG:1):2,0)) || (TALENT:(ARG:1):童貞 && GETBIT(TALENT:(ARG:1):2,1)))
+			ELSEIF RAND(10) < 1
+			ELSE
+				RETURN 1
+			ENDIF
+		CASEELSE
+			IF RAND(10) < 4 && ((!TALENT:(ARG:1):処女 && GETBIT(TALENT:(ARG:1):2,0)) || (TALENT:(ARG:1):童貞 && GETBIT(TALENT:(ARG:1):2,1)))
+			ELSEIF RAND(10) < 2
+			ELSE
+				RETURN 1
+			ENDIF
+	ENDSELECT
+	SETCOLOR 0xFF0000
+	PRINTFORMW %CALLNAME:(ARG:1)%が%PLACE_NAME(CFLAG:(ARG:1):現在地区,CFLAG:(ARG:1):現在位置)%の店主と援交しています。
+	RESETCOLOR
+	PRINTFORML [0] - 確認
+	INPUT
+ENDIF
+CFLAG:(ARG:1):現在地区 = 2
+CFLAG:(ARG:1):現在位置 = 22
+;操作モード（プレイヤーが[0]を選択した場合のみ。NPC同士はLOCAL:10==0のまま）
+IF LOCAL:10
+	PRINTFORMW %CALLNAME:(ARG:1)%は店主に%PLACE_NAME(2,22)%へ連れ込まれた。
+	;先払い（従来の事後処理と同額）
+	MONEY:(ARG:1) += 20000
+	BASE:(ARG:1):評判 -= 70
+	TB:2:22:(ARG:1) -= 3
+	CFLAG:(ARG:1):会話 = 1
+	CALL 援交操作モード開始(ARG)
+	RETURN 2
+ENDIF
+TCVAR:(ARG:1):目的位置 = 0
+TCVAR:(ARG:1):目的地区 = 0
+I:15 = CFLAG:(ARG:1):待機時間
+CFLAG:(ARG:1):待機時間 = 0
+I:13 = TCVAR:MASTER:イベント
+TCVAR:MASTER:イベント = 0
+IF TCVAR:MASTER:行為対象
+	I:14 = TCVAR:(TCVAR:MASTER:行為対象):イベント
+	TCVAR:(TCVAR:MASTER:行為対象):イベント = 0
+ENDIF
+J:116 = 1
+TFLAG:Ｎイベント = 8
+TFLAG:行為者 = ARG
+FOR G,0,5
+	TCVAR:ARG:行為対象 = ARG:1
+	TCVAR:(ARG:1):行為対象 = ARG
+	CFLAG:ARG:受能動 = 1
+	CFLAG:(ARG:1):受能動 = 2
+;Hはコマンド実行時のARG変数に代入
+	H = ARG
+	CALL XCOM2820(ARG,0)
+	TCVAR:ARG:行為対象 = ARG:1
+	CALL SOURCE_CHECKS(ARG)
+	TFLAG:行為者 = ARG
+	SIF ARG:1 == 1 && !TFLAG:移動中
+		PRINTW
+NEXT
+TEQUIP:(ARG:1):膣 = 0
+TEQUIP:(ARG:1):アナル = 0
+FOR G,0,10
+	TCVAR:ARG:行為対象 = ARG:1
+	TCVAR:(ARG:1):行為対象 = ARG
+	CFLAG:ARG:受能動 = 1
+	CFLAG:(ARG:1):受能動 = 2
+;Hはコマンド実行時のARG変数に代入
+	H = ARG
+	CALL XCOM2820(ARG,1)
+	TCVAR:ARG:行為対象 = ARG:1
+	CALL SOURCE_CHECKS(ARG)
+	TFLAG:行為者 = ARG
+	SIF ARG:1 == 1 && !TFLAG:移動中
+		PRINTW
+NEXT
+PRINTFORMW %CALLNAME:ARG%　→　%CALLNAME:(ARG:1)%　行為終了
+TCVAR:MASTER:イベント = I:13
+IF TCVAR:MASTER:行為対象
+	TCVAR:(TCVAR:MASTER:行為対象):イベント = I:14
+ENDIF
+CFLAG:(ARG:1):会話 = 1
+CALL EVENT_ESCAPE_NPC(ARG,ARG:1)
+TFLAG:Ｎイベント = 0
+J:116 = 0
+CFLAG:(ARG:1):待機時間 = I:15
+CFLAG:(ARG:1):待機時間 += 90
+MONEY:(ARG:1) += 20000
+BASE:(ARG:1):評判 -= 70
+TB:(CFLAG:(ARG:1):現在地区):(CFLAG:(ARG:1):現在位置):(ARG:1) -= 3
+
+@NANPA1
+;駅（地区0=最寄の駅/地区2=大学前駅）限定。地区1の位置3はエントランスホールなので除外
+IF (CFLAG:1:現在地区 == 0 || CFLAG:1:現在地区 == 2) && CFLAG:1:現在位置 == 3 && BASE:1:評判 >= 700
+	I = 0
+J:102 = RAND(CHARANUM - 2)
+J:102 += 2
+		IF TALENT:(J:102):ナンパ == 0
+			PRINTFORMW %CALLNAME:(J:102)%はナンパしない
+			RETURN 1
+		ELSEIF TA:(J:102):1:4 <= 100
+			PRINTFORMW %CALLNAME:(J:102)%は%CALLNAME:1%とやりたくないようだ
+			RETURN 1
+		ENDIF
+		I = J:102
+	IF MONEY:I >= 7000
+		CALLFORM NANPA(I,1)
+		J:118 = RESULT
+		SIF J:118 == 2
+			RETURN 3
+	ELSE
+;		PRINTFORMW %CALLNAME:I%は金欠でナンパを諦めた
+	ENDIF
+ENDIF
+@NANPA(ARG,ARG:1)
+;;;ナンパ（死語？）されるということ
+
+LOCAL:10 = 0
+I:16 = (BASE:(ARG:1):刺激度 * 2) + (BASE:(ARG:1):容姿 * 3)
+
+IF ARG:1 == 1
+	SELECTCASE I:16
+		CASE IS < 900
+			IF RAND(10) < 3
+			ELSE
+				RETURN 1
+			ENDIF
+		CASE 900 TO 1000
+			IF RAND(10) < 5
+			ELSE
+				RETURN 1
+			ENDIF
+		CASEELSE
+			IF RAND(10) < 6
+			ELSE
+				RETURN 1
+			ENDIF
+	ENDSELECT
+	PRINTL
+	PRINTFORML %"=" * 107%
+	PRINT うろうろしてると
+	PRINTFORML %CALLNAME:ARG%が近寄ってきて、「いいことしない？」と誘って来た
+	PRINTL どうしますか？
+	PRINTFORML [0] - 誘いに乗る（自分で操作する）
+	PRINTFORML [1] - 誘いに乗る（おまかせ）
+	PRINTFORML [2] - お茶だけなら
+	PRINTFORML [3] - 断る
+$INPUT_LOOP1
+	INPUT
+	SIF RESULT != 0 && RESULT != 1 && RESULT != 2 && RESULT != 3
+		GOTO INPUT_LOOP1
+	I:17 = 0
+	IF RESULT == 0
+		LOCAL:10 = 1
+	ELSEIF RESULT == 2
+		I:17 = 1
+	ELSEIF RESULT == 3
+			PRINTFORML %CALLNAME:(ARG:1)%は断った。
+			TB:(CFLAG:(ARG:1):現在地区):(CFLAG:(ARG:1):現在位置):(ARG:1) -= 1
+			RETURN 1
+	ENDIF
+ELSE
+IF TALENT:(ARG:1):2 == 2 && TALENT:(ARG):2 == 2
+;		PRINTFORMW %CALLNAME:(ARG:1)%が%CALLNAME:ARG%と出会った。
+		RETURN 1
+ENDIF
+	SELECTCASE I:16
+;;;違和感ありますが、1,2=処女、0=童貞なので
+		CASE IS < 900
+			IF RAND(10) == 0 && ((!TALENT:(ARG:1):処女 && GETBIT(TALENT:(ARG:1):2,0)) || (TALENT:(ARG:1):童貞 && GETBIT(TALENT:(ARG:1):2,1)))
+			ELSE
+				RETURN 1
+			ENDIF
+		CASE 900 TO 1000
+			IF RAND(10) < 2 && ((!TALENT:(ARG:1):処女 && GETBIT(TALENT:(ARG:1):2,0)) || (TALENT:(ARG:1):童貞 && GETBIT(TALENT:(ARG:1):2,1)))
+			ELSEIF RAND(10) < 1
+			ELSE
+				RETURN 1
+			ENDIF
+		CASEELSE
+			IF RAND(10) < 4 && ((!TALENT:(ARG:1):処女 && GETBIT(TALENT:(ARG:1):2,0)) || (TALENT:(ARG:1):童貞 && GETBIT(TALENT:(ARG:1):2,1)))
+			ELSEIF RAND(10) < 2
+			ELSE
+				RETURN 1
+			ENDIF
+	ENDSELECT
+	I:17 = 0
+	IF RAND(3) == 0
+		SETCOLOR 0xFF0000
+		PRINTFORMW %CALLNAME:(ARG:1)%が%CALLNAME:ARG%をナンパに成功。
+		RESETCOLOR
+		PRINTFORML [0] - 確認
+		INPUT
+	ELSE
+		I:17 = 1
+	ENDIF
+ENDIF
+IF I:17
+	IF CFLAG:(ARG:1):現在地区 == 0
+		CFLAG:(ARG:1):現在位置 = 6
+	ELSE
+		CFLAG:(ARG:1):現在地区 = 2
+		CFLAG:(ARG:1):現在位置 = 14
+	ENDIF
+	IF ARG:1 == 1
+		PRINTFORMW %CALLNAME:(ARG:1)%は%CALLNAME:ARG%と%PLACE_NAME(CFLAG:(ARG:1):現在地区,CFLAG:(ARG:1):現在位置)%でお茶を楽しんだ。
+		IF RAND(10) < 2
+			PRINTFORMW が、薬を盛られてホテルに連れ込まれてしまった。
+			GOTO INPUT_LOOP3
+		ENDIF
+	ENDIF
+	TCVAR:(ARG:1):目的位置 = 0
+	TCVAR:(ARG:1):目的地区 = 0
+	I:15 = CFLAG:(ARG:1):待機時間
+	CFLAG:(ARG:1):待機時間 = 0
+	I:13 = TCVAR:MASTER:イベント
+	TCVAR:MASTER:イベント = 0
+	IF TCVAR:MASTER:行為対象
+		I:14 = TCVAR:(TCVAR:MASTER:行為対象):イベント
+		TCVAR:(TCVAR:MASTER:行為対象):イベント = 0
+	ENDIF
+	CFLAG:ARG:受能動 = 1
+	CFLAG:(ARG:1):受能動 = 2
+	TCVAR:ARG:行為対象 = ARG:1
+	TCVAR:(ARG:1):行為対象 = ARG
+	CALL XCOM2800(ARG)
+	TCVAR:ARG:行為対象 = ARG:1
+	TCVAR:(ARG:1):行為対象 = ARG
+	CALL SOURCE_CHECKS(ARG)
+	IF TFLAG:成否用変数 > -2
+		TFLAG:行為者 = (ARG:1)
+		CFLAG:ARG:受能動 = 2
+		CFLAG:(ARG:1):受能動 = 1
+		TCVAR:ARG:行為対象 = (ARG:1)
+		TCVAR:(ARG:1):行為対象 = ARG
+		CALL XCOM2801(ARG:1)
+		TCVAR:(ARG:1):行為対象 = ARG
+		TCVAR:ARG:行為対象 = (ARG:1)
+		CALL SOURCE_CHECKS(ARG:1)
+		TFLAG:行為者 = ARG
+		MAXBASE:ARG:気力 += 1
+		MAXBASE:(ARG:1):気力 += 1
+		TA:(ARG:1):ARG:4 += 5
+		TA:ARG:(ARG:1):4 += 5
+		TA:(ARG:1):ARG:5 += 5
+		TA:ARG:(ARG:1):5 += 5
+		TA:(ARG:1):ARG:6 -= 10
+		TA:ARG:(ARG:1):6 -= 10
+	ENDIF
+	CFLAG:(ARG:1):会話 = 1
+	CALL EVENT_ESCAPE_NPC(ARG,ARG:1)
+	TFLAG:Ｎイベント = 0
+	TCVAR:MASTER:イベント = I:13
+	IF TCVAR:MASTER:行為対象
+		TCVAR:(TCVAR:MASTER:行為対象):イベント = I:14
+	ENDIF
+	CFLAG:(ARG:1):待機時間 = I:15
+	CFLAG:(ARG:1):待機時間 += 30
+	MONEY:ARG -= 1000
+	TB:(CFLAG:(ARG:1):現在地区):(CFLAG:(ARG:1):現在位置):ARG += 1
+	TB:(CFLAG:(ARG:1):現在地区):(CFLAG:(ARG:1):現在位置):(ARG:1) += 1
+ELSE
+;操作モード（プレイヤーが[0]を選択した場合のみ。薬盛られパスはGOTOで下のラベルへ飛ぶため通らない）
+	IF ARG:1 == 1 && LOCAL:10
+		;場所移動（従来の自動処理と同じ振り分け）
+		IF CFLAG:(ARG:1):現在地区 == 0
+			CFLAG:(ARG:1):現在位置 = 11
+		ELSE
+			CFLAG:(ARG:1):現在地区 = 2
+			CFLAG:(ARG:1):現在位置 = 22
+		ENDIF
+		PRINTFORMW %CALLNAME:(ARG:1)%は%CALLNAME:ARG%と%PLACE_NAME(CFLAG:(ARG:1):現在地区,CFLAG:(ARG:1):現在位置)%へ向かった。
+		;先払い（従来の事後効果と同じ。ホテル代は相手持ち）
+		SIF CFLAG:(ARG:1):現在地区 == 2
+			MONEY:ARG -= 7000
+		MAXBASE:ARG:体力 += 5
+		MAXBASE:ARG:気力 += 5
+		MAXBASE:(ARG:1):体力 += 5
+		MAXBASE:(ARG:1):気力 += 5
+		TA:(ARG:1):ARG:6 -= 10
+		TA:ARG:(ARG:1):6 -= 10
+		TB:(CFLAG:(ARG:1):現在地区):(CFLAG:(ARG:1):現在位置):ARG += 2
+		TB:(CFLAG:(ARG:1):現在地区):(CFLAG:(ARG:1):現在位置):(ARG:1) -= 2
+		BASE:ARG:評判 -= 20
+		BASE:(ARG:1):評判 -= 100
+		CFLAG:(ARG:1):会話 = 1
+		CALL 援交操作モード開始(ARG)
+		RETURN 2
+	ENDIF
+$INPUT_LOOP3
+	IF CFLAG:(ARG:1):現在地区 == 0
+		CFLAG:(ARG:1):現在位置 = 11
+	ELSE
+		CFLAG:(ARG:1):現在地区 = 2
+		CFLAG:(ARG:1):現在位置 = 22
+	ENDIF
+	SIF ARG:1 == 1
+		PRINTFORMW %PLACE_NAME(CFLAG:(ARG:1):現在地区,CFLAG:(ARG:1):現在位置)%に連れていかれた。
+	TCVAR:(ARG:1):目的位置 = 0
+	TCVAR:(ARG:1):目的地区 = 0
+	I:15 = CFLAG:(ARG:1):待機時間
+	CFLAG:(ARG:1):待機時間 = 0
+	I:13 = TCVAR:MASTER:イベント
+	TCVAR:MASTER:イベント = 0
+	IF TCVAR:MASTER:行為対象
+		I:14 = TCVAR:(TCVAR:MASTER:行為対象):イベント
+		TCVAR:(TCVAR:MASTER:行為対象):イベント = 0
+	ENDIF
+	TFLAG:Ｎイベント = 8
+	TFLAG:行為者 = ARG:1
+IF ARG:1 == 1
+	FOR G,0,5
+		TCVAR:ARG:行為対象 = ARG:1
+		TCVAR:(ARG:1):行為対象 = ARG
+		CFLAG:ARG:受能動 = 1
+		CFLAG:(ARG:1):受能動 = 2
+;Hはコマンド実行時のARG変数に代入
+		H = ARG
+		CALL XCOM2820(ARG,0)
+		TCVAR:ARG:行為対象 = ARG:1
+		CALL SOURCE_CHECKS(ARG)
+		TFLAG:行為者 = ARG
+		PRINTW
+	NEXT
+ELSE
+	FOR G,0,5
+		TCVAR:ARG:行為対象 = ARG:1
+		TCVAR:(ARG:1):行為対象 = ARG
+		CFLAG:ARG:受能動 = 1
+		CFLAG:(ARG:1):受能動 = 2
+;Hはコマンド実行時のARG変数に代入
+		H = ARG:1
+		CALL XCOM2820(ARG:1,0)
+		TCVAR:(ARG:1):行為対象 = ARG
+		CALL SOURCE_CHECKS(ARG:1)
+		TFLAG:行為者 = ARG:1
+	NEXT
+ENDIF
+;	TEQUIP:(ARG:1):膣 = 0
+;	TEQUIP:(ARG:1):アナル = 0
+IF ARG:1 == 1
+	FOR G,0,10
+		TCVAR:ARG:行為対象 = ARG:1
+		TCVAR:(ARG:1):行為対象 = ARG
+		CFLAG:ARG:受能動 = 1
+		CFLAG:(ARG:1):受能動 = 2
+;Hはコマンド実行時のARG変数に代入
+		H = ARG
+		CALL XCOM2820(ARG,0)
+		TCVAR:ARG:行為対象 = ARG:1
+		CALL SOURCE_CHECKS(ARG)
+		TFLAG:行為者 = ARG
+		PRINTW
+	NEXT
+ELSE
+	FOR G,0,10
+		TCVAR:ARG:行為対象 = ARG:1
+		TCVAR:(ARG:1):行為対象 = ARG
+		CFLAG:ARG:受能動 = 1
+		CFLAG:(ARG:1):受能動 = 2
+;Hはコマンド実行時のARG変数に代入
+		H = ARG:1
+		CALL XCOM2820(ARG:1,0)
+		TCVAR:(ARG:1):行為対象 = ARG
+		CALL SOURCE_CHECKS(ARG:1)
+		TFLAG:行為者 = ARG:1
+	NEXT
+ENDIF
+	PRINTFORMW %CALLNAME:(ARG:1)%　→　%CALLNAME:ARG%　行為終了
+	TCVAR:MASTER:イベント = I:13
+	IF TCVAR:MASTER:行為対象
+		TCVAR:(TCVAR:MASTER:行為対象):イベント = I:14
+	ENDIF
+	CFLAG:(ARG:1):会話 = 1
+	CALL EVENT_ESCAPE_NPC(ARG,ARG:1)
+	CFLAG:(ARG:1):待機時間 = I:15
+	CFLAG:(ARG:1):待機時間 += 90
+	SIF CFLAG:(ARG:1):現在地区 == 2
+		MONEY:ARG -= 7000
+	MAXBASE:ARG:体力 += 5
+	MAXBASE:ARG:気力 += 5
+	MAXBASE:(ARG:1):体力 += 5
+	MAXBASE:(ARG:1):気力 += 5
+	TA:(ARG:1):ARG:6 -= 10
+	TA:ARG:(ARG:1):6 -= 10
+	TB:(CFLAG:(ARG:1):現在地区):(CFLAG:(ARG:1):現在位置):ARG += 2
+	TB:(CFLAG:(ARG:1):現在地区):(CFLAG:(ARG:1):現在位置):(ARG:1) -= 2
+	BASE:ARG:評判 -= 20
+	BASE:(ARG:1):評判 -= 100
+	TFLAG:Ｎイベント = 0
+ENDIF
+RETURN 2

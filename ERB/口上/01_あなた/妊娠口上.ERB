@@ -1,0 +1,135 @@
+﻿;================================================
+; あなた（キャラ番号 1）の妊娠・出産口上
+; 状況：1危険日 2妊娠中 3発覚 4陣痛開始 5出産 6陣痛激化 7いきみ 8破水 12着床感
+;       14〜17 陣痛の波（14本格化 15活動期 16移行期 17娩出期。周期的に発火・セリフのみ）
+;================================================
+
+;@妊娠口上_1_1(ARG,ARG:1)
+;;危険日の中出し
+;PRINTFORMW %CALLNAME:ARG%「（危険日の中出しの台詞）」
+;RETURN
+;@妊娠口上_2_1(ARG,ARG:1)
+;;妊娠中の中出し
+;PRINTFORMW %CALLNAME:ARG%「（妊娠中の中出しの台詞）」
+;RETURN
+@妊娠口上_3_1(ARG,ARG:1)
+;妊娠発覚
+SELECTCASE RAND(3)
+	CASE 0
+		PRINTFORMW %CALLNAME:ARG%「生理が来ない……もしかして、本当に……？」
+	CASE 1
+		PRINTFORMW %CALLNAME:ARG%「体がなんだか変……熱っぽくて、だるくて……」
+	CASEELSE
+		PRINTFORMW %CALLNAME:ARG%「朝、気持ち悪くて……まさか、わたし……？」
+ENDSELECT
+RETURN
+@妊娠口上_4_1(ARG,ARG:1)
+;陣痛・破水
+SELECTCASE RAND(3)
+	CASE 0
+		PRINTFORMW %CALLNAME:ARG%「い、痛っ……！　お腹が、ぎゅうって……！」
+	CASE 1
+		PRINTFORMW %CALLNAME:ARG%「っ……間隔が、どんどん短くなってる……！」
+	CASEELSE
+		PRINTFORMW %CALLNAME:ARG%「はぁ、はぁ……もう、いきみたい……っ！」
+ENDSELECT
+RETURN
+@妊娠口上_5_1(ARG,ARG:1)
+;出産
+SELECTCASE RAND(3)
+	CASE 0
+		PRINTFORMW %CALLNAME:ARG%「はぁ……はぁ……わたし、お母さんに、なれたんだ……」
+	CASE 1
+		PRINTFORMW %CALLNAME:ARG%「ふぇ……この子が、わたしの……」
+	CASEELSE
+		PRINTFORMW %CALLNAME:ARG%「産まれた……ちゃんと、産めたよ……」
+ENDSELECT
+RETURN
+@妊娠口上_6_1(ARG,ARG:1)
+;陣痛激化
+SELECTCASE RAND(2)
+	CASE 0
+		PRINTFORMW %CALLNAME:ARG%「痛い……っ、さっきより、ずっと強い……！」
+	CASEELSE
+		PRINTFORMW %CALLNAME:ARG%「はぁ、はぁ……間隔が、短くなってきた……！」
+ENDSELECT
+RETURN
+@妊娠口上_7_1(ARG,ARG:1)
+;いきみ
+SELECTCASE RAND(2)
+	CASE 0
+		PRINTFORMW %CALLNAME:ARG%「う、うぅ……っ、いくよ……っ！」
+	CASEELSE
+		PRINTFORMW %CALLNAME:ARG%「んんっ……！　もう、出そう……！」
+ENDSELECT
+RETURN
+@妊娠口上_8_1(ARG,ARG:1)
+;破水
+SELECTCASE RAND(2)
+	CASE 0
+		PRINTFORMW %CALLNAME:ARG%「きゃっ……！　な、なにか、溢れて……破水……！？」
+	CASEELSE
+		PRINTFORMW %CALLNAME:ARG%「え……あったかいのが、どっと……これが、破水……」
+ENDSELECT
+RETURN
+@妊娠口上_9_1(ARG,ARG:1)
+;多胎に気づく（驚き）※KSTR方式の記述例（候補を溜めるだけ）
+TSTR:(FLAG:口上候補数++) = %CALLNAME:ARG%「え……っ、まだ、お腹の中に……!?　どうして……!?」
+TSTR:(FLAG:口上候補数++) = %CALLNAME:ARG%「うそ……まだ、いるの……!?　双子だったの……!?」
+TSTR:(FLAG:口上候補数++) = %CALLNAME:ARG%「まだ産まれてくる……!?　こんなの、聞いてないよぉ……！」
+RETURN
+@妊娠口上_14_1(ARG,ARG:1)
+;陣痛の波・本格化（規則的な波に耐える）
+SELECTCASE RAND(3)
+	CASE 0
+		PRINTFORMW %CALLNAME:ARG%「んっ……く……また来た……ふーっ、ふーっ……」
+	CASE 1
+		PRINTFORMW %CALLNAME:ARG%「……はぁ……今は、引いてる……次が来る前に、息を……」
+	CASEELSE
+		PRINTFORMW %CALLNAME:ARG%「お腹、硬くなってる……赤ちゃん、もうすぐ会えるんだよね……」
+ENDSELECT
+RETURN
+@妊娠口上_15_1(ARG,ARG:1)
+;陣痛の波・活動期（痛み激化・間隔短縮）
+SELECTCASE RAND(3)
+	CASE 0
+		PRINTFORMW %CALLNAME:ARG%「いっ、たぁ……！　どんどん、強くなってる……！」
+	CASE 1
+		PRINTFORMW %CALLNAME:ARG%「はぁっ、はぁっ……休ませて、くれないよぉ……！」
+	CASEELSE
+		PRINTFORMW %CALLNAME:ARG%「うぅ……っ、腰が、割れちゃいそう……！」
+ENDSELECT
+RETURN
+@妊娠口上_16_1(ARG,ARG:1)
+;陣痛の波・移行期（途切れない波・いきみ衝動を逃がす）
+SELECTCASE RAND(3)
+	CASE 0
+		PRINTFORMW %CALLNAME:ARG%「んんー……っ！　だめ、まだいきんじゃだめ……わたし……！」
+	CASE 1
+		PRINTFORMW %CALLNAME:ARG%「ひぐっ……うぅ……波が、つながって……終わらない……！」
+	CASEELSE
+		PRINTFORMW %CALLNAME:ARG%「はっ、はっ、はっ……逃がすの……こういう時は、短く息を……！」
+ENDSELECT
+RETURN
+@妊娠口上_17_1(ARG,ARG:1)
+;陣痛の波・娩出期（抗えないいきみ・児頭下降）
+SELECTCASE RAND(3)
+	CASE 0
+		PRINTFORMW %CALLNAME:ARG%「んんんっ……！　からだが、勝手にいきんじゃう……！」
+	CASE 1
+		PRINTFORMW %CALLNAME:ARG%「うーっ……！　降りてきてる……押し広げられて……！」
+	CASEELSE
+		PRINTFORMW %CALLNAME:ARG%「ふーっ、ふーっ……もうすぐ……もうすぐだから、がんばって……！」
+ENDSELECT
+RETURN
+@妊娠口上_12_1(ARG,ARG:1)
+;着床感（ごく稀に妊娠成立の瞬間をかすかに感じる。本人はまだ正体不明のまま）
+SELECTCASE RAND(3)
+	CASE 0
+		PRINTFORMW %CALLNAME:ARG%「ん……お腹の奥が、ちくっと……なんだろう、今の……」
+	CASE 1
+		PRINTFORMW %CALLNAME:ARG%「……？　下腹部が、少しだけ疼いたような……気のせい、かな」
+	CASEELSE
+		PRINTFORMW %CALLNAME:ARG%「（お腹の奥に、なにか小さな熱が灯ったような……そんな気がした）」
+ENDSELECT
+RETURN

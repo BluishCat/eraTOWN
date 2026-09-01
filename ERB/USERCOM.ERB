@@ -1,0 +1,520 @@
+﻿@SHOW_USERCOM
+@USERCOM
+
+
+@PLAYER_USERCOM
+#DIM 可能ID, 300
+#DIM 可能数
+#DIM 順
+#DIM ID
+VARSET LOCAL
+;遠距離移動が完了しプレイヤーに操作が戻ったので移動中フラグを解除
+;（移動中は目的地の混雑NPCの空PRINTWを抑制している。ここで確実にリセット）
+TFLAG:移動中 = 0
+;前回の操作からこのターン全体（NPC行動・自動移動含む）で経過した合計時間を表示して一旦停止する
+;（累積はTIME_COUNT側。表示後にリセットするので、メニュー操作等のRESTART再入時は表示されない）
+IF TFLAG:経過表示累計 > 0
+	PRINTL
+	IF TFLAG:経過表示累計 >= 60 && TFLAG:経過表示累計 % 60 == 0
+		PRINTFORML {TFLAG:経過表示累計 / 60}時間経過
+	ELSEIF TFLAG:経過表示累計 >= 60
+		PRINTFORML {TFLAG:経過表示累計 / 60}時間{TFLAG:経過表示累計 % 60}分経過
+	ELSE
+		PRINTFORML {TFLAG:経過表示累計}分経過
+	ENDIF
+	TFLAG:経過表示累計 = 0
+	;スキップ（右クリック飛ばし）中でも必ずここで停止する
+	FORCEWAIT
+ENDIF
+;サイドバーのアンカー行を記録（画面が短いときの下埋め用）
+LOCAL:20 = LINECOUNT
+CALL サイド領域描画
+CALL SHOW_STATUS
+;コマンドは PRINTCPERLINE()（＝並べる数）列で手動改行し、サイドバー裏へはみ出さないようにする
+;カテゴリ（愛撫／体位／道具 等）ごとに ----[名前]---- の色付き区切り線を挟み、
+;各カテゴリ内はコマンドを左上詰めで隙間なく並べる（erablue_resort のコマンド欄風）
+;表示はID昇順ではなくカテゴリの表示順（COM_CATEGORY_ORDER。移動を最後に回す）
+;パス1: 実行可能なコマンドIDを昇順で収集
+可能数 = 0
+FOR LOCAL,0,2000
+	SIF TRAINNAME:LOCAL == ""
+		CONTINUE
+	;身分システム：コマンドに身分制限があり、現在の身分に含まれなければ非表示（中央テーブルCOM_PROFILE.ERB）
+	IF COM_JOB_MASK(LOCAL) != 0 && (COM_JOB_MASK(LOCAL) & PLAYER_JOB_BIT()) == 0
+		CONTINUE
+	ENDIF
+	TRYCCALLFORM XCOM_ABLE{LOCAL}(MASTER)
+	IF RESULT
+		可能ID:可能数 = LOCAL
+		可能数 ++
+	ENDIF
+	CATCH
+	ENDCATCH
+NEXT
+;固定コマンド（XCOM_ABLE を持たないメニュー系）もカテゴリに混ぜて表示する
+IF !TCVAR:MASTER:イベント
+	可能ID:可能数 = 1901
+	可能数 ++
+	IF TFLAG:同室
+		可能ID:可能数 = 2700
+		可能数 ++
+		可能ID:可能数 = 2750
+		可能数 ++
+	ENDIF
+	IF N:101 > 0
+		可能ID:可能数 = 2850
+		可能数 ++
+	ENDIF
+ENDIF
+;Hシーンの継続状態（挿入・器具・キス）をコマンド欄の直上に表示
+CALL H状態表示(MASTER)
+;パス2: 表示順ランクの小さいカテゴリから出力（ボタン0件のカテゴリは区切り線ごと省略）
+FOR 順,1,30
+	LOCAL:5 = 0
+	FOR LOCAL:9,0,可能数
+		ID = 可能ID:(LOCAL:9)
+		SIF COM_CATEGORY_ORDER(COM_CATEGORY(ID)) != 順
+			CONTINUE
+		IF LOCAL:5 == 0
+			CALL COM_CATEGORY_COLOR(COM_CATEGORY(ID))
+			CALL COM_SEPARATOR(COM_CATEGORY_NAME(COM_CATEGORY(ID)))
+			RESETCOLOR
+		ENDIF
+		IF ID == 1901
+			;Train.csv に無い固定コマンドはラベルを直書き
+			PRINTC お着替え[1901]
+		ELSE
+			PRINTFORMC %TRAINNAME:ID%[{ID,4}]
+		ENDIF
+		LOCAL:5 ++
+		SIF LOCAL:5 % PRINTCPERLINE() == 0
+			PRINTL
+		;移動コマンドの直後に、場所別の移動オプション（電車/直接教室 等）を同じ行に続けて差し込む
+		IF ID == 1000
+			CALL SHOW_MOVE_OPTIONS(LOCAL:5)
+			LOCAL:5 = RESULT
+		ENDIF
+	NEXT
+	;カテゴリ末尾の端数を改行し、次のカテゴリとの間にデザイン上の空行1行（メイン画面イメージ.txt）
+	IF LOCAL:5
+		SIF LOCAL:5 % PRINTCPERLINE()
+			PRINTL
+		PRINTL
+	ENDIF
+NEXT
+;コマンド欄と下段システム行の間は空行で埋める（メイン画面イメージ.txt：
+;下段行はサイドバー（本文4000＋タブ帯≒45行）より下の全幅区切り線の下に置く。タブ帯の見切れ防止も兼ねる）
+WHILE LINECOUNT - LOCAL:20 < 45
+	PRINTL
+WEND
+;下段のシステムボタン行（常設）＋コマンド履歴
+DRAWLINE
+PRINTC OPTION[1910]
+PRINTC 能力表示[1900]
+PRINTC アイテム使用[1911]
+PRINTC ロード[3000]
+PRINTL
+;下段行とコマンド履歴の間はデザイン上の空行1行
+PRINTL
+CALL コマンド履歴表示
+$INPUT_LOOP
+;直前のサイドバー操作の RESULTS が残って数値コマンドを誤判定しないようクリア
+RESULTS =
+INPUTANY
+;同室者名クリック（INFO.ERB の同室者行）＝コマンド「声をかける」(1020) と同じ処理を実行する
+IF STRCOUNT(RESULTS, "声かけ_")
+	CLEARLINE 1
+	LOCAL:1 = TOINT(REPLACE(RESULTS, "声かけ_", ""))
+	;描画後に状況が変わっている場合の保険（押せるのに弾かれるボタンを作らないため判定はXCOM1020と共用）
+	IF TCVAR:MASTER:イベント || !声かけ可能(LOCAL:1)
+		GOTO INPUT_LOOP
+	ENDIF
+	SELECTCOM:MASTER = 1020
+	CALL 声をかける実行(LOCAL:1)
+	CALL コマンド履歴記録(1020)
+	RETURN
+ENDIF
+IF STRCOUNT(RESULTS, "サイド領域")
+	CLEARLINE 1
+	CALL サイド領域_実行処理
+	IF RESULT == 2
+		;目的地設定済み。ターン終了して EVENTCOMEND の遠距離移動処理に一気移動を任せる
+		CALL コマンド履歴記録(1000)
+		RETURN
+	ELSE
+		RESTART
+	ENDIF
+ENDIF
+
+;場所別の移動オプション（電車/直接教室 等）を移動コマンドを介さず実行
+;※疑似IDは1800〜1811。かつて800〜811だったが Train.csv の実コマンド
+;　（800 雑談する / 810 胸を揉む / 811 乳首を摘む）と二重予約になっており、
+;　痴漢(イベント1)中に810/811を選ぶとここに吸われて無反応になっていた
+IF RESULT >= 1800 && RESULT <= 1811
+	SELECTCOM:MASTER = 1000
+	CALL DO_MOVE_OPTION(RESULT)
+	IF RESULT
+		CALL コマンド履歴記録(1000)
+		RETURN
+	ELSE
+		CLEARLINE 1
+		GOTO INPUT_LOOP
+	ENDIF
+ENDIF
+
+IF RESULT == 1900
+	CALL SHOW_CHARADATA
+	RESTART
+ELSEIF RESULT == 1901 && !TCVAR:MASTER:イベント
+	CALL CHANGE_CLOTHES(MASTER)
+	RESTART
+ELSEIF RESULT == 1910
+	;OPTION：生活設定メニュー（起床時間/危険度/お弁当/痴漢/妊娠）を開く
+	CALL SCHEDULE
+	RESTART
+ELSEIF RESULT == 1911
+	;アイテム使用：薬を飲む(1048)の画面を流用（ターン消費もXCOM1048側の待機時間=1に従う）
+	IF !HAVE_DRUGS(MASTER)
+		CLEARLINE 1
+		GOTO INPUT_LOOP
+	ENDIF
+	SELECTCOM:MASTER = 1048
+	CALLFORM XCOM1048(MASTER)
+	IF RESULT
+		CALL コマンド履歴記録(1048)
+	ELSE
+		RESTART
+	ENDIF
+ELSEIF RESULT == 2700 && !TCVAR:MASTER:イベント && TFLAG:同室
+	SELECTCOM:MASTER = RESULT
+	TRYCCALLFORM XCOM_ABLE{SELECTCOM:MASTER}(MASTER)
+	IF RESULT
+		CALLFORM XCOM{SELECTCOM:MASTER}(MASTER)
+		IF RESULT
+			CALL コマンド履歴記録(SELECTCOM:MASTER)
+			;体位/強制体位コマンドは現在体位として保持（H状態表示・解除に使用）
+			SIF COM_CATEGORY(SELECTCOM:MASTER) == 4 || COM_CATEGORY(SELECTCOM:MASTER) == 6
+				TCVAR:MASTER:現在体位 = SELECTCOM:MASTER
+		ELSE
+			RESTART
+		ENDIF
+	ELSE
+		CLEARLINE 1
+		GOTO INPUT_LOOP
+	ENDIF
+	CATCH
+		CLEARLINE 1
+		GOTO INPUT_LOOP
+	ENDCATCH
+ELSEIF RESULT == 2750 && !TCVAR:MASTER:イベント && TFLAG:同室
+	SELECTCOM:MASTER = RESULT
+	TRYCCALLFORM XCOM_ABLE{SELECTCOM:MASTER}(MASTER)
+	IF RESULT
+		CALLFORM XCOM{SELECTCOM:MASTER}(MASTER)
+		IF RESULT
+			CALL コマンド履歴記録(SELECTCOM:MASTER)
+			;体位/強制体位コマンドは現在体位として保持（H状態表示・解除に使用）
+			SIF COM_CATEGORY(SELECTCOM:MASTER) == 4 || COM_CATEGORY(SELECTCOM:MASTER) == 6
+				TCVAR:MASTER:現在体位 = SELECTCOM:MASTER
+		ELSE
+			RESTART
+		ENDIF
+	ELSE
+		CLEARLINE 1
+		GOTO INPUT_LOOP
+	ENDIF
+	CATCH
+		CLEARLINE 1
+		GOTO INPUT_LOOP
+	ENDCATCH
+ELSEIF RESULT == 2850 && !TCVAR:MASTER:イベント
+	SELECTCOM:MASTER = RESULT
+	TRYCCALLFORM XCOM_ABLE{SELECTCOM:MASTER}(MASTER)
+	IF RESULT
+		CALLFORM XCOM{SELECTCOM:MASTER}(MASTER)
+		IF RESULT
+			CALL コマンド履歴記録(SELECTCOM:MASTER)
+			;体位/強制体位コマンドは現在体位として保持（H状態表示・解除に使用）
+			SIF COM_CATEGORY(SELECTCOM:MASTER) == 4 || COM_CATEGORY(SELECTCOM:MASTER) == 6
+				TCVAR:MASTER:現在体位 = SELECTCOM:MASTER
+		ELSE
+			RESTART
+		ENDIF
+	ELSE
+		CLEARLINE 1
+		GOTO INPUT_LOOP
+	ENDIF
+	CATCH
+		CLEARLINE 1
+		GOTO INPUT_LOOP
+	ENDCATCH
+ELSEIF RESULT > 2000 && GETCHARA(RESULT - 2000) != -1 && TCVAR:(RESULT - 2000):行為対象 == MASTER
+	TARGET = RESULT - 2000
+	TCVAR:MASTER:行為対象 = TARGET
+	RESTART
+	;TCVAR:(TCVAR:MASTER:行為対象):攻め受け = 2
+ELSEIF RESULT == 3000
+	PRINTL 何番をロードしますか？
+	FOR LOCAL,0,20
+		CHKDATA LOCAL
+		PRINTFORML [{LOCAL,2}] \@ RESULT == 0?%RESULTS%# ----\@
+	NEXT
+	CHKDATA 99
+	PRINTFORML [99] \@ RESULT == 0?%RESULTS%# ----\@
+	PRINTL [100] 戻る
+	$INPUT_LOOP2
+	INPUT
+	IF RESULT == 100
+		RESTART
+	ELSEIF (RESULT >= 0 && RESULT < 20) || RESULT == 99
+		LOCAL:1 = RESULT
+		CHKDATA LOCAL:1
+		IF RESULT == 0
+			LOADDATA LOCAL:1
+		ELSE
+			CLEARLINE 1
+			GOTO INPUT_LOOP2
+		ENDIF
+	ELSE
+		CLEARLINE 1
+		GOTO INPUT_LOOP2
+	ENDIF
+	RESTART
+ELSEIF RESULT < 0 || RESULT > 2000 || TRAINNAME:LOCAL != ""
+	CLEARLINE 1
+	GOTO INPUT_LOOP
+ELSE
+	SELECTCOM:MASTER = RESULT
+	TRYCCALLFORM XCOM_ABLE{SELECTCOM:MASTER}(MASTER)
+	IF RESULT
+		CALLFORM XCOM{SELECTCOM:MASTER}(MASTER)
+		IF RESULT
+			CALL コマンド履歴記録(SELECTCOM:MASTER)
+			;体位/強制体位コマンドは現在体位として保持（H状態表示・解除に使用）
+			SIF COM_CATEGORY(SELECTCOM:MASTER) == 4 || COM_CATEGORY(SELECTCOM:MASTER) == 6
+				TCVAR:MASTER:現在体位 = SELECTCOM:MASTER
+		ELSE
+			RESTART
+		ENDIF
+	ELSE
+		CLEARLINE 1
+		GOTO INPUT_LOOP
+	ENDIF
+	CATCH
+		CLEARLINE 1
+		GOTO INPUT_LOOP
+	ENDCATCH
+ENDIF
+
+;=================================================
+; カテゴリ区切り線 ----[名前]---- をコマンド欄の幅いっぱいに引く
+; （幅＝PRINTCの列数×文字数。呼び出し側で SETCOLOR してから呼ぶ＝線も名前も同色）
+;=================================================
+@COM_SEPARATOR(ARGS)
+#DIMS 線
+#DIM 残
+線 '= @"----[%ARGS%]"
+残 = PRINTCPERLINE() * PRINTCLENGTH() - STRLENS(線)
+SIF 残 < 0
+	残 = 0
+PRINTFORML %線%%"-" * 残%
+
+;=================================================
+; コマンドメニューのカテゴリ分類（Train.csv の番号帯に対応）
+; 見出し表示と色分けのためだけに使う分類なので、番号帯はここにハードコードする。
+;=================================================
+@COM_CATEGORY(ARG)
+#FUNCTION
+SELECTCASE ARG
+	CASE 1 TO 19
+		RETURNF 1
+	CASE 20 TO 39
+		RETURNF 2
+	CASE 40 TO 59
+		RETURNF 3
+	CASE 60 TO 79
+		RETURNF 4
+	CASE 80 TO 99
+		RETURNF 5
+	CASE 100 TO 119
+		RETURNF 6
+	CASE 120 TO 198
+		RETURNF 7
+	CASE 199
+		RETURNF 8
+	CASE 800, 801
+		;雑談する（と受け用）はコミュニケーションへ（800-899の痴漢帯より先に判定すること）
+		RETURNF 2
+	CASE 800 TO 899
+		RETURNF 9
+	CASE 981 TO 986
+		;固定コマンド：友達を紹介してもらう/連絡先を交換する/行為に誘う/セフレに誘う/告白する/デートに誘うはコミュニケーションへ（900-988の帯より先に判定すること）
+		;※987・988・993・994は H状態保持.ERB の器具解除に使用済みのため使わないこと
+		RETURNF 2
+	CASE 900 TO 988
+		RETURNF 10
+	CASE 989 TO 999
+		RETURNF 11
+	CASE 1000, 1018
+		RETURNF 17
+	CASE 1055, 1056
+		;面接を受ける/仕事を辞める：身分そのものを変える不可逆コマンドなので
+		;日常行動に混ぜず「進路」へ隔離する（1050-1059の帯より先に判定すること）
+		RETURNF 19
+	CASE 1001 TO 1017, 1019, 1050 TO 1059
+		RETURNF 12
+	CASE 1020 TO 1099
+		RETURNF 13
+	CASE 1100 TO 1199
+		RETURNF 14
+	CASE 1901
+		;固定コマンド：お着替えは衣装へ（1200-1994の調教帯より先に判定すること）
+		RETURNF 16
+	CASE 1200 TO 1994
+		RETURNF 15
+	CASE 1995 TO 1999
+		RETURNF 16
+	CASE 2700, 2750, 2850
+		;固定コマンド：強姦する/戦う/近くの人と雑談はその他へ
+		RETURNF 18
+	CASEELSE
+		RETURNF 0
+ENDSELECT
+
+@COM_CATEGORY_NAME(ARG)
+#FUNCTIONS
+SELECTCASE ARG
+	CASE 1
+		RETURNF "愛撫"
+	CASE 2
+		RETURNF "コミュニケーション"
+	CASE 3
+		RETURNF "道具"
+	CASE 4
+		RETURNF "体位"
+	CASE 5
+		RETURNF "してもらう"
+	CASE 6
+		RETURNF "強制体位"
+	CASE 7
+		RETURNF "懲罰・道具"
+	CASE 8
+		RETURNF "その他"
+	CASE 9
+		RETURNF "痴漢"
+	CASE 10
+		RETURNF "抵抗・戦闘"
+	CASE 11
+		RETURNF "行為終了"
+	CASE 12
+		RETURNF "日常行動"
+	CASE 13
+		RETURNF "その他行動"
+	CASE 14
+		RETURNF "部活"
+	CASE 15
+		RETURNF "調教"
+	CASE 16
+		RETURNF "衣装"
+	CASE 17
+		RETURNF "移動"
+	CASE 18
+		RETURNF "その他"
+	CASE 19
+		RETURNF "進路"
+	CASEELSE
+		RETURNF "その他"
+ENDSELECT
+
+@COM_CATEGORY_COLOR(ARG)
+SELECTCASE ARG
+	CASE 1
+		SETCOLOR 255,150,200
+	CASE 2
+		SETCOLOR 120,220,255
+	CASE 3
+		SETCOLOR 200,140,255
+	CASE 4
+		SETCOLOR 255,170,60
+	CASE 5
+		SETCOLOR 170,255,120
+	CASE 6
+		SETCOLOR 255,90,90
+	CASE 7
+		SETCOLOR 255,90,90
+	CASE 9
+		SETCOLOR 255,200,120
+	CASE 10
+		SETCOLOR 255,90,90
+	CASE 11
+		SETCOLOR 160,160,160
+	CASE 12
+		SETCOLOR 120,220,255
+	CASE 13
+		SETCOLOR 160,220,160
+	CASE 14
+		SETCOLOR 255,210,120
+	CASE 15
+		SETCOLOR 255,150,200
+	CASE 16
+		SETCOLOR 160,220,160
+	CASE 17
+		SETCOLOR 255,200,120
+	CASE 18
+		SETCOLOR 200,200,200
+	CASE 19
+		SETCOLOR 255,140,140
+	CASEELSE
+		RESETCOLOR
+ENDSELECT
+
+;=================================================
+; カテゴリ→表示順ランク（メイン画面でのカテゴリの並び順）
+; 調教中カテゴリ(1-11)はID帯どおり、日常系は 日常行動→その他行動→部活→調教→衣装→その他→進路→移動(最後)
+;=================================================
+@COM_CATEGORY_ORDER(ARG)
+#FUNCTION
+SELECTCASE ARG
+	CASE 1 TO 11
+		RETURNF ARG
+	CASE 12
+		RETURNF 20
+	CASE 13
+		RETURNF 21
+	CASE 14
+		RETURNF 22
+	CASE 15
+		RETURNF 23
+	CASE 16
+		RETURNF 24
+	CASE 18
+		RETURNF 25
+	CASE 19
+		RETURNF 26
+	CASE 17
+		RETURNF 27
+	CASEELSE
+		RETURNF 28
+ENDSELECT
+
+;=================================================
+; コマンド履歴（直近3件のTRAIN番号を新しい順に保持し、コマンド欄の最下部に表示）
+; FLAG:コマンド履歴1〜3（flag.csv 70-72）。旧セーブは0のまま＝履歴行は非表示
+;=================================================
+@コマンド履歴記録(ARG)
+FLAG:コマンド履歴3 = FLAG:コマンド履歴2
+FLAG:コマンド履歴2 = FLAG:コマンド履歴1
+FLAG:コマンド履歴1 = ARG
+
+@コマンド履歴表示
+SIF !FLAG:コマンド履歴1
+	RETURN
+SETCOLOR 160,160,160
+PRINTFORM ＜コマンド履歴：[%TRAINNAME:(FLAG:コマンド履歴1)%]
+SIF FLAG:コマンド履歴2
+	PRINTFORM  - [%TRAINNAME:(FLAG:コマンド履歴2)%]
+SIF FLAG:コマンド履歴3
+	PRINTFORM  - [%TRAINNAME:(FLAG:コマンド履歴3)%]
+PRINTL ＞
+RESETCOLOR
+

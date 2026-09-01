@@ -1,0 +1,38 @@
+﻿;[連絡先を交換する]（2026-09-01追加。恋愛.ERB の共通基盤を使用）
+;会話イベント(3)中に相手と連絡先を交換する。交換済みなら電話で呼び出せる（COMF1022）。
+;好意200に届かない相手とも縁を繋いでおくための導線。成否は@連絡先可否（恋愛.ERB）。
+;※携帯電話は要求しない。先に連絡先だけ持っておき、後から携帯を買う順序を許すため
+;　（呼び出し側のCOMF1022が携帯を要求する）。
+
+@XCOM_ABLE982(ARG)
+VARSET LOCAL
+LOCAL = ARG
+VARSET ARG
+SIF TCVAR:LOCAL:イベント != 3
+	RETURN 0
+;既に交換済み／相手が家族／今日すでに持ちかけたなら不可
+SIF 連絡先判定(LOCAL, TCVAR:LOCAL:行為対象) || TALENT:(TCVAR:LOCAL:行為対象):家族 || TCVAR:(TCVAR:LOCAL:行為対象):連絡先勧誘済
+	RETURN 0
+RETURN GLOBAL_COMABLE(982)
+
+@XCOM982(ARG)
+VARSET LOCAL
+PRINTL
+PRINTFORML %"=" * 107%
+
+TFLAG:成否用変数 = 0
+;同じ相手への持ちかけは1日1回まで
+TCVAR:(TCVAR:ARG:行為対象):連絡先勧誘済 = 1
+PRINTFORML あなたは%CALLNAME:(TCVAR:ARG:行為対象)%に連絡先を教えてほしいと頼んだ。
+IF 連絡先可否(ARG, TCVAR:ARG:行為対象)
+	TFLAG:成否用変数 = 1
+	CALL 連絡先交換(ARG, TCVAR:ARG:行為対象)
+	PRINTFORMW %CALLNAME:(TCVAR:ARG:行為対象)%と連絡先を交換した。
+	TA:(TCVAR:ARG:行為対象):ARG:3 += 2
+ELSE
+	TFLAG:成否用変数 = -1
+	PRINTFORMW %CALLNAME:(TCVAR:ARG:行為対象)%は「うーん、また今度ね」とはぐらかした。
+ENDIF
+CFLAG:ARG:待機時間 += 5
+VARSET ARG
+RETURN 1

@@ -1,0 +1,79 @@
+﻿;================================================
+; 三島棹（キャラ番号 19）の妊娠・出産口上
+; 状況：1危険日 2妊娠中 3発覚 4陣痛開始 5出産 6陣痛激化 7いきみ 8破水
+;================================================
+
+;@妊娠口上_1_19(ARG,ARG:1)
+;;危険日の中出し
+;PRINTFORMW %CALLNAME:ARG%「（危険日の中出しの台詞）」
+;RETURN
+;@妊娠口上_2_19(ARG,ARG:1)
+;;妊娠中の中出し
+;PRINTFORMW %CALLNAME:ARG%「（妊娠中の中出しの台詞）」
+;RETURN
+@妊娠口上_3_19(ARG,ARG:1)
+;妊娠発覚
+SELECTCASE RAND(3)
+	CASE 0
+		PRINTFORMW %CALLNAME:ARG%「あら……わたし、赤ちゃんができたのね」
+	CASE 1
+		PRINTFORMW %CALLNAME:ARG%「ふふ、こんなわたしが母親になるなんて。」
+	CASEELSE
+		PRINTFORMW %CALLNAME:ARG%「そう……宿ったのね、この子。」
+ENDSELECT
+RETURN
+@妊娠口上_4_19(ARG,ARG:1)
+;陣痛・破水
+SELECTCASE RAND(3)
+	CASE 0
+		PRINTFORMW %CALLNAME:ARG%「っ……ふぅ、来たわ……もう少しの辛抱ね」
+	CASE 1
+		PRINTFORMW %CALLNAME:ARG%「ん……っ、痛……。落ち着いて、ね……」
+	CASEELSE
+		PRINTFORMW %CALLNAME:ARG%「はぁ……もう少しで、会えるのね……っ」
+ENDSELECT
+RETURN
+@妊娠口上_5_19(ARG,ARG:1)
+;出産
+SELECTCASE RAND(3)
+	CASE 0
+		PRINTFORMW %CALLNAME:ARG%「ふぅ……よく頑張ったわ、わたし……」
+	CASE 1
+		PRINTFORMW %CALLNAME:ARG%「あら、可愛い……ふふ。」
+	CASEELSE
+		PRINTFORMW %CALLNAME:ARG%「はぁ……無事で、なにより。」
+ENDSELECT
+RETURN
+@妊娠口上_6_19(ARG,ARG:1)
+;陣痛激化
+SELECTCASE RAND(2)
+	CASE 0
+		PRINTFORMW %CALLNAME:ARG%「っ……ふぅ、強くなってきたわ……」
+	CASEELSE
+		PRINTFORMW %CALLNAME:ARG%「ん……もう、すぐね……っ」
+ENDSELECT
+RETURN
+@妊娠口上_7_19(ARG,ARG:1)
+;いきみ
+SELECTCASE RAND(2)
+	CASE 0
+		PRINTFORMW %CALLNAME:ARG%「いくわ……ふんっ……！」
+	CASEELSE
+		PRINTFORMW %CALLNAME:ARG%「もう少し……そーれ……っ」
+ENDSELECT
+RETURN
+@妊娠口上_8_19(ARG,ARG:1)
+;破水
+SELECTCASE RAND(2)
+	CASE 0
+		PRINTFORMW %CALLNAME:ARG%「あら……破水したわね。」
+	CASEELSE
+		PRINTFORMW %CALLNAME:ARG%「っ……羊水……もうすぐね。」
+ENDSELECT
+RETURN
+
+@妊娠口上_9_19(ARG,ARG:1)
+;多胎に気づく（驚き）
+TSTR:(FLAG:口上候補数++) = %CALLNAME:ARG%「あら……もう一人……?　双子だったのね」
+TSTR:(FLAG:口上候補数++) = %CALLNAME:ARG%「まだ、いたの……ふふ、驚いたわ」
+RETURN

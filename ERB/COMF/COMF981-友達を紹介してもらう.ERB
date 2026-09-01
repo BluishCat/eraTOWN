@@ -1,0 +1,51 @@
+﻿;[友達を紹介してもらう]（2026-09-01追加。恋愛.ERB の共通基盤を使用）
+;会話イベント(3)中、好意100以上の相手に頼んで別のキャラの連絡先をもらう。
+;生活圏の外にいる相手と縁を作るための導線＝人づてに知り合いを広げる。
+;※その場に呼ぶ形にはしない。会話イベントは1対1が前提で、別キャラを割り込ませると
+;　会話終了処理と噛み合わないため。もらった連絡先はCOMF1022で即呼び出せる。
+
+@XCOM_ABLE981(ARG)
+VARSET LOCAL
+LOCAL = ARG
+VARSET ARG
+SIF TCVAR:LOCAL:イベント != 3
+	RETURN 0
+;紹介を頼めるのは親しい相手だけ（連絡先交換の好意30より一段高い）
+SIF TA:(TCVAR:LOCAL:行為対象):LOCAL:3 < 100
+	RETURN 0
+;同じ相手に頼めるのは3日に1回
+SIF CFLAG:(TCVAR:LOCAL:行為対象):紹介日 && (DAY - CFLAG:(TCVAR:LOCAL:行為対象):紹介日) < 3
+	RETURN 0
+;紹介できる相手がいなければコマンド自体を出さない
+SIF !紹介候補(LOCAL, TCVAR:LOCAL:行為対象)
+	RETURN 0
+RETURN GLOBAL_COMABLE(981)
+
+@XCOM981(ARG)
+#DIM 紹介者
+#DIM 相手
+VARSET LOCAL
+紹介者 = TCVAR:ARG:行為対象
+相手 = 紹介候補(ARG, 紹介者)
+PRINTL
+PRINTFORML %"=" * 107%
+
+TFLAG:成否用変数 = 0
+;同じ相手に頼めるのは3日に1回
+CFLAG:紹介者:紹介日 = DAY
+PRINTFORML あなたは%CALLNAME:紹介者%に、誰か紹介してもらえないかと頼んだ。
+IF !相手
+	;ABLE側で弾いているので通常ここには来ない（会話中に候補が消えた場合の保険）
+	TFLAG:成否用変数 = -1
+	PRINTFORMW %CALLNAME:紹介者%は「うーん、今は思いつかないな」と首をひねった。
+ELSE
+	TFLAG:成否用変数 = 1
+	PRINTFORMW %CALLNAME:紹介者%は%CALLNAME:相手%を紹介してくれた。
+	CALL 連絡先交換(ARG, 相手)
+	;紹介された側は紹介者の顔を立てて、会う前から多少の好意を持っている
+	TA:相手:ARG:3 += RAND(11) + 20
+	PRINTFORMW %CALLNAME:相手%の連絡先をもらった。（電話で呼び出せる）
+ENDIF
+CFLAG:ARG:待機時間 += 10
+VARSET ARG
+RETURN 1

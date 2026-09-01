@@ -1,0 +1,22 @@
+﻿@COM_MESSAGE_1017
+SIF M:101 == 1
+	RETURN 0
+VARSET LOCAL
+;--------------------------------------------------------------------------
+;くつろぐ
+;--------------------------------------------------------------------------
+PRINTFORML ＜くつろぐ＞
+LOCAL = RAND:6
+IF LOCAL == 0
+	PRINTFORM 部活の準備をしながら
+ELSEIF LOCAL == 1
+	PRINTFORM 部の後輩と雑談しながら
+ELSEIF LOCAL == 2
+	PRINTFORM 他の部員と雑談しながら
+ELSEIF LOCAL == 3
+	PRINTFORM 部の顧問と雑談しながら
+ELSE
+	PRINTFORM いけない妄想をしながら
+ENDIF
+PRINTFORMW のんびりと時間を過ごした。
+M:101 = 1

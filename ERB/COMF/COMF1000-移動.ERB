@@ -1,0 +1,577 @@
+﻿@XCOM_ABLE1000(ARG)
+SIF TCVAR:MASTER:イベント && !TCVAR:MASTER:同行
+	RETURN 0
+SIF CFLAG:MASTER:乗車
+	RETURN 0
+RETURN GLOBAL_COMABLE(1000)
+
+
+
+;-------------------------------------------------
+;移動
+;-------------------------------------------------
+@XCOM1000(ARG)
+VARSET LOCAL
+IF TCVAR:MASTER:目的位置
+	IF TCVAR:MASTER:目的位置 == CFLAG:MASTER:現在位置
+		;NEXTCOM = -1
+		TCVAR:MASTER:目的位置 = 0
+		;到着したので歩数カウンタをリセット
+		TFLAG:移動歩数 = 0
+		;移動にかかった時間をログに色付きで表示（他のログに紛れないよう独立した行）
+		IF TFLAG:移動中
+			SKIPDISP 0
+			SETCOLOR 0xFFD86B
+			PRINTFORMW 　→ %PLACE_NAME(CFLAG:MASTER:現在地区,CFLAG:MASTER:現在位置)%に移動（{TIME - TFLAG:移動開始時刻}分）
+			RESETCOLOR
+			SKIPDISP 1
+			;※ TFLAG:移動中 はここでは消さない。到着ターンの目的地(混雑)NPC行動の空PRINTWも
+			;   抑制したいので、次のプレイヤーターン開始（@PLAYER_USERCOM 冒頭）でクリアする。
+		ENDIF
+		;直接移動でゾーン跨ぎの途中（ゲート到着＝まだ最終ゾーンでない）なら、中に入る/外に出るの
+		;プロンプトも到着フックも出さない（@直接移動継続が電車乗車・校舎出入りの遷移を行う）。
+		IF TCVAR:MASTER:直接移動中 && CFLAG:MASTER:現在地区 != TCVAR:MASTER:直接移動目的地区
+			;ゲート通過：ここでは何もしない
+		ELSE
+			SKIPDISP 0
+			CALL 出入りプロンプト
+			;到着フック（デートスポットイベント／ラブホテル受付。ROOM_IN_OUT.ERB）
+			CALL 到着時処理
+			SKIPDISP 1
+			;直接移動で最終目的地に到着したらフラグ解除（EVENTCOMENDでの再発火防止）
+			SIF TCVAR:MASTER:直接移動中
+				TCVAR:MASTER:直接移動中 = 0
+		ENDIF
+		RETURN 0
+	ENDIF
+	;目的地方向へ1歩移動（EVENTCOMENDが毎ターン自動継続して到着まで歩く）
+	CALLFORM FARMOVE_{CFLAG:MASTER:現在地区}(MASTER,TCVAR:MASTER:目的位置)
+	LOCAL:2 = RESULT
+	TFLAG:移動歩数 += 1
+	;経路探索(FARMOVE)が不正値(0/存在しない部屋)を返す、または経路が振動して
+	;歩数上限(MAX_ROOM)を超えても到着できない場合は、存在しない部屋0へ迷い込んで
+	;空行のまま止まるのを防ぐため移動を中止する
+	IF LOCAL:2 <= 0 || LOCAL:2 > MAX_ROOM() || PLACE_NAME(CFLAG:MASTER:現在地区,LOCAL:2) == "" || TFLAG:移動歩数 > MAX_ROOM()
+		SKIPDISP 0
+		PRINTFORMW %PLACE_NAME(CFLAG:MASTER:現在地区,TCVAR:MASTER:目的位置)%へは移動できなかった
+		SKIPDISP 1
+		TCVAR:MASTER:目的位置 = 0
+		TFLAG:移動中 = 0
+		TFLAG:移動歩数 = 0
+		;直接移動の途中なら経路追従も打ち切る（再発火ループ防止）
+		TCVAR:MASTER:直接移動中 = 0
+		RETURN 0
+	ENDIF
+	;最終目的地が閉店中なら店の前で移動を中止（中間経路のハブは素通り）
+	;※勤務先は開店前の準備時間なら入れる（@入店可）
+	IF LOCAL:2 == TCVAR:MASTER:目的位置 && !入店可(CFLAG:MASTER:現在地区, LOCAL:2)
+		SKIPDISP 0
+		PRINTFORMW %PLACE_NAME(CFLAG:MASTER:現在地区,LOCAL:2)%は閉まっている（%営業時間表示(CFLAG:MASTER:現在地区,LOCAL:2)%）
+		SKIPDISP 1
+		TCVAR:MASTER:目的位置 = 0
+		TFLAG:移動中 = 0
+		TFLAG:移動歩数 = 0
+		;直接移動の最終目的地が閉店なら経路追従も終了
+		TCVAR:MASTER:直接移動中 = 0
+		RETURN 0
+	ENDIF
+	IF GETBIT(DA:(CFLAG:MASTER:現在地区):(LOCAL:2),9) && !(CFLAG:MASTER:鍵)
+		;自動歩行中はEVENTCOMEND側でSKIPDISP 1にされているので、他の中断分岐と同様に表示を戻す
+		SKIPDISP 0
+		PRINTW 鍵がかかっている
+		SKIPDISP 1
+		TCVAR:MASTER:目的位置 = 0
+		TFLAG:移動中 = 0
+		TFLAG:移動歩数 = 0
+		;直接移動の途中で施錠に阻まれたら経路追従も終了
+		TCVAR:MASTER:直接移動中 = 0
+		RETURN 0
+	ELSE
+		CALLFORM CAN_MOVE_{CFLAG:MASTER:現在地区}(CFLAG:MASTER:現在位置,LOCAL:2)
+		CFLAG:MASTER:待機時間 = RESULT
+		CFLAG:MASTER:現在位置 = LOCAL:2
+		RETURN 1
+	ENDIF
+ENDIF
+
+;HTMLマップ（未対応ゾーンは旧アスキー描画にフォールバック）
+;※画面の構成は「地図グリッド → 現在地 → 場所一覧（1歩で行ける場所／その他の場所） → 移動手段」。
+;  場所一覧は @DRAW_MAP の凡例（HTMLマップ.ERB）に一本化してあり、ここで独自のリストは組まない。
+CALL DRAW_MAP(CFLAG:MASTER:現在地区, 1)
+IF RESULT
+	HTML_PRINT RESULTS
+ELSE
+	CALLFORM GET_MAP_{CFLAG:MASTER:現在地区}
+ENDIF
+;現在地ヘッダ（緑）
+SETCOLOR 0 , 255, 0
+PRINTFORML 【現在地】%PLACE_NAME(CFLAG:MASTER:現在地区,CFLAG:MASTER:現在位置)%　{TIME / 60}時{TIME % 60}分
+RESETCOLOR
+;場所一覧（コマンド欄と同じ桁幅で列揃え）
+CALL DRAW_MAP(CFLAG:MASTER:現在地区, 2, 0, PRINTCPERLINE() * PRINTCLENGTH())
+SIF RESULT
+	HTML_PRINT RESULTS
+;移動手段（電車/直接移動 等）はコマンド欄と同じボタン並びで出す
+LOCALS '= マップ見出し("移動手段", "緑", PRINTCPERLINE() * PRINTCLENGTH())
+HTML_PRINT LOCALS
+CALL SHOW_MOVE_OPTIONS(0)
+SIF RESULT % PRINTCPERLINE()
+	PRINTL
+
+PRINTL [900] - 戻る
+$INPUT_LOOP
+
+
+
+INPUTANY
+LOCAL:1 = RESULT
+SIF RESULT == 900
+	RETURN 0
+IF RESULT >= 1800 && RESULT <= 1811
+	CALL DO_MOVE_OPTION(LOCAL:1)
+	IF RESULT
+		RETURN 1
+	ELSE
+		;不成立（電車の行き先選択で「戻る」等）。数行の出力が残るので画面ごと引き直す
+		RESTART
+	ENDIF
+ELSEIF CFLAG:MASTER:現在位置 == LOCAL:1 || PLACE_NAME(CFLAG:MASTER:現在地区,LOCAL:1) == ""
+	CLEARLINE 1
+	GOTO INPUT_LOOP
+ENDIF
+CALLFORM CAN_MOVE_{CFLAG:MASTER:現在地区}(CFLAG:MASTER:現在位置,LOCAL:1)
+IF RESULT
+	LOCAL:2 = RESULT
+	IF GETBIT(DA:(CFLAG:MASTER:現在地区):(LOCAL:1),9) && !(CFLAG:MASTER:鍵)
+		PRINTW 鍵がかかっている
+		RESTART
+	ELSEIF !入店可(CFLAG:MASTER:現在地区, LOCAL:1)
+		PRINTFORMW %PLACE_NAME(CFLAG:MASTER:現在地区,LOCAL:1)%は閉まっている（%営業時間表示(CFLAG:MASTER:現在地区,LOCAL:1)%）
+		RESTART
+	ELSE
+		CFLAG:MASTER:現在位置 = LOCAL:1
+		CFLAG:MASTER:待機時間 = LOCAL:2
+		;移動にかかった時間をログに色付きで表示（他のログに紛れないよう独立した行）
+		SETCOLOR 0xFFD86B
+		PRINTFORMW 　→ %PLACE_NAME(CFLAG:MASTER:現在地区,CFLAG:MASTER:現在位置)%に移動（{LOCAL:2}分）
+		RESETCOLOR
+		CALL 出入りプロンプト
+		;到着フック（デートスポットイベント／ラブホテル受付。ROOM_IN_OUT.ERB）
+		CALL 到着時処理
+
+		RETURN 1
+	ENDIF
+
+ELSEIF LOCAL:1 > 0 && LOCAL:1<= MAX_ROOM()
+	;閉店中の施設は目的地に設定できない（ターン非消費で入力に戻る）
+	;※勤務先は開店前の準備時間なら向かえる（@入店可）
+	IF !入店可(CFLAG:MASTER:現在地区, LOCAL:1)
+		PRINTFORMW %PLACE_NAME(CFLAG:MASTER:現在地区,LOCAL:1)%は閉まっている（%営業時間表示(CFLAG:MASTER:現在地区,LOCAL:1)%）
+		CLEARLINE 2
+		GOTO INPUT_LOOP
+	ENDIF
+	;目的地設定→ターン終了。EVENTCOMEND の遠距離移動処理が一気に移動させる
+	CALL 徒歩移動開始(LOCAL:1)
+	RETURN 1
+ELSE
+	CLEARLINE 1
+	GOTO INPUT_LOOP
+ENDIF
+;上のIF/ELSEIF/ELSEは全分岐がRETURNかGOTOなのでここには来ないが、
+;Emueraは関数末尾で次の@関数に流れ込むため保険として残す
+RETURN 1
+
+;=================================================
+; 到着したマスの出入り口プロンプト（中に入る／外に出る）。
+; 遠距離移動の到着（自動歩行）と1歩移動の到着で同じ文面を出すため共通化してある。
+; ※自動歩行中は EVENTCOMEND が SKIPDISP 1 にしているので、呼び出し側で SKIPDISP 0 に戻してから呼ぶこと。
+;=================================================
+@出入りプロンプト
+IF GETBIT(DA:(CFLAG:MASTER:現在地区):(CFLAG:MASTER:現在位置),1)
+	PRINTFORML %PLACE_NAME(CFLAG:MASTER:現在地区,CFLAG:MASTER:現在位置)%から中に入りますか？
+	PRINTL [0] - はい
+	PRINTL [1] - いいえ
+	INPUT
+	SIF RESULT == 0
+		CALL IN_ROOM
+ELSEIF GETBIT(DA:(CFLAG:MASTER:現在地区):(CFLAG:MASTER:現在位置),0)
+	PRINTFORML %PLACE_NAME(CFLAG:MASTER:現在地区,CFLAG:MASTER:現在位置)%から外に出ますか？
+	PRINTL [0] - はい
+	PRINTL [1] - いいえ
+	INPUT
+	SIF RESULT == 0
+		CALL OUT_ROOM
+ENDIF
+RETURN
+
+;=================================================
+; 場所別の移動オプション（電車/直接移動 等）を表示する。
+; ・移動コマンド(XCOM1000)内でも、メインのコマンド欄(PLAYER_USERCOM)でも共用。
+; ・条件を満たすものだけを [1800]〜[1811] のクリック可能な PRINTC ボタンとして出す。
+;   （疑似IDは Train.csv の実コマンド番号と衝突しない帯を使う。旧800〜811は
+;    800 雑談する / 810 胸を揉む / 811 乳首を摘む と二重予約だった）
+; ・ARG = 開始列。ARG の列位置から同じ行に続けて左上詰めし、最終列数を RETURN する
+;   （端数改行はしない＝折返しは呼び出し元が継続する）。
+;=================================================
+@SHOW_MOVE_OPTIONS(ARG)
+#DIM 列
+#DIM 番号
+列 = ARG
+FOR 番号, 1800, 1812
+	CALL 移動OP可否(番号)
+	SIF !RESULT
+		CONTINUE
+	PRINTFORMC %移動OPラベル(番号)%[{番号}]
+	列 ++
+	SIF 列 % PRINTCPERLINE() == 0
+		PRINTL
+NEXT
+;左上詰めのため端数改行はしない。現在の列数を返し、折返しは呼び出し元に任せる
+RETURN 列
+
+;----- 各オプションの表示可否（1=表示可）-----
+@移動OP可否(ARG)
+SELECTCASE ARG
+	CASE 1800
+		RETURN GETBIT(DA:(CFLAG:MASTER:現在地区):(CFLAG:MASTER:現在位置),0)
+	CASE 1801
+		RETURN GETBIT(DA:(CFLAG:MASTER:現在地区):(CFLAG:MASTER:現在位置),1)
+	CASE 1802
+		RETURN GETBIT(DA:(CFLAG:MASTER:現在地区):(CFLAG:MASTER:現在位置),2)
+	CASE 1803
+		;身分別の「直接職場へ行く」（職場はCOM_PROFILE.ERBの勤務先地区/位置で解決。
+		;専用職場の無い身分＝フリーター(1805)・主婦(1804/1811)・無職は非表示）
+		SIF 勤務先地区() < 0
+			RETURN 0
+		;既に職場に居るときは出さない
+		SIF CFLAG:MASTER:現在地区 == 勤務先地区() && CFLAG:MASTER:現在位置 == 勤務先位置()
+			RETURN 0
+		;電車を使う経路のときだけ交通費200円を要求
+		SIF 直接移動_電車要(CFLAG:MASTER:現在地区, 勤務先地区()) && MONEY:MASTER < 200
+			RETURN 0
+		;キャバ嬢・ソープ嬢・ダンサーは店に入れる間のみ（開店60分前の準備時間を含む）。それ以外の身分は6:00〜21:00
+		IF CFLAG:MASTER:仕事 == 8 || CFLAG:MASTER:仕事 == 9 || CFLAG:MASTER:仕事 == 10
+			RETURN 入店可(勤務先地区(), 勤務先位置())
+		ELSE
+			RETURN (TIME >= 360 && TIME < 1260)
+		ENDIF
+	CASE 1804
+		;自宅（開始地区）が別地区のとき表示。電車を使う経路のみ交通費200円を要求
+		RETURN CFLAG:MASTER:現在地区 != CFLAG:MASTER:開始地区 && (!直接移動_電車要(CFLAG:MASTER:現在地区, CFLAG:MASTER:開始地区) || MONEY:MASTER >= 200)
+	CASE 1805
+		;電車を使う経路（出発/バイト先の片方だけが地区0）のときだけ交通費200円を要求
+		RETURN CFLAG:MASTER:職業 && !(CFLAG:MASTER:現在地区 == JOB_AREA(CFLAG:MASTER:職業) && CFLAG:MASTER:現在位置 == JOB_PLACE(CFLAG:MASTER:職業)) && (!直接移動_電車要(CFLAG:MASTER:現在地区, JOB_AREA(CFLAG:MASTER:職業)) || MONEY:MASTER >= 200) && 入店可(JOB_AREA(CFLAG:MASTER:職業), JOB_PLACE(CFLAG:MASTER:職業))
+	CASE 1806
+		RETURN CFLAG:MASTER:現在地区 == 1
+	CASE 1807
+		;地区0発は電車で繁華街(地区2)へ行くため交通費200円が必要
+		RETURN CFLAG:MASTER:現在地区 != 2 && (CFLAG:MASTER:現在地区 != 0 || MONEY:MASTER >= 200)
+	CASE 1808
+		;部活加入中＋活動場所あり＋活動開始1時間前〜終了（15:00〜18:50）。既に活動場所に居るときは出さない。地区0発のみ電車で交通費200円
+		RETURN CFLAG:MASTER:部活 && CLUB_PLACE(CFLAG:MASTER:部活) && !(CFLAG:MASTER:現在地区 == 1 && CFLAG:MASTER:現在位置 == CLUB_PLACE(CFLAG:MASTER:部活)) && (TIME >= 900 && TIME < 1130) && (CFLAG:MASTER:現在地区 != 0 || MONEY:MASTER >= 200)
+	CASE 1809
+		RETURN CFLAG:MASTER:現在地区 == 0 && CFLAG:MASTER:所属 && DANTAI_PLACE(CFLAG:MASTER:所属) && (TIME >= 360 && TIME < 1260) && MONEY:MASTER >= 200
+	CASE 1810
+		;駅タイルに居るときは「電車に乗る」(1802)が出るので非表示。学内(地区1)は駅が無いので常に表示（大学を出て大学前駅へ）
+		RETURN !GETBIT(DA:(CFLAG:MASTER:現在地区):(CFLAG:MASTER:現在位置),2)
+	CASE 1811
+		;自宅と同一地区内の徒歩帰宅。別地区からは1804「直接家に帰る」を使う。自宅=開始地区/開始位置（実家または賃貸物件）
+		RETURN CFLAG:MASTER:現在地区 == CFLAG:MASTER:開始地区 && CFLAG:MASTER:現在位置 != CFLAG:MASTER:開始位置
+	CASEELSE
+		RETURN 0
+ENDSELECT
+
+;----- 各オプションのラベル文字列 -----
+@移動OPラベル(ARG)
+#FUNCTIONS
+SELECTCASE ARG
+	CASE 1800
+		RETURNF "外に出る"
+	CASE 1801
+		RETURNF "中に入る"
+	CASE 1802
+		RETURNF "電車に乗る"
+	CASE 1803
+		;身分別の職場名（教室/会社/店。COM_PROFILE.ERBの勤務先名）
+		RETURNF @"直接%勤務先名()%へ行く"
+	CASE 1804
+		RETURNF "直接家に帰る"
+	CASE 1805
+		RETURNF "直接バイト先へ行く"
+	CASE 1806
+		RETURNF "大学から出る"
+	CASE 1807
+		RETURNF "繁華街に遊びに行く"
+	CASE 1808
+		RETURNF "直接部活へ行く"
+	CASE 1809
+		RETURNF "格闘場へ行く"
+	CASE 1810
+		RETURNF "駅に行く"
+	CASE 1811
+		RETURNF "家に帰る"
+	CASEELSE
+		RETURNF ""
+ENDSELECT
+
+;=================================================
+; 移動オプション(1800〜1811)を実行する。
+; RETURN 1 = 実行してターン消費 / RETURN 0 = 不成立（呼び出し側で再表示）
+;=================================================
+@DO_MOVE_OPTION(ARG)
+;表示条件をここでも必ず通す。メニューに出していない番号を直接入力されても実行しない
+;（USERCOM.ERB も XCOM1000 の入力ループも 1800〜1811 を素通しでここへ渡すため、ここが唯一の関門。
+;  所持金不足のまま @直接移動_乗車 に入って残高がマイナスになるのを防ぐ）
+CALL 移動OP可否(ARG)
+SIF !RESULT
+	RETURN 0
+SELECTCASE ARG
+	CASE 1800
+		CALL OUT_ROOM
+		M:101 = 0
+		RETURN 1
+	CASE 1801
+		CALL IN_ROOM
+		M:101 = 0
+		RETURN 1
+	CASE 1802
+		CALL TAKE_TRAIN
+		M:101 = 0
+		IF RESULT
+			RETURN 1
+		ELSE
+			RETURN 0
+		ENDIF
+	CASE 1803
+		;身分別の職場まで経路追従（正門から入る等の遷移・電車痴漢は@直接移動継続が処理）
+		CALL 直接移動開始(MASTER, 勤務先地区(), 勤務先位置())
+		RETURN 1
+	CASE 1804
+		;自宅（開始地区/開始位置＝実家またはマンション）まで経路追従
+		CALL 直接移動開始(MASTER, CFLAG:MASTER:開始地区, CFLAG:MASTER:開始位置)
+		RETURN 1
+	CASE 1805
+		;バイト先まで経路追従（職業の有無・閉店中の除外は@移動OP可否が判定済み）
+		CALL 直接移動開始(MASTER, JOB_AREA(CFLAG:MASTER:職業), JOB_PLACE(CFLAG:MASTER:職業))
+		RETURN 1
+	CASE 1806
+		;大学の建物(地区2/部屋1)まで経路追従（学内からは正門経由で外に出る）
+		CALL 直接移動開始(MASTER, 2, 1)
+		RETURN 1
+	CASE 1807
+		;繁華街(地区2/部屋4)まで経路追従
+		CALL 直接移動開始(MASTER, 2, 4)
+		RETURN 1
+	CASE 1808
+		;部活の活動場所(地区1/CLUB_PLACE)まで経路追従
+		CALL 直接移動開始(MASTER, 1, CLUB_PLACE(CFLAG:MASTER:部活))
+		RETURN 1
+	CASE 1809
+		;格闘場（所属団体の活動場所。地区2）まで経路追従
+		CALL 直接移動開始(MASTER, 2, DANTAI_PLACE(CFLAG:MASTER:所属))
+		RETURN 1
+	CASE 1810
+		;駅タイル上で不成立（1802「電車に乗る」を使う）なのは@移動OP可否が判定済み
+		;学内(地区1)には駅が無いので大学前駅(地区2/部屋3)を目的地にする。地区0/2はその地区の駅(部屋3)
+		IF CFLAG:MASTER:現在地区 == 1
+			CALL 直接移動開始(MASTER, 2, 3)
+		ELSE
+			CALL 直接移動開始(MASTER, CFLAG:MASTER:現在地区, 3)
+		ENDIF
+		RETURN 1
+	CASE 1811
+		;自宅（開始地区/開始位置＝実家または賃貸物件）まで経路追従（同一地区内徒歩）
+		CALL 直接移動開始(MASTER, CFLAG:MASTER:開始地区, CFLAG:MASTER:開始位置)
+		RETURN 1
+	CASEELSE
+		RETURN 0
+ENDSELECT
+
+;=================================================
+; 遠距離移動（自動歩行）を開始する。ARG=現在地区内の目的の部屋番号。
+; 目的位置をセットしてターンを終えると、EVENTCOMEND の遠距離移動処理が
+; XCOM1000 を再呼出しして到着まで1歩ずつ進める。
+;=================================================
+@徒歩移動開始(ARG)
+TCVAR:MASTER:目的位置 = ARG
+CFLAG:MASTER:待機時間 = 0
+;経過時間表示用に移動開始時刻を記録
+TFLAG:移動開始時刻 = TIME
+TFLAG:移動中 = 1
+;新しい移動なので歩数カウンタを初期化（経路振動時の打ち切り用）
+TFLAG:移動歩数 = 0
+M:101 = 0
+RETURN
+
+;=================================================
+; 直接移動系(1803〜1810)の地区間おおよその所要時間（分）を返す。
+; ARG=出発地区 / ARG:1=目的地区。
+; 交通費(200円)ロジックと同じ地理に基づく概算:
+;   同一地区（既に近い）=20 ／ 大学内(1)↔街(2)は徒歩で隣接=30
+;   ／ 家(0)↔街(2)は電車=50 ／ 家(0)↔大学内(1)は電車＋徒歩で最長=70
+; ※地区番号の差は距離にならない（家0↔大学1は差1でも最長）。
+;   地区ペアは合計で一意に判別できる（{0,1}=1 / {0,2}=2 / {1,2}=3）。
+;=================================================
+@ZONE_MOVE_TIME(ARG, ARG:1)
+#FUNCTION
+SIF ARG == ARG:1
+	RETURNF 20
+SELECTCASE ARG + ARG:1
+	CASE 1
+		RETURNF 70
+	CASE 2
+		RETURNF 50
+	CASE 3
+		RETURNF 30
+	CASEELSE
+		RETURNF 50
+ENDSELECT
+
+;=================================================
+; 直接移動（経路追従型）2026-07-18
+; 「直接○○へ行く」(1803〜1811)は目的地(地区・部屋)を登録するだけで、
+; 以降 EVENTCOMEND のターンループが @直接移動継続 を毎ターン呼び、
+; ゾーン跨ぎ（電車の乗車・校舎の出入り）を含めて実際の経路を1歩ずつ辿る。
+; これにより電車内の痴漢イベントや繁華街の路上遭遇など、
+; 通常の徒歩・電車移動と同じ道中イベントがそのまま発生する。
+;
+; ゾーン接続:  地区0(自宅周辺) --電車-- 地区2(大学前の町) --校舎-- 地区1(学内)
+;   ・地区0/部屋3=最寄の駅 ⇔ 地区2/部屋3=大学前駅（電車。TAKE_TRAINと同じ乗車状態）
+;   ・地区2/部屋1=大学 → IN_ROOM → 地区1/部屋1=正門
+;   ・地区1/部屋1=正門 → OUT_ROOM → 地区2/部屋1=大学
+; 状態: TCVAR 直接移動目的地区/直接移動目的位置/直接移動中(632)。BEGIN TRAINで自動クリア。
+;=================================================
+@直接移動開始(ARG, ARG:1, ARG:2)
+;ARG=対象キャラ(=MASTER) / ARG:1=最終目的地区 / ARG:2=最終目的部屋
+TCVAR:ARG:直接移動目的地区 = ARG:1
+TCVAR:ARG:直接移動目的位置 = ARG:2
+TCVAR:ARG:直接移動中 = 1
+;地の文の一回表示ゲート（元の直接移動系と同じくリセット）
+M:101 = 0
+;最初の一歩（目的位置セット or ゲート遷移）をこのターン内に仕込む
+CALL 直接移動継続(ARG)
+RETURN
+
+;=================================================
+; 直接移動の1ステップ分の判断。EVENTCOMENDが目的位置未設定・非乗車・非イベントの
+; プレイヤーターンごとに呼ぶ。ゲートへの徒歩指示／ゲートでの遷移／最終到着を行う。
+; ※ARGを取るが、内部で使う @徒歩移動開始・IN_ROOM・OUT_ROOM がいずれもMASTER固定のため
+;   実質MASTER専用。NPCに使うならそれらの汎用化が先。
+;=================================================
+@直接移動継続(ARG)
+#DIM 現在ゾーン
+#DIM 目的ゾーン
+#DIM ゲート
+現在ゾーン = CFLAG:ARG:現在地区
+目的ゾーン = TCVAR:ARG:直接移動目的地区
+;--- 最終ゾーンに居る ---
+IF 現在ゾーン == 目的ゾーン
+	IF CFLAG:ARG:現在位置 == TCVAR:ARG:直接移動目的位置
+		;完全到着（遷移で最終部屋に直接降り立った場合。徒歩到着はXCOM1000側で消化）
+		TCVAR:ARG:直接移動中 = 0
+		CALL 到着時処理
+		RETURN
+	ENDIF
+	;ゾーン内を目的部屋まで自動歩行（既存FARMOVE。到着時XCOM1000が直接移動中を解除）
+	CALL 徒歩移動開始(TCVAR:ARG:直接移動目的位置)
+	RETURN
+ENDIF
+;--- ゾーン跨ぎ：現ゾーンの出口(ゲート)へ ---
+ゲート = 直接移動_次ゲート(現在ゾーン, 目的ゾーン)
+;出口が求まらない（未知のゾーン）ときは目的位置0のまま毎ターン空回りするので打ち切る
+IF !ゲート
+	TCVAR:ARG:直接移動中 = 0
+	RETURN
+ENDIF
+IF CFLAG:ARG:現在位置 != ゲート
+	CALL 徒歩移動開始(ゲート)
+	RETURN
+ENDIF
+;--- ゲートに到達済み：ゾーン遷移を実行 ---
+SELECTCASE 現在ゾーン
+	CASE 0
+		;最寄の駅(0-3)→大学前駅(2-3)へ乗車
+		CALL 直接移動_乗車(ARG, 2, 3)
+		;運賃不足で乗れなかったら経路追従を打ち切る（毎ターン駅で空回りするのを防ぐ）
+		SIF !RESULT
+			TCVAR:ARG:直接移動中 = 0
+	CASE 1
+		;正門(1-1)→大学(2-1)へ外に出る
+		CALL OUT_ROOM
+	CASE 2
+		IF 目的ゾーン == 0
+			;大学前駅(2-3)→最寄の駅(0-3)へ乗車
+			CALL 直接移動_乗車(ARG, 0, 3)
+			;運賃不足で乗れなかったら経路追従を打ち切る
+			SIF !RESULT
+				TCVAR:ARG:直接移動中 = 0
+		ELSE
+			;大学(2-1)→正門(1-1)へ中に入る（正門の朝イベント等はIN_ROOMが処理）
+			CALL IN_ROOM
+		ENDIF
+ENDSELECT
+RETURN
+
+;=================================================
+; 現在ゾーンから目的ゾーンへ向かうための、現ゾーン内の出口部屋を返す。
+; ARG=現在地区 / ARG:1=最終目的地区（ARG!=ARG:1前提）。
+;=================================================
+@直接移動_次ゲート(ARG, ARG:1)
+#FUNCTION
+SELECTCASE ARG
+	CASE 0
+		RETURNF 3       ;最寄の駅（電車で地区2へ。地区1へも一旦地区2を経由）
+	CASE 1
+		RETURNF 1       ;正門（外に出て地区2へ）
+	CASE 2
+		SIF ARG:1 == 0
+			RETURNF 3   ;大学前駅（電車で地区0へ）
+		RETURNF 1       ;大学（中に入って地区1へ）
+ENDSELECT
+;未知のゾーン。0=出口不明として呼び出し側(@直接移動継続)が経路追従を打ち切る
+RETURNF 0
+
+;=================================================
+; 直接移動での自動乗車。TAKE_TRAIN の乗車状態セットアップを流用し、
+; 乗車状態(CFLAG:乗車)にすることで EVENTCOMEND の電車痴漢処理を通常通り発火させる。
+; ARG=対象 / ARG:1=到着地区 / ARG:2=到着部屋（=駅の部屋3）。
+; RETURN 1=乗車した / 0=乗れなかった（運賃不足）。
+;=================================================
+@直接移動_乗車(ARG, ARG:1, ARG:2)
+;運賃が足りないときは乗せない（表示側の可否判定の保険。所持金がマイナスになるのを防ぐ）
+IF MONEY:ARG < 200
+	PRINTW 運賃が足りず電車に乗れなかった
+	RETURN 0
+ENDIF
+MONEY:ARG -= 200
+;降車時(EVENTCOMEND)に 現在地区/現在位置 へ書き戻されるのは 到着地区/到着位置。
+;到着位置を入れ忘れると存在しない部屋0に降りてしまうので必ず両方セットする
+CFLAG:ARG:到着地区 = ARG:1
+CFLAG:ARG:到着位置 = ARG:2
+
+SIF TALENT:ARG:痴漢
+	BASE:ARG:評判 -= 20
+IF TIME % 10 == 0
+	CFLAG:ARG:乗車 = 1
+	CFLAG:ARG:待機時間 = TRAIN_TIME(ARG, ARG:1, ARG:2)
+	CFLAG:ARG:到着時間 = TIME + CFLAG:ARG:待機時間
+ELSE
+	CFLAG:ARG:乗車 = 2
+	CFLAG:ARG:待機時間 = 10 - TIME % 10
+	CFLAG:ARG:到着時間 = TIME + CFLAG:ARG:待機時間 + TRAIN_TIME(ARG, ARG:1, ARG:2)
+ENDIF
+SETCOLOR 0xFFD86B
+PRINTFORMW 　→ 電車に乗った（%PLACE_NAME(ARG:1, ARG:2)%行き）
+RESETCOLOR
+RETURN 1
+
+;=================================================
+; 直接移動でその経路が電車を使うか判定（=交通費200円が要るか）。
+; 地区0は電車でしか出入りできないため、出発と目的のどちらか一方だけが地区0なら電車を使う。
+; ARG=出発地区 / ARG:1=目的地区。
+;=================================================
+@直接移動_電車要(ARG, ARG:1)
+#FUNCTION
+SIF (ARG == 0) != (ARG:1 == 0)
+	RETURNF 1
+RETURNF 0

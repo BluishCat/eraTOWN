@@ -1,0 +1,79 @@
+﻿;================================================
+; 多摩華澄（キャラ番号 16）の妊娠・出産口上
+; 状況：1危険日 2妊娠中 3発覚 4陣痛開始 5出産 6陣痛激化 7いきみ 8破水
+;================================================
+
+;@妊娠口上_1_16(ARG,ARG:1)
+;;危険日の中出し
+;PRINTFORMW %CALLNAME:ARG%「（危険日の中出しの台詞）」
+;RETURN
+;@妊娠口上_2_16(ARG,ARG:1)
+;;妊娠中の中出し
+;PRINTFORMW %CALLNAME:ARG%「（妊娠中の中出しの台詞）」
+;RETURN
+@妊娠口上_3_16(ARG,ARG:1)
+;妊娠発覚
+SELECTCASE RAND(3)
+	CASE 0
+		PRINTFORMW %CALLNAME:ARG%「……わたし、母親になるのね。ふふ」
+	CASE 1
+		PRINTFORMW %CALLNAME:ARG%「生徒に隠すのは、そろそろ限界かしら……」
+	CASEELSE
+		PRINTFORMW %CALLNAME:ARG%「新しい命……先生、しっかりしないと。」
+ENDSELECT
+RETURN
+@妊娠口上_4_16(ARG,ARG:1)
+;陣痛・破水
+SELECTCASE RAND(3)
+	CASE 0
+		PRINTFORMW %CALLNAME:ARG%「っ……教壇じゃ、隠せないわね……痛……っ」
+	CASE 1
+		PRINTFORMW %CALLNAME:ARG%「ふぅ……ふぅ……生徒には、見せられない顔ね……」
+	CASEELSE
+		PRINTFORMW %CALLNAME:ARG%「くっ……先生も、こういうのは苦手なのよ……！」
+ENDSELECT
+RETURN
+@妊娠口上_5_16(ARG,ARG:1)
+;出産
+SELECTCASE RAND(3)
+	CASE 0
+		PRINTFORMW %CALLNAME:ARG%「はぁ……無事でよかった。この子のために、頑張らないと」
+	CASE 1
+		PRINTFORMW %CALLNAME:ARG%「ふふ……先生、母親一年生ね。」
+	CASEELSE
+		PRINTFORMW %CALLNAME:ARG%「小さな手……守らなくちゃ、ね。」
+ENDSELECT
+RETURN
+@妊娠口上_6_16(ARG,ARG:1)
+;陣痛激化
+SELECTCASE RAND(2)
+	CASE 0
+		PRINTFORMW %CALLNAME:ARG%「っ……生徒には、見せられない声が……！」
+	CASEELSE
+		PRINTFORMW %CALLNAME:ARG%「ふぅ、ふぅ……間隔が、狭まって……っ」
+ENDSELECT
+RETURN
+@妊娠口上_7_16(ARG,ARG:1)
+;いきみ
+SELECTCASE RAND(2)
+	CASE 0
+		PRINTFORMW %CALLNAME:ARG%「い、いきむわ……ん――……っ！」
+	CASEELSE
+		PRINTFORMW %CALLNAME:ARG%「先生、頑張るわ……そーれっ……！」
+ENDSELECT
+RETURN
+@妊娠口上_8_16(ARG,ARG:1)
+;破水
+SELECTCASE RAND(2)
+	CASE 0
+		PRINTFORMW %CALLNAME:ARG%「きゃっ……！　は、破水……先生、慌てちゃだめね……」
+	CASEELSE
+		PRINTFORMW %CALLNAME:ARG%「っ……羊水が……生徒に見られなくてよかった……」
+ENDSELECT
+RETURN
+
+@妊娠口上_9_16(ARG,ARG:1)
+;多胎に気づく（驚き）
+TSTR:(FLAG:口上候補数++) = %CALLNAME:ARG%「え……!?　まだ……!?　双子だったなんて、聞いてないわ……!」
+TSTR:(FLAG:口上候補数++) = %CALLNAME:ARG%「先生、二人分……しっかりしないと……!」
+RETURN

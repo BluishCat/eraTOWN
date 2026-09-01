@@ -1,0 +1,188 @@
+﻿@bite14
+	;キャバクラ
+	;===============================================================================
+	;アルバイトをする
+	;===============================================================================
+;	LOCAL = RAND:3
+	;--------------------------------------------------------------------------
+	;キャバクラ
+	;--------------------------------------------------------------------------
+;LOCAL = 0判定用
+;(LOCAL:1) = 0客の名前
+;
+
+;判定に使えそうなもの
+;ABL
+;話術技能
+;教養
+;欲望
+;奉仕精神
+;露出癖
+;BASE
+;評判
+;刺激度
+;容姿
+;TALENT
+;献身的
+;魅力
+;魅惑
+;謎の魅力
+;鼓舞
+;あたりで判定して成功すればおこずかい失敗でチェンジ
+;
+;
+	;--------------------------------------------------------------------------
+	;計算部分
+	;--------------------------------------------------------------------------
+VARSET LOCAL
+;話術（接客技能も半分の重みで効く）
+SIF RAND(15) - ABL:MASTER:話術技能 - ABL:MASTER:教養 - ABL:MASTER:接客技能 / 2 - TALENT:MASTER:鼓舞 * 3 < 1
+	LOCAL += 1
+;献身
+SIF RAND(15) - ABL:MASTER:奉仕精神 - ABL:MASTER:料理技能 - TALENT:MASTER:献身的 * 3 < 1
+	LOCAL += 1
+;色気
+SIF RAND(15) - ABL:MASTER:欲望 - ABL:MASTER:露出癖 - TALENT:MASTER:魅惑 * 3 < 1
+	LOCAL += 1
+
+	;--------------------------------------------------------------------------
+	;実行部分
+	;--------------------------------------------------------------------------
+PRINTL ＜キャバクラ接客＞
+PRINTFORMW %CALLNAME:MASTER%は客に指名を受けた。
+PRINT 今日の客は
+IF RAND:4 == 0 && CFLAG:MASTER:最愛 != 0
+	PRINTFORM %CALLNAME:(LOCAL:5)%の父親
+	TA:34:1:0 += 10
+	TA:34:1:4 += 10
+ELSE
+	IF RAND:4 == 3
+			PRINT 普通の
+	ELSEIF RAND:4 == 2
+			PRINT 小汚い
+	ELSEIF RAND:4 == 1
+			PRINT 近所の
+	ELSE
+			PRINT 身なりの良い
+	ENDIF
+	IF RAND:4 == 3
+		PRINT おじさん
+	ELSEIF RAND:4 == 2
+		PRINT サラリーマン
+	ELSEIF RAND:4 == 1
+		PRINT ヤクザ
+	ELSE
+		PRINT お爺さん
+	ENDIF
+ENDIF
+PRINTFORMW だ。
+IF RAND:3 == 2
+	;体型
+	PRINTFORM 客の希望通りの
+		;幼児体型
+		IF TALENT:MASTER:100 == -2
+			PRINTFORM 幼すぎる見た目に
+		;小柄体型
+		ELSEIF TALENT:MASTER:100 == -1
+			PRINTFORM あどけない容姿に
+		;普通体型
+		ELSEIF TALENT:MASTER:100 == 0
+			PRINTFORM 若々しい容姿に
+		;長身
+		ELSEIF TALENT:MASTER:100 == 1
+			PRINTFORM モデル体型に
+		;長身以上
+		ELSEIF TALENT:MASTER:100 == 2
+			PRINTFORM 大女に
+		ENDIF
+		IF RAND:4 == 3
+			PRINTFORMW 目を丸くしている
+		ELSEIF RAND:4 == 2
+			PRINTFORMW 背徳感を煽られている
+		ELSEIF RAND:4 == 1
+			PRINTFORMW 興奮している
+		ELSE
+			PRINTFORMW 欲情を押さえられないようだ
+		ENDIF
+ELSEIF RAND:3 == 1
+	;胸
+	PRINTFORM その目は%CALLNAME:MASTER%の
+		;絶壁 or (オトコ＋並乳)
+		IF TALENT:MASTER:バストサイズ == -2 || (TALENT:MASTER:性別 == 2 && TALENT:MASTER:バストサイズ == 0)
+			;女性
+			IF TALENT:MASTER:性別 & 1
+				;幼児体型
+				SIF TALENT:MASTER:100 == -2
+					PRINTFORM 見た目相応の
+				;長身以上
+				SIF TALENT:MASTER:100 >= 1
+					PRINTFORM 見た目に反して
+			ENDIF
+			PRINTFORM 平坦な
+			;貧乳
+			ELSEIF TALENT:MASTER:105 == -1
+			;小柄体型
+			SIF TALENT:MASTER:100 == -1
+				PRINTFORM 見た目相応の
+			;長身以上
+			SIF TALENT:MASTER:100 >= 1
+				PRINTFORM 見た目に反して
+			PRINTFORM なだらかな
+			;巨乳
+			ELSEIF TALENT:MASTER:105 == 1
+			;小柄体型 or 幼児体型
+				SIF TALENT:MASTER:100 == -1 || TALENT:MASTER:100 == -2
+					PRINTFORM 体格に見合わぬ
+				PRINTFORM 豊かな
+			;爆乳
+			ELSEIF TALENT:MASTER:105 == 2
+			;小柄体型 or 幼児体型
+				SIF TALENT:MASTER:100 == -1 || TALENT:MASTER:100 == -2
+					PRINTFORM 体格に見合わぬ
+				PRINTFORM 豊か過ぎる
+			ENDIF
+			PRINTFORMW 胸を凝視している。
+	ELSEIF RAND:3 == 0
+		;足
+		PRINTFORMW 挨拶して隣に座るとさっそく%CALLNAME:MASTER%の腰に手を回してきた。
+	ENDIF
+	PRINTFORML …………
+	PRINTFORML ………
+	PRINTFORML ……
+;判定大成功
+IF LOCAL == 3
+		PRINTFORML 客は%CALLNAME:MASTER%のことを高く評価してくれたようだ。
+		PRINTFORMW 次回も必ず指名してくれると約束し、客は気分よく店を去っていった…………。
+		BASE:MASTER:評判 += 30
+		MONEY:MASTER += 2000
+;判定成功
+ELSEIF LOCAL == 2
+		PRINTFORML どうやら客は%CALLNAME:MASTER%のことが気に入ってくれたようだ。
+		PRINTFORMW 次回も指名してくれると約束し、客は店を去っていった…………。
+		BASE:MASTER:評判 += 20
+		MONEY:MASTER += 1000
+;判定中成功
+ELSEIF LOCAL == 1
+		PRINTFORML %CALLNAME:MASTER%はどうにか粗相なく接客できたようだ。
+		PRINTFORMW 次回はもっと満足して貰えるように努力することを胸に誓った…………。
+		BASE:MASTER:評判 += 10
+		MONEY:MASTER += 500
+;判定失敗
+ELSEIF LOCAL == 0
+		PRINTFORML 「チェンジ」
+		PRINTFORML 客は%CALLNAME:MASTER%のことが気に入らなかったようだ。
+		PRINTFORMW %CALLNAME:MASTER%は店の奥へとすごすご退散していった…………。
+		BASE:MASTER:評判 -= 5
+		MONEY:MASTER -= 500
+ENDIF
+;接客が気に入られた(LOCAL>=2)なら、指名客がホテルへ誘ってくる（確率）。発生時は店主援交をスキップ(M:102)
+IF LOCAL >= 2 && (TALENT:MASTER:性別 & 1) && RAND(100) < LOCAL * 15
+	D = GETCHARA(59)
+	IF D >= 0
+		CALL キャバクラ客ホテル(D, MASTER)
+		SIF RESULT
+			M:102 = 1
+	ENDIF
+ENDIF
+DOWNBASE:MASTER:ストレス -= 100
+RETURN

@@ -1,0 +1,297 @@
+﻿;================================================================
+; デート機能（2026-07-16追加）
+;
+; COMF986-デートに誘う が TCVAR:同行（相互）と TCVAR:デート中(620) をセット。
+; 同行と同じくイベント3（会話）の間だけ有効で、追従移動は
+; NPC_ACTION.ERB 冒頭の同行処理をそのまま流用する（本ファイルでは触らない）。
+; デートスポット到着時に @デート到着イベント が発火する
+; （COMF1000-移動 の到着フック → ROOM_IN_OUT.ERB @到着時処理 経由）。
+; スポットは町(0)・大学(1)・繁華街(2)の三地区にある（2026-09-01に地区2限定から拡張）。
+; 終了は COMMON.ERB の EVENT_ESCAPE 系が @デート終了 を呼ぶ
+; （会話を終える[999]・就寝・衰弱・逃走の全経路が集約される）。
+;================================================================
+
+;----------------------------------------------------------------
+; 状態タグ（メイン画面の @状態タグ文字列 から呼ぶ。@病気状態タグ / @酔い状態タグ と同型）
+;  急性の危険側ではないので赤系は使わない（配色規則）
+;----------------------------------------------------------------
+@逢瀬状態タグ(ARG)
+#FUNCTIONS
+#DIMS OUT
+OUT =
+SIF TCVAR:ARG:デート中
+	OUT '= @"【デート中：%CALLNAME:(TCVAR:ARG:デート中)%】"
+RETURNF OUT
+
+;----------------------------------------------------------------
+;デートスポットの通し番号（0=デートスポットではない）
+; TCVAR:デート済場所 のビット番号に使う。地区をまたぐと位置番号が衝突する
+; （町の公園11と繁華街の警察署11など）ので、地区・位置から一意な番号に畳む。
+; 621は「620番台=BEGIN TRAIN(毎朝)で自動クリア」の当日限りフラグなので、
+; 割当を変えても既存セーブに影響しない。スポットを増やす時はここに足すこと。
+;----------------------------------------------------------------
+@デートスポットID(ARG, ARG:1)
+#FUNCTION
+SELECTCASE ARG
+	;町
+	CASE 0
+		SELECTCASE ARG:1
+			;銭湯
+			CASE 10
+				RETURNF 1
+			;公園
+			CASE 11
+				RETURNF 2
+			;定食屋
+			CASE 14
+				RETURNF 3
+		ENDSELECT
+	;大学
+	CASE 1
+		SELECTCASE ARG:1
+			;図書館
+			CASE 11
+				RETURNF 4
+			;屋上
+			CASE 12
+				RETURNF 5
+			;学生食堂
+			CASE 25
+				RETURNF 6
+		ENDSELECT
+	;繁華街
+	CASE 2
+		SELECTCASE ARG:1
+			;ハンバーガー屋 / カラオケ屋 / ゲームセンター / 服屋
+			CASE 6
+				RETURNF 7
+			CASE 7
+				RETURNF 8
+			CASE 8
+				RETURNF 9
+			CASE 9
+				RETURNF 10
+			;ファミレス / 喫茶店 / 公園 / アクセサリーショップ
+			CASE 12
+				RETURNF 11
+			CASE 14
+				RETURNF 12
+			CASE 17
+				RETURNF 13
+			CASE 21
+				RETURNF 14
+			;ラブホテル / 家電屋 / 映画館
+			CASE 22
+				RETURNF 15
+			CASE 24
+				RETURNF 16
+			CASE 57
+				RETURNF 17
+		ENDSELECT
+ENDSELECT
+RETURNF 0
+
+;----------------------------------------------------------------
+;デートスポット到着イベント
+; 1スポット1日1回（TCVAR:デート済場所(621) のビットで管理）
+;----------------------------------------------------------------
+@デート到着イベント
+#DIM 相手
+#DIM 位置
+#DIM 地区
+#DIM スポット
+#DIM 代金
+#DIM 好意加算
+SIF !TCVAR:MASTER:デート中
+	RETURN
+相手 = TCVAR:MASTER:デート中
+;相手が同行状態でなくなっていたら何もしない
+SIF !TCVAR:相手:同行
+	RETURN
+地区 = CFLAG:MASTER:現在地区
+位置 = CFLAG:MASTER:現在位置
+スポット = デートスポットID(地区, 位置)
+SIF !スポット
+	RETURN
+SIF GETBIT(TCVAR:MASTER:デート済場所, スポット)
+	RETURN
+IF 地区 == 0
+;----- 町 -----
+	SELECTCASE 位置
+		CASE 10
+			;銭湯: 男女別なので、湯上がりに待ち合わせる形になる（入浴料は@銭湯受付が処理）
+			PRINTFORML %CALLNAME:相手%と暖簾をくぐり、湯上がりの火照った顔で待ち合わせた。
+			TA:相手:MASTER:3 += 5
+			TA:MASTER:相手:3 += 5
+			TA:相手:MASTER:4 += 15
+			TA:MASTER:相手:4 += 15
+			DOWNBASE:MASTER:ストレス += 150
+			DOWNBASE:相手:ストレス += 150
+		CASE 11
+			;公園: お金のかからない定番スポット（繁華街の公園と同値）
+			PRINTFORML %CALLNAME:相手%と近所の公園をあてもなく歩いた。
+			TA:相手:MASTER:3 += 5
+			TA:MASTER:相手:3 += 5
+			TA:相手:MASTER:4 += 10
+			TA:MASTER:相手:4 += 10
+		CASE 14
+			;定食屋: 軽食枠（繁華街のハンバーガー屋・ファミレス・喫茶店と同値）
+			PRINTFORML %CALLNAME:相手%と定食屋の小上がりで、湯気ごしに向かい合った。
+			TA:相手:MASTER:3 += 3
+			TA:MASTER:相手:3 += 3
+	ENDSELECT
+ELSEIF 地区 == 1
+;----- 大学 -----
+	SELECTCASE 位置
+		CASE 11
+			;図書館: 声を出せないぶん距離が近くなる
+			PRINTFORML %CALLNAME:相手%と書架の陰で、声を潜めて同じ本を覗き込んだ。
+			TA:相手:MASTER:3 += 3
+			TA:MASTER:相手:3 += 3
+			TA:相手:MASTER:4 += 10
+			TA:MASTER:相手:4 += 10
+		CASE 12
+			;屋上: 二人きりになれる特別な場所（@告白可否 の告白スポットでもある）
+			PRINTFORML %CALLNAME:相手%と屋上のフェンス際に並び、風に吹かれて街を見下ろした。
+			TA:相手:MASTER:3 += 5
+			TA:MASTER:相手:3 += 5
+			TA:相手:MASTER:4 += 15
+			TA:MASTER:相手:4 += 15
+		CASE 25
+			;学生食堂: 軽食枠
+			PRINTFORML %CALLNAME:相手%と学食のトレイを並べ、他愛のない話をした。
+			TA:相手:MASTER:3 += 3
+			TA:MASTER:相手:3 += 3
+	ENDSELECT
+ELSE
+;----- 繁華街 -----
+SELECTCASE 位置
+	CASE 17
+		;公園: お金のかからない定番スポット
+		PRINTFORML %CALLNAME:相手%と公園をのんびり散歩した。
+		TA:相手:MASTER:3 += 5
+		TA:MASTER:相手:3 += 5
+		TA:相手:MASTER:4 += 10
+		TA:MASTER:相手:4 += 10
+	CASE 7, 8
+		;カラオケ屋/ゲームセンター: 料金はCOMF1014「遊ぶ」準拠の1000円
+		IF MONEY:MASTER < 1000
+			PRINTL （遊びたいけれど、お金が足りない……）
+			RETURN
+		ENDIF
+		MONEY:MASTER -= 1000
+		IF 位置 == 7
+			PRINTFORML %CALLNAME:相手%とカラオケで思いきり歌った。（-1,000円）
+		ELSE
+			PRINTFORML %CALLNAME:相手%とゲームセンターで遊び倒した。（-1,000円）
+		ENDIF
+		;ストレス軽減（DOWNBASE += が軽減方向。COMF1014準拠で300）
+		DOWNBASE:MASTER:ストレス += 300
+		DOWNBASE:相手:ストレス += 300
+		TA:相手:MASTER:3 += 5
+		TA:MASTER:相手:3 += 5
+		TA:相手:MASTER:4 += 20
+		TA:MASTER:相手:4 += 20
+	CASE 6, 12, 14
+		;ハンバーガー屋/ファミレス/喫茶店: 軽食
+		IF 位置 == 6
+			PRINTFORML %CALLNAME:相手%とハンバーガーをつついた。
+		ELSEIF 位置 == 12
+			PRINTFORML %CALLNAME:相手%とファミレスでおしゃべりに花を咲かせた。
+		ELSE
+			PRINTFORML %CALLNAME:相手%と喫茶店でゆっくりお茶をした。
+		ENDIF
+		TA:相手:MASTER:3 += 3
+		TA:MASTER:相手:3 += 3
+	CASE 9, 21, 24
+		;服屋/アクセサリーショップ/家電屋: プレゼント（抽象処理。実アイテム付与は拡張枠）
+		IF 位置 == 9
+			PRINTFORML %CALLNAME:相手%と服を見て回った。何か買ってあげようか？
+		ELSEIF 位置 == 21
+			PRINTFORML %CALLNAME:相手%とアクセサリーを眺めた。何か買ってあげようか？
+		ELSE
+			PRINTFORML %CALLNAME:相手%と家電屋をひやかした。何か買ってあげようか？
+		ENDIF
+		PRINTL [0] - ちょっとしたもの（1,000円）
+		PRINTL [1] - ちゃんとしたもの（3,000円）
+		PRINTL [2] - 奮発する（10,000円）
+		PRINTL [3] - 買わない
+		$INPUT_LOOP_P
+		INPUT
+		代金 = 0
+		SELECTCASE RESULT
+			CASE 0
+				代金 = 1000
+				好意加算 = 3
+			CASE 1
+				代金 = 3000
+				好意加算 = 8
+			CASE 2
+				代金 = 10000
+				好意加算 = 20
+			CASE 3
+				PRINTL 今日は見るだけにしておいた。
+			CASEELSE
+				GOTO INPUT_LOOP_P
+		ENDSELECT
+		IF 代金
+			IF MONEY:MASTER < 代金
+				PRINTL （……お財布の中身が足りなかった）
+			ELSE
+				MONEY:MASTER -= 代金
+				PRINTFORML %CALLNAME:相手%にプレゼントを買ってあげた。（-%金額(代金)%円）
+				PRINTFORML %CALLNAME:相手%は嬉しそうだ。
+				TA:相手:MASTER:3 += 好意加算
+			ENDIF
+		ENDIF
+	CASE 57
+		;映画館: 二人分の券を買って並んで観る。カップルシートは1日1回（映画館.ERB @映画館デート鑑賞）
+		;券を買わずに引き返した場合はスポット消化にしない
+		CALL 映画館デート鑑賞(相手)
+		SIF !RESULT
+			RETURN
+	CASE 22
+		;ラブホテル: 恋人またはセフレとのデート中のみ特別な空気に（支払いは@ラブホ受付が処理）
+		SIF !TALENT:相手:恋人 && !TA:相手:MASTER:7
+			RETURN
+		IF TALENT:相手:恋人
+			PRINTFORML %CALLNAME:相手%と顔を見合わせた。……今日は、そういう日なのかもしれない。
+		ELSE
+			PRINTFORML %CALLNAME:相手%と目が合う。……お互い、最初からこうなる気がしていた。
+		ENDIF
+		TA:相手:MASTER:4 += 30
+		TA:MASTER:相手:4 += 30
+	CASEELSE
+		RETURN
+ENDSELECT
+ENDIF
+CALL 汎用口上(14, 相手, MASTER)
+SETBIT TCVAR:MASTER:デート済場所, スポット
+TCVAR:MASTER:デート満足度 += 1
+RETURN
+
+;----------------------------------------------------------------
+;デート終了処理
+; ARG=デート相手。EVENT_ESCAPE系（COMMON.ERB）から同行解除の直前に呼ばれる
+; 回ったスポット数（デート満足度）に応じて愛情を加算（愛情はレア資源）
+;----------------------------------------------------------------
+@デート終了(ARG)
+#DIM 相手
+相手 = ARG
+SIF !TCVAR:MASTER:デート中
+	RETURN
+IF TCVAR:MASTER:デート満足度 >= 3
+	PRINTFORML %CALLNAME:相手%とのデートを終えた。とても楽しい一日だった。
+	TA:相手:MASTER:1 += 2
+	TA:MASTER:相手:1 += 2
+	CFLAG:相手:デート回数 += 1
+ELSEIF TCVAR:MASTER:デート満足度 >= 1
+	PRINTFORML %CALLNAME:相手%とのデートを終えた。
+	TA:相手:MASTER:1 += 1
+	TA:MASTER:相手:1 += 1
+	CFLAG:相手:デート回数 += 1
+ENDIF
+TCVAR:MASTER:デート中 = 0
+TCVAR:相手:デート中 = 0
+TCVAR:MASTER:デート満足度 = 0
+RETURN

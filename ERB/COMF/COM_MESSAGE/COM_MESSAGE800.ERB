@@ -1,0 +1,67 @@
+﻿@COM_MESSAGE_800
+;話題は XCOM800 が TCVAR:MASTER:会話話題 に確定させている。
+;（この関数は SOURCE.ERB の TRYCALLFORM から引数なしで呼ばれるため話題を再計算できない）
+;800は @NPC_ACTION_3 が SELECTCOM=990 を置くためNPCからは実行されない＝話し手は常にMASTER
+#DIM 相手
+SIF TFLAG:成否用変数 == -2
+	RETURN
+相手 = TCVAR:MASTER:行為対象
+PRINTFORML <%話題名(TCVAR:MASTER:会話話題)%>
+SELECTCASE TCVAR:MASTER:会話話題
+	CASE 1
+		;褒める
+		SELECTCASE TFLAG:成否用変数
+			CASE 2
+				PRINTFORML %CALLNAME:相手%は照れくさそうにしながらも、まんざらでもない顔をした。
+			CASE 1
+				PRINTFORML %CALLNAME:相手%は少し嬉しそうに笑った。
+			CASE -1
+				PRINTL お世辞だと思われたようだ……
+		ENDSELECT
+	CASE 2
+		;近況を聞く：相手の身の回りを開示する（TAの伸びは小さいが情報が手に入る）
+		IF TFLAG:成否用変数 >= 1
+			PRINTFORML %CALLNAME:相手%は近ごろの様子を話してくれた。
+			IF CFLAG:相手:部活
+				PRINTFORML 　部活は%CLUB_NAME(CFLAG:相手:部活)%をやっているらしい。
+			ELSE
+				PRINTL 　部活には入っていないそうだ。
+			ENDIF
+			SIF CFLAG:相手:職業
+				PRINTFORML 　%JOB_NAME(CFLAG:相手:職業)%のバイトをしているとのことだ。
+			SIF TALENT:相手:恋人
+				PRINTL 　……どうやら、付き合っている相手がいるらしい。
+		ELSE
+			PRINTFORML %CALLNAME:相手%は当たり障りのないことしか話さなかった……
+		ENDIF
+	CASE 3
+		;噂話
+		SELECTCASE TFLAG:成否用変数
+			CASE 2
+				PRINTFORML %CALLNAME:相手%は身を乗り出して悪口に乗ってきた。妙な連帯感が生まれた。
+			CASE 1
+				PRINTFORML %CALLNAME:相手%も同じことを思っていたようだ。
+			CASE -1
+				PRINTL 陰口を叩く人だと思われたかもしれない……
+		ENDSELECT
+	CASE 4
+		;部活の話
+		SELECTCASE TFLAG:成否用変数
+			CASE 2
+				PRINTL 共通の話題で思いのほか盛り上がった……
+			CASE 1
+				PRINTL 部活の話でひとしきり盛り上がった。
+			CASE -1
+				PRINTL 話が噛み合わなかった……
+		ENDSELECT
+	CASEELSE
+		;世間話（従来の地の文）
+		SELECTCASE TFLAG:成否用変数
+			CASE 2
+				PRINTL とても話が盛り上がった……
+			CASE 1
+				PRINTL 楽しい時間が流れた……
+			CASE -1
+				PRINTL 会話が途切れると気まずい空気が流れた……
+		ENDSELECT
+ENDSELECT

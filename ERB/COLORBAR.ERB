@@ -1,0 +1,346 @@
+﻿;===============================================================================
+;	カラーバー描画ヘルパ
+;	erablue_resort の ERB\汎用関数\PRINT_COLORBAR.ERB を移植（ゼロ除算ガード追加）
+;	横幅・縦幅は％指定。100 で半角1文字分。縦幅は100以下（超えるとエラー）
+;	PRINT_RECT は行内フローに描画されるため、PRINTFORM の途中に挟める
+;===============================================================================
+
+;-------------------------------------------------------------------------------
+;	ゲージの表示（残量=明色＋欠損=暗色の2矩形連結。幅合計は常に「横幅」）
+;-------------------------------------------------------------------------------
+@PRINT_COLORBAR(現在値, 上限値, 横幅, 縦幅, 残ゲージ色, 失ゲージ色)
+#DIM 現在値
+#DIM 上限値
+#DIM 横幅
+#DIM 縦幅
+#DIM 残ゲージ色
+#DIM 失ゲージ色
+
+;上限値が0以下（MAXBASE未設定キャラ等）は暗色フルバー
+IF 上限値 <= 0
+	SETCOLOR 失ゲージ色
+	PRINT_RECT 0, (100 - 縦幅), 横幅, 縦幅
+	RESETCOLOR
+	RETURN 0
+ENDIF
+現在値 = LIMIT(現在値, 0, 上限値)
+
+IF 現在値 && (現在値 * 横幅 / 上限値) > 0
+	SETCOLOR 残ゲージ色
+	PRINT_RECT 0, (100 - 縦幅), (現在値 * 横幅 / 上限値), 縦幅
+	RESETCOLOR
+ENDIF
+
+IF (横幅 - (現在値 * 横幅 / 上限値)) > 0
+	SETCOLOR 失ゲージ色
+	PRINT_RECT 0, (100 - 縦幅), (横幅 - (現在値 * 横幅 / 上限値)), 縦幅
+	RESETCOLOR
+ENDIF
+
+;-------------------------------------------------------------------------------
+;	ゲージの表示（HTML版。<shape>タグ断片を文字列で返す。HTML_PRINT の文中埋め込み用）
+;-------------------------------------------------------------------------------
+@PRINT_COLORBAR_HTML(現在値, 上限値, 横幅, 縦幅, 残ゲージ色, 失ゲージ色)
+#FUNCTIONS
+#DIM 現在値
+#DIM 上限値
+#DIM 横幅
+#DIM 縦幅
+#DIMS 残ゲージ色
+#DIMS 失ゲージ色
+
+SIF 上限値 <= 0
+	RETURNF @"<shape type='rect' param='0, {100 - 縦幅}, {横幅}, {縦幅}' color='#%失ゲージ色%'>"
+現在値 = LIMIT(現在値, 0, 上限値)
+
+LOCALS =
+IF (現在値 * 横幅 / 上限値) > 0
+	LOCALS += @"<shape type='rect' param='0, {100 - 縦幅}, {現在値 * 横幅 / 上限値}, {縦幅}' color='#%残ゲージ色%'>"
+ENDIF
+IF (横幅 - (現在値 * 横幅 / 上限値)) > 0
+	LOCALS += @"<shape type='rect' param='0, {100 - 縦幅}, {横幅 - (現在値 * 横幅 / 上限値)}, {縦幅}' color='#%失ゲージ色%'>"
+ENDIF
+RETURNF LOCALS
+
+;-------------------------------------------------------------------------------
+;	BASE番号→ゲージ色（明色を返し、暗色を RESULT:1 に入れる）
+;-------------------------------------------------------------------------------
+@BASEゲージ色(BASE番号)
+#FUNCTION
+#DIM BASE番号
+SELECTCASE BASE番号
+	CASE 0
+		;体力＝緑
+		RESULT:1 = 0x205020
+		RETURNF 0x50B050
+	CASE 1
+		;気力＝水色
+		RESULT:1 = 0x205050
+		RETURNF 0x70C0C0
+	CASE 2
+		;射精＝ピンク
+		RESULT:1 = 0xAA0044
+		RETURNF 0xFF3399
+	CASE 3
+		;母乳＝クリーム
+		RESULT:1 = 0x404030
+		RETURNF 0xFFFFCC
+	CASE 5
+		;勃起＝紫
+		RESULT:1 = 0x502050
+		RETURNF 0xC070C0
+	CASE 6
+		;精力＝青
+		RESULT:1 = 0x202050
+		RETURNF 0x7070C0
+	CASE 23
+		;ストレス＝赤
+		RESULT:1 = 0x502020
+		RETURNF 0xC07070
+	CASE 24
+		;疲労＝黄
+		RESULT:1 = 0x505020
+		RETURNF 0xC0C070
+	CASEELSE
+		;その他＝白
+		RESULT:1 = 0x202020
+		RETURNF 0xC0C0C0
+ENDSELECT
+
+;-------------------------------------------------------------------------------
+;	BAR 命令のドロップイン置換（BAR BASE:X:n,MAXBASE:X:n,16 → CALL PRINT_BASEBAR(X, n)）
+;	※実測でこのエンジンの矩形単位は 100＝全角1文字（フォントサイズpx）
+;	旧 BAR の [16マス] ＝半角18文字＝全角9文字に合わせて幅900（行全体の桁揃えを維持）
+;-------------------------------------------------------------------------------
+@PRINT_BASEBAR(キャラ, BASE番号)
+#DIM キャラ
+#DIM BASE番号
+CALL PRINT_COLORBAR, BASE:キャラ:BASE番号, MAXBASE:キャラ:BASE番号, 900, 60, BASEゲージ色(BASE番号), RESULT:1
+
+;-------------------------------------------------------------------------------
+;	PALAM 1項目分のHTML断片（ラベル＋細バー＋数値重ね）を返す
+;	開始X＝セル左端。ラベルは 開始X+50、バー/数値は 開始X+550 に重ねる（セル幅1400想定）
+;	PRINT_PALAM_GAUGE とメイン画面の▼PALAM 2列表示（メイン画面描画.ERB）で共用
+;-------------------------------------------------------------------------------
+@PALAMセル_HTML(キャラ, PALAM番号, 開始X)
+#FUNCTIONS
+#DIM キャラ
+#DIM PALAM番号
+#DIM 開始X
+#DIM 進捗
+#DIM レベル幅
+#DIMS 行
+#DIMS 数値S
+#DIMS 明色
+#DIMS 暗色
+行 =
+;ラベル「快ＣLv 0」
+LOCALS = %PALAMNAME:PALAM番号,4,LEFT%Lv{GETPALAMLV(PALAM:キャラ:PALAM番号,15),2}
+行 '= 行 + @"<div rect='{開始X + 50},0,1200,250'>%LOCALS%</div>"
+;バーの進捗と色（Lv15カンストは金色フルバー）
+IF GETPALAMLV(PALAM:キャラ:PALAM番号,15) >= 15
+	進捗 = 1
+	レベル幅 = 1
+	明色 '= "FFD900"
+	暗色 '= "FFD900"
+ELSE
+	レベル幅 = PALAMLV:(GETPALAMLV(PALAM:キャラ:PALAM番号,15) + 1) - PALAMLV:(GETPALAMLV(PALAM:キャラ:PALAM番号,15))
+	進捗 = PALAM:キャラ:PALAM番号 - PALAMLV:(GETPALAMLV(PALAM:キャラ:PALAM番号,15))
+	明色 '= "B05050"
+	暗色 '= "502020"
+ENDIF
+;重ねる数値（従来の k/M/G/T 圧縮。摩擦だけ特殊）
+LOCAL:1 = PALAM:キャラ:PALAM番号
+LOCAL:2 = 0
+IF PALAM番号 == 9 && LOCAL:1 >= 20000
+	数値S '= "摩擦 0 "
+ELSE
+	FOR LOCAL:10,0,10
+		IF LOCAL:1 > 999999
+			LOCAL:1 /= 1000
+			LOCAL:2 ++
+		ENDIF
+	NEXT
+	数値S = {LOCAL:1,6}
+	SELECTCASE LOCAL:2
+		CASE 1
+			数値S += k
+		CASE 2
+			数値S += M
+		CASE 3
+			数値S += G
+		CASE 4
+			数値S += T
+		CASE 5
+			数値S += P
+		CASEELSE
+			数値S '= 数値S + " "
+	ENDSELECT
+ENDIF
+;細バー＋数値重ね（div 2枚。幅は折返し防止で過大に）
+行 '= 行 + @"<div rect='{開始X + 550},0,1000,250'>%PRINT_COLORBAR_HTML(進捗, レベル幅, 400, 30, 明色, 暗色)%</div>"
+行 '= 行 + @"<div rect='{開始X + 550},0,1000,250'>%数値S,8%</div>"
+RETURNF 行
+
+;-------------------------------------------------------------------------------
+;	PALAM一覧の描画（旧 SHOW_INFO_PALAM.ERB / PRINT_STATE.ERB の [********] 表示の共通化）
+;	BASEバーと同じ「細バー＋右端に数値重ね」形式。バーは1レベル分の進捗（幅400）、
+;	重ねる数値は従来の k/M/G/T 圧縮値。Lv15カンストは金色フルバー。
+;	PRINTCPERLINE()（4列）の折返しと摩擦の特殊表示は従来どおり
+;-------------------------------------------------------------------------------
+@PRINT_PALAM_GAUGE(キャラ)
+#DIM キャラ
+#DIM 列X
+#DIM 列数
+#DIMS 行
+
+;※LOCAL や #DIM 変数は前回呼び出しの値が残るため、カウンタは必ず明示初期化する
+列数 = 0
+行 =
+FOR LOCAL,0,100
+	SIF !STRLENS(PALAMNAME:LOCAL)
+		CONTINUE
+	;列位置（1列=1400単位）
+	列X = (列数 % PRINTCPERLINE()) * 1400
+	行 '= 行 + PALAMセル_HTML(キャラ, LOCAL, 列X)
+	列数 ++
+	IF 列数 % PRINTCPERLINE() == 0
+		HTML_PRINT 行, 1
+		PRINTL
+		行 =
+	ENDIF
+NEXT
+;端数の列が残っていれば出力
+IF STRLENS(行)
+	HTML_PRINT 行, 1
+	PRINTL
+ENDIF
+PRINTL
+
+;-------------------------------------------------------------------------------
+;	BASE番号→ゲージ色HEX（HTML用。@BASEゲージ色 と同じ表。明色を返し、暗色を RESULTS:1 に入れる）
+;-------------------------------------------------------------------------------
+@BASEゲージ色HEX(BASE番号)
+#FUNCTIONS
+#DIM BASE番号
+SELECTCASE BASE番号
+	CASE 0
+		RESULTS:1 = 205020
+		RETURNF "50B050"
+	CASE 1
+		RESULTS:1 = 205050
+		RETURNF "70C0C0"
+	CASE 2
+		RESULTS:1 = AA0044
+		RETURNF "FF3399"
+	CASE 3
+		RESULTS:1 = 404030
+		RETURNF "FFFFCC"
+	CASE 5
+		RESULTS:1 = 502050
+		RETURNF "C070C0"
+	CASE 6
+		RESULTS:1 = 202050
+		RETURNF "7070C0"
+	CASE 21
+		;刺激度（露出度・性的刺激）＝ピンク寄りオレンジ
+		RESULTS:1 = 502030
+		RETURNF "FF80B0"
+	CASE 23
+		RESULTS:1 = 502020
+		RETURNF "C07070"
+	CASE 24
+		RESULTS:1 = 505020
+		RETURNF "C0C070"
+	CASEELSE
+		RESULTS:1 = 202020
+		RETURNF "C0C0C0"
+ENDSELECT
+
+;-------------------------------------------------------------------------------
+;	「ラベル＋細バー＋右端に数値重ね」のHTML断片を返す
+;	（erablue_resort @通常時体力ゲージ表示 方式：同じ rect に <div> を2枚重ねる。
+;	  1枚目＝下寄せ縦幅30の細バー / 2枚目＝バー幅で右寄せした数値テキスト）
+;	開始X＝行内の開始位置、ラベル幅・バー幅の単位は 100=全角1文字
+;	※div rect の注意（実測）: x はカーソル相対 / 高さ100以下は描画されない（erablueと同じ250を使う）/
+;	  div はカーソルを進めない / HTML_PRINT は改行しないので呼び元で PRINTL すること
+;-------------------------------------------------------------------------------
+@BASEバー数値重ね_HTML(キャラ, BASE番号, 開始X, ラベル, ラベル幅, バー幅)
+#FUNCTIONS
+#DIM キャラ
+#DIM BASE番号
+#DIM 開始X
+#DIMS ラベル
+#DIM ラベル幅
+#DIM バー幅
+#DIMS 明色
+#DIMS 暗色
+
+明色 '= BASEゲージ色HEX(BASE番号)
+暗色 '= RESULTS:1
+;div 幅は折返し防止のため実幅より大きく取る（erablue も同様に余裕を持たせている）
+LOCALS =
+SIF STRLENS(ラベル)
+	LOCALS += @"<div rect='{開始X},0,{ラベル幅 + 600},250'>%ラベル%</div>"
+LOCALS += @"<div rect='{開始X + ラベル幅},0,{バー幅 + 600},250'>%PRINT_COLORBAR_HTML(BASE:キャラ:BASE番号, MAXBASE:キャラ:BASE番号, バー幅, 30, 明色, 暗色)%</div>"
+LOCALS:1 = {BASE:キャラ:BASE番号,5}/{MAXBASE:キャラ:BASE番号,5}
+LOCALS += @"<div rect='{開始X + ラベル幅},0,{バー幅 + 600},250'>%LOCALS:1, バー幅 / 50%</div>"
+RETURNF LOCALS
+
+;-------------------------------------------------------------------------------
+;	@SHOW_STATUS 用の1行描画（MASTER＋居ればTARGETの2連、ラベルは %BASENAME%(%CALLNAME%)）
+;	M表示/T表示 = そのキャラの分を表示するか（男性のみ行・母乳行などの条件を呼び元で渡す）
+;	旧「PRINTFORM ラベル → BAR → PRINTFORM (数値) → PRINTL」ブロックの置換用（PRINTL 不要）
+;-------------------------------------------------------------------------------
+@PRINT_BASEBAR行(BASE番号, M表示, T表示)
+#DIM BASE番号
+#DIM M表示
+#DIM T表示
+#DIMS 行
+
+行 =
+IF M表示
+	LOCALS = %BASENAME:BASE番号,6%(%CALLNAME:MASTER%)
+	行 '= BASEバー数値重ね_HTML(MASTER, BASE番号, 0, LOCALS, 1250, 900)
+ENDIF
+IF T表示 && TARGET
+	LOCALS = %BASENAME:BASE番号,6%(%CALLNAME:TARGET%)
+	行 '= 行 + BASEバー数値重ね_HTML(TARGET, BASE番号, 2400, LOCALS, 1250, 900)
+ENDIF
+HTML_PRINT 行, 1
+;HTML_PRINT は改行しないため行を閉じる
+PRINTL
+
+;-------------------------------------------------------------------------------
+;	SHOP／能力表示用の「体力:▬▬ 気力:▬▬」1行描画
+;-------------------------------------------------------------------------------
+@PRINT_BASEBAR簡易行(キャラ)
+#DIM キャラ
+#DIMS 行
+行 '= BASEバー数値重ね_HTML(キャラ, 0, 0, "体力:", 350, 900)
+行 '= 行 + BASEバー数値重ね_HTML(キャラ, 1, 1600, "気力:", 350, 900)
+HTML_PRINT 行, 1
+;HTML_PRINT は改行しないため行を閉じる
+PRINTL
+
+;-------------------------------------------------------------------------------
+;	サイドバーPALAM用：Lv帯→色（明色を返し、暗色を RESULTS:1 に入れる）
+;	従来の●ゲージの色分け（赤/黄/白/灰）を踏襲
+;-------------------------------------------------------------------------------
+@PALAMLV色_HTML(LV)
+#FUNCTIONS
+#DIM LV
+SELECTCASE LV
+	CASE 12 TO 15
+		RESULTS:1 = 501818
+		RETURNF "FF5050"
+	CASE 8 TO 11
+		RESULTS:1 = 554800
+		RETURNF "FFD900"
+	CASE 4 TO 7
+		RESULTS:1 = 404040
+		RETURNF "FFFFFF"
+	CASEELSE
+		RESULTS:1 = 303030
+		RETURNF "909090"
+ENDSELECT

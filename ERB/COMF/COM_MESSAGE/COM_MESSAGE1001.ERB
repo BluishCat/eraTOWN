@@ -1,0 +1,318 @@
+﻿@COM_MESSAGE_1001
+;--------------------------------------------------------------------------
+;大学：授業を受ける
+;--------------------------------------------------------------------------
+SIF M:101 == 1
+	RETURN 0
+;TFLAG:COM用変数 0 座学, 1 体育
+SELECTCASE TFLAG:COM用変数
+CASE 0
+
+;===============================================================================
+;授業を受ける（座学）
+;===============================================================================
+;--------------------------------------------------------------------------
+;淫具装着授業
+;--------------------------------------------------------------------------
+;胸・クリ・膣・アナルに何かを着けている
+IF TEQUIP:MASTER:胸 || TEQUIP:MASTER:クリトリス || (TEQUIP:MASTER:膣 == 1) || (TEQUIP:MASTER:アナル == (60 | 61 | 62))
+	PRINTFORML ＜淫具装着授業＞
+	PRINTFORM 何人もの生徒が授業を受ける教室の中、
+	;--------------------------------------------------------------------------
+	;膣
+	;--------------------------------------------------------------------------
+	IF TEQUIP:MASTER:膣
+		PRINTFORM %CALLNAME:MASTER%の秘処に仕込まれた%ITEMNAME:(TEQUIP:MASTER:膣)%が膣
+	;--------------------------------------------------------------------------
+	;クリトリス
+	;--------------------------------------------------------------------------
+	ELSEIF TEQUIP:MASTER:クリトリス
+		PRINTFORM 取り付けられた%ITEMNAME:(TEQUIP:MASTER:クリトリス)%が敏感な肉豆
+	;--------------------------------------------------------------------------
+	;胸
+	;--------------------------------------------------------------------------
+	ELSEIF TEQUIP:MASTER:胸
+		PRINTFORM 取り付けられた%ITEMNAME:(TEQUIP:MASTER:胸)%が%CALLNAME:MASTER%の
+		;絶壁 or (オトコ＋並乳)
+		IF TALENT:MASTER:バストサイズ == -2 || (TALENT:MASTER:性別 == 2 && TALENT:MASTER:バストサイズ == 0)
+			;女性器あり
+			IF TALENT:MASTER:性別 & 1
+				;幼児体型
+				SIF TALENT:MASTER:体型 == -2
+					PRINTFORM 見た目相応の
+				;長身以上
+				SIF TALENT:MASTER:体型 >= 1
+					PRINTFORM 見た目に反して
+			ENDIF
+			PRINTFORM 平坦な
+		;貧乳
+		ELSEIF TALENT:MASTER:バストサイズ == -1
+			;小柄体型
+			SIF TALENT:MASTER:体型 == -1
+				PRINTFORM 見た目相応の
+			;長身以上
+			SIF TALENT:MASTER:体型 >= 1
+				PRINTFORM 見た目に反して
+			PRINTFORM なだらかな
+		;巨乳
+		ELSEIF TALENT:MASTER:バストサイズ == 1
+			;小柄体型 or 幼児体型
+			SIF TALENT:MASTER:体型 == -1 || TALENT:MASTER:体型 == -2
+				PRINTFORM 見た目に反して
+			PRINTFORM 豊かな
+		;爆乳
+		ELSEIF TALENT:MASTER:バストサイズ == 2
+			PRINTFORM 豊か過ぎる
+		ENDIF
+		PRINTFORM 胸の先
+	;--------------------------------------------------------------------------
+	;アナル
+	;--------------------------------------------------------------------------
+	ELSEIF TEQUIP:MASTER:アナル
+		PRINTFORM 仕込まれた%ITEMNAME:(TEQUIP:MASTER:アナル)%が%CALLNAME:MASTER%の直腸
+	ENDIF
+	;--------------------------------------------------------------------------
+	;共通
+	;--------------------------------------------------------------------------
+	PRINTFORML を刺激する。
+	PRINTFORM 淫らな玩具
+	;PALAM欲情Lv3以上
+	IF PALAM:MASTER:欲情 >= PALAMLV:3
+		PRINTFORML の効果は凄まじく、%CALLNAME:MASTER%の我慢はすでに限界に達しようとしている。
+		;女性器あり
+		IF TALENT:MASTER:性別 & 1
+			;下半身下着
+			IF TEQUIP:MASTER:下半身下着
+				PRINTFORM 身に付けた下着
+			ELSE
+				PRINTFORM 下着を着けていない秘処
+			ENDIF
+			;PALAM潤滑Lv3以上
+			IF PALAM:MASTER:潤滑 >= PALAMLV:3
+				PRINTFORMW は愛液でぐしょぐしょに濡れ、まるでお漏らしでもしたかのようになっている…
+			ELSE
+				PRINTFORMW は、染み出した愛液で濡れ始めている…
+			ENDIF
+		ELSE
+			PRINTFORM 股間では、勃起した肉棒
+			;スカート類
+			IF TEQUIP:MASTER:下半身上着 <= 274 && TEQUIP:MASTER:下半身上着 != 0
+				PRINTFORMW がスカートを持ち上げて自己主張をしている。
+			ELSE
+				PRINTFORM の形が%ITEMNAME:(TEQUIP:MASTER:下半身上着)%越しにも
+				;下半身下着なし
+				SIF TEQUIP:MASTER:下半身下着 == 0
+					PRINTFORM はっきりと
+				PRINTFORMW わかる。
+			ENDIF
+		ENDIF
+	ELSE
+		PRINTFORML は、しかし%CALLNAME:MASTER%には苦痛しか与えていない。
+		PRINTFORMW 苦痛に耐えながら、%CALLNAME:MASTER%は授業を終えた。
+	ENDIF
+;--------------------------------------------------------------------------
+;発情授業
+;　「媚薬」使用時に発動
+;--------------------------------------------------------------------------
+ELSEIF TEQUIP:MASTER:媚薬
+	PRINTFORML ＜発情授業＞
+	PRINTFORML 同じ教室で何人もの生徒が授業を受ける中、%CALLNAME:MASTER%の頬は赤い。
+	PRINTFORM 人を淫らにさせる魔薬の効果が、今、彼
+	;女性器あり
+	SIF TALENT:MASTER:性別 & 1
+		PRINTFORM 女
+	PRINTFORML の体を蝕んでいるのだ。
+	PRINTFORM ちょっとした刺激で絶頂を迎えそうになっている体を
+	IF RAND:2 == 0
+		PRINTFORMW 持て余し、%CALLNAME:MASTER%は机の下で足をもじつかせている…
+	ELSE
+		PRINTFORMW 、%CALLNAME:MASTER%は持て余している…
+	ENDIF
+;--------------------------------------------------------------------------
+;我慢授業（仮称）
+;　「利尿剤」使用時に発動
+;--------------------------------------------------------------------------
+ELSEIF TEQUIP:MASTER:利尿剤
+	PRINTFORML ＜我慢授業＞
+	PRINTFORML 同じ教室で何人もの生徒が授業を受ける中、%CALLNAME:MASTER%はどこか落ち着かない様子だ。
+	PRINTFORMW 普通ではあり得ないほどの尿意が、襲いかかってきている。
+	PRINTFORML 今にも膀胱が決壊しそうなのを、必死で堪える。
+	PRINTFORMW 漏らすわけには行かない。しかし、トイレに行くわけにも…
+;--------------------------------------------------------------------------
+;授業を受ける
+;--------------------------------------------------------------------------
+ELSE
+	PRINTFORML ＜授業を受ける＞
+	PRINTFORML %CALLNAME:MASTER%は真面目に授業を受けた。
+	;教養Lv4以上
+	IF ABL:MASTER:教養 >= 4
+		PRINTFORMW これならば、次のテストは問題ないに違いない。
+	;教養Lv2以上
+	ELSEIF ABL:MASTER:教養 >= 2
+		PRINTFORMW 特に何事もなく、授業は終了した。
+	ELSE
+		PRINTFORMW …が、今ひとつ授業内容を理解できなかった。
+	ENDIF
+ENDIF
+
+
+CASE 1
+;--------------------------------------------------------------------------
+;体育の授業
+;--------------------------------------------------------------------------
+;現状、強制的に体操服に着替える感じで。
+PRINTFORML ＜体育の授業＞
+PRINTFORM 今日の体育の授業は
+LOCAL = RAND:3
+IF LOCAL == 0
+	;種目をランダム決定。チーム競技で統一。
+	IF RAND:2 == 0
+		PRINTFORMW バスケットボールだ。
+	ELSE
+		PRINTFORMW ソフトボールだ。
+	ENDIF
+	;胸・クリ・膣・アナルに何かを着けている
+	IF TEQUIP:MASTER:胸 || TEQUIP:MASTER:クリトリス || (TEQUIP:MASTER:膣 == 1) || (TEQUIP:MASTER:アナル == (60 | 61 | 62))
+		PRINTFORM 仕込まれた淫具が体を刺激し続け
+		;PALAM欲情Lv3以上
+		IF PALAM:MASTER:欲情 >= PALAMLV:3
+			PRINTFORML 、継続的に送り込まれる快感に、%CALLNAME:MASTER%は翻弄される。
+			PRINTFORM 体操服
+			;女性器あり
+			IF TALENT:MASTER:性別 & 1
+				;PALAM潤滑Lv3以上
+				IF PALAM:MASTER:潤滑 >= PALAMLV:3
+					PRINTFORMW の股布は溢れる愛液で重く湿り、ほどなくして太股に数本の輝線が描かれた…
+				ELSE
+					PRINTFORMW の股布が湿り気を帯び始め、%CALLNAME:MASTER%は恥ずかしげに身をよじった。
+				ENDIF
+			ELSE
+				PRINTFORM の股間
+				;PALAM欲情Lv3以上
+				IF PALAM:MASTER:欲情 >= PALAMLV:3
+					PRINTFORMW でビクビクと震える勃起ペニスの感覚が、%CALLNAME:MASTER%を苛んだ…
+				ELSE
+					PRINTFORMW で、徐々にペニスが膨らみ始める感覚に、%CALLNAME:MASTER%は恥ずかしげに身をよじった。
+				ENDIF
+			ENDIF
+		ELSE
+			PRINTFORMW る違和感に、%CALLNAME:MASTER%は満足に動くことも出来なかった…
+		ENDIF
+	;媚薬使用中
+	ELSEIF TEQUIP:MASTER:媚薬
+		PRINTFORML 媚薬の効果か、肌に擦れる衣服の感覚にさえ快美感を感じる。
+		PRINTFORM 体操服
+		;女性器あり
+		IF TALENT:MASTER:性別 & 1
+			;PALAM潤滑Lv3以上
+			IF PALAM:MASTER:潤滑 >= 3
+				PRINTFORMW の股布は溢れる愛液で重く湿り、ほどなくして太股に数本の輝線が描かれた…
+			ELSE
+				PRINTFORMW の股布が湿り気を帯び始め、%CALLNAME:MASTER%は恥ずかしげに身をよじった。
+			ENDIF
+		ELSE
+			PRINTFORM の股間
+			;PALAM欲情Lv3以上
+			IF PALAM:MASTER:欲情 >= PALAMLV:3
+				PRINTFORMW でビクビクと震える勃起ペニスの感覚が、%CALLNAME:MASTER%を苛んだ…
+			ELSE
+				PRINTFORMW で、徐々にペニスが膨らみ始める感覚に、%CALLNAME:MASTER%は恥ずかしげに身をよじった。
+			ENDIF
+		ENDIF
+	;利尿剤使用中
+	ELSEIF TEQUIP:MASTER:利尿剤
+		PRINTFORMW %CALLNAME:MASTER%の膀胱は、利尿剤の効果で今にも決壊しそうになっている。
+		;尿意一定以上（未設定） or お漏らし癖がある場合、低確率でハプニング。
+		IF RAND:5 == 0 && TALENT:MASTER:おもらし癖
+			PRINTFORML ――どんっ！
+			PRINTFORMW 同級生だろうか。誰かに勢いよくぶつかられ、%CALLNAME:MASTER%が転倒する。
+			PRINTFORML …その瞬間、%CALLNAME:MASTER%の股間のダムが崩壊した。
+			PRINTFORML 下半身を包む温かい感覚と、鼻をつくアンモニア臭。
+			PRINTFORMW 騒ぎ出す同級生の声を聞きながら、放尿の解放感に%CALLNAME:MASTER%の頬に涙が零れた…
+		ELSE
+			PRINTFORMW ふとした拍子に破綻しかねないギリギリの状態で、%CALLNAME:MASTER%は必死に堪え続けた…
+		ENDIF
+	;運動能力Lv4以上
+	ELSEIF ABL:MASTER:運動能力 >= 4
+		PRINTFORM %CALLNAME:MASTER%は
+		;気丈
+		IF TALENT:MASTER:度胸 == 1
+			PRINTFORM 率先してチームを引っ張り、
+		;大人しい
+		ELSEIF TALENT:MASTER:応答 == -1
+			PRINTFORM でしゃばらずにアシストに徹し、
+		ELSE
+			;運動能力Lv5以上
+			SIF ABL:MASTER:運動能力 >= 5
+				PRINTFORM 卓越した
+			PRINTFORM 運動能力を十全に発揮し、
+		ENDIF
+		PRINTFORMW 勝利に導いた。
+	;運動能力Lv2以上
+	ELSEIF ABL:MASTER:運動能力 >= 2
+		PRINTFORM %CALLNAME:MASTER%は
+		;臆病
+		IF TALENT:MASTER:度胸 == -1
+			PRINTFORM 飛んでくるボールに怯えてのミスもあったが、
+		;人間不信
+		ELSEIF TALENT:MASTER:性別嗜好 == 3
+			PRINTFORM 無意識に相手との接触を避けしまうが故のミスもあったが、
+		ELSE
+			PRINTFORM 時間いっぱい動き回り、
+		ENDIF
+		PRINTFORMW それなりにチームに貢献した。
+	ELSE
+		IF RAND:2 == 0
+			PRINTFORM 勝利は出来なかったが、
+		ELSE
+			PRINTFORM 勝率は低かったが、
+		ENDIF
+		PRINTFORMW 時間いっぱい、体を動かした。
+	ENDIF
+;屋内の温水プール、ということで何月でも対応。月に対応させるなら、７〜８月でしょうか。
+ELSEIF LOCAL == 1
+	PRINTFORMW 水泳だ。
+	;媚薬効果発動中
+	IF TEQUIP:MASTER:媚薬
+		PRINTFORMW 媚薬で火照った体に、冷たい水の感覚が心地いい…
+	;利尿剤効果発動中
+	ELSEIF TEQUIP:MASTER:利尿剤
+		PRINTFORMW 利尿剤に侵された身では、あまり激しく動くわけにはいかない…
+	ELSE
+		PRINTFORM 時間いっぱい、
+		IF RAND:2 == 0
+			PRINTFORM 水の感触
+		ELSE
+			PRINTFORM 水泳
+		ENDIF
+		PRINTFORMW を楽しんだ。
+	ENDIF
+ELSE
+	PRINTFORMW マラソンだ。
+	;上半身下着なし
+	IF TEQUIP:MASTER:上半身下着 == 0
+		;女性器あり（女性）
+		SIF TALENT:MASTER:性別 & 1
+			PRINTFORM ノーブラの
+		;絶壁 or (オトコ＋並乳)
+		IF TALENT:MASTER:バストサイズ == -2 || (TALENT:MASTER:性別 == 2 && TALENT:MASTER:バストサイズ == 0)
+			PRINTFORM 胸の先端が、走るたびに
+		ELSE
+			PRINTFORM 乳房が走るたびに揺れ、乳首が
+		ENDIF
+		PRINTFORML 体操服の裏地に擦れる。
+		;Ｂ感覚Lv4以上
+		IF ABL:MASTER:Ｂ感覚 >= 4
+			PRINTFORMW 断続的に伝わる快楽の電撃に膝をガクつかせながら、%CALLNAME:MASTER%は必死で走り続けた…
+		;Ｂ感覚Lv2以上 or Ｂ敏感
+		ELSEIF ABL:MASTER:Ｂ感覚 >= 2 || TALENT:MASTER:Ｂ感度 == 1
+			PRINTFORMW その刺激に次第に乳首が勃起し、服の下で自己主張を始めた…
+		ELSE
+			PRINTFORMW 疼痛に眉を顰めながら、%CALLNAME:MASTER%は走ることに没頭した。
+		ENDIF
+	ELSE
+		PRINTFORMW 時間いっぱい走らされ続け、もうヘトヘトだ…
+	ENDIF
+ENDIF
+ENDSELECT
+M:101 = 1

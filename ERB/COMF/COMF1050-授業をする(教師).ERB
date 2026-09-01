@@ -1,0 +1,53 @@
+﻿;=================================================
+; 教師の勤務コマンド「授業をする」（身分システム：教師 cflag:仕事==1）
+; 生徒版「授業を受ける」(COMF1001)と対になる、教える側の労働コマンド。
+; 労働のステータス変動・給料計算はアルバイト(COMF1005)を雛形にする。
+; 身分別の勤務コマンドは 1050 番台に集約する（COM_CATEGORYで日常行動に分類）。
+;=================================================
+@XCOM_ABLE1050(ARG)
+;教師専用・教室・平日6-16時。条件はすべて中央テーブル（COM_PROFILE.ERB）で宣言
+;（身分はUSERCOMの一元フィルタが除外。場所・時間はここでヘルパを参照）
+SIF !COM_PLACE_OK(1050) || !COM_TIME_OK(1050)
+	RETURN 0
+RETURN GLOBAL_COMABLE(1050)
+
+@XCOM1050(ARG)
+VARSET LOCAL
+PRINTL
+PRINTFORML %"=" * 107%
+PRINTL 授業
+;午前は12:30まで、午後は16:00まで拘束し、出勤(出席)ビットを立てる
+IF TIME < 750
+	CFLAG:MASTER:待機時間 = 750 - TIME
+	SETBIT CFLAG:MASTER:出席,0
+ELSE
+	CFLAG:MASTER:待機時間 = 960 - TIME
+	SETBIT CFLAG:MASTER:出席,1
+ENDIF
+;教える労働：体力・気力を消耗する（DOWNBASEの符号はアルバイト(COMF1005)に準拠）
+DOWNBASE:ARG:体力 += CFLAG:ARG:待機時間 * 25 / 60
+DOWNBASE:ARG:気力 += CFLAG:ARG:待機時間 * 30 / 60
+DOWNBASE:ARG:疲労 -= CFLAG:ARG:待機時間 * 30 / 60
+DOWNBASE:ARG:ストレス -= CFLAG:ARG:待機時間 * 20 / 60
+;教壇に立つほど生徒からの信頼(評判)が上がり、学識と話術が磨かれる
+BASE:ARG:評判 += CFLAG:ARG:待機時間 / 8
+EXP:ARG:学習経験 += CFLAG:ARG:待機時間 * 2 / 60
+EXP:ARG:接客経験 += CFLAG:ARG:待機時間 / 60
+;給料：接客技能+10%/LV・教養+5%/LVで補正した時給1500円相当。M:103に控え描写側(COM_MESSAGE_1050)で表示
+LOCAL:1 = 100 + ABL:ARG:接客技能 * 10 + ABL:ARG:教養 * 5
+LOCAL = CFLAG:ARG:待機時間 * 1500 / 60 * LOCAL:1 / 100
+MONEY:ARG += LOCAL
+M:103 = LOCAL
+;授業中イベント誘発フラグ（生徒版と共通。EVENTCOMENDでJYUGYOUを呼ぶ）
+J:151 = 1
+M:101 = 0
+RETURN 1
+
+;授業結果の地の文（給料表示。獲得経験はSOURCE_CHECK_2が自動表示する）
+@COM_MESSAGE_1050
+SIF M:101 == 1
+	RETURN 0
+PRINTL
+PRINTL あなたは教壇に立ち、生徒たちに授業を行った。
+PRINTFORML 今日の給料 +%金額(M:103)%円
+M:101 = 1

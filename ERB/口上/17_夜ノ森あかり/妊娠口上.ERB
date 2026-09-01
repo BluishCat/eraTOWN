@@ -1,0 +1,79 @@
+﻿;================================================
+; 夜ノ森あかり（キャラ番号 17）の妊娠・出産口上
+; 状況：1危険日 2妊娠中 3発覚 4陣痛開始 5出産 6陣痛激化 7いきみ 8破水
+;================================================
+
+;@妊娠口上_1_17(ARG,ARG:1)
+;;危険日の中出し
+;PRINTFORMW %CALLNAME:ARG%「（危険日の中出しの台詞）」
+;RETURN
+;@妊娠口上_2_17(ARG,ARG:1)
+;;妊娠中の中出し
+;PRINTFORMW %CALLNAME:ARG%「（妊娠中の中出しの台詞）」
+;RETURN
+@妊娠口上_3_17(ARG,ARG:1)
+;妊娠発覚
+SELECTCASE RAND(3)
+	CASE 0
+		PRINTFORMW %CALLNAME:ARG%「まじ！？　あたし妊娠してんの！？」
+	CASE 1
+		PRINTFORMW %CALLNAME:ARG%「記録止まってると思ったら……そういうことかー！」
+	CASEELSE
+		PRINTFORMW %CALLNAME:ARG%「うぇ、ほんとだ……あたしのお腹に……！」
+ENDSELECT
+RETURN
+@妊娠口上_4_17(ARG,ARG:1)
+;陣痛・破水
+SELECTCASE RAND(3)
+	CASE 0
+		PRINTFORMW %CALLNAME:ARG%「うぉ……っ、これが陣痛か……！　走るより、キツい……！」
+	CASE 1
+		PRINTFORMW %CALLNAME:ARG%「はぁはぁ……ラストスパート……っ！」
+	CASEELSE
+		PRINTFORMW %CALLNAME:ARG%「ぐぬぬ……根性だ、根性ぉ……！」
+ENDSELECT
+RETURN
+@妊娠口上_5_17(ARG,ARG:1)
+;出産
+SELECTCASE RAND(3)
+	CASE 0
+		PRINTFORMW %CALLNAME:ARG%「はぁ……はぁ……ゴールっ……！　産まれたぁ……！」
+	CASE 1
+		PRINTFORMW %CALLNAME:ARG%「やった、自己ベスト更新……なんてね！」
+	CASEELSE
+		PRINTFORMW %CALLNAME:ARG%「ちっちゃ……あたしより速く走れるかな、へへ。」
+ENDSELECT
+RETURN
+@妊娠口上_6_17(ARG,ARG:1)
+;陣痛激化
+SELECTCASE RAND(2)
+	CASE 0
+		PRINTFORMW %CALLNAME:ARG%「うぉぉ……ペース上がってきた……！」
+	CASEELSE
+		PRINTFORMW %CALLNAME:ARG%「はぁはぁ……ラストスパートかっ……！」
+ENDSELECT
+RETURN
+@妊娠口上_7_17(ARG,ARG:1)
+;いきみ
+SELECTCASE RAND(2)
+	CASE 0
+		PRINTFORMW %CALLNAME:ARG%「ふんぬぬ……いっけぇ……！」
+	CASEELSE
+		PRINTFORMW %CALLNAME:ARG%「根性ぉ……そーれっ……！」
+ENDSELECT
+RETURN
+@妊娠口上_8_17(ARG,ARG:1)
+;破水
+SELECTCASE RAND(2)
+	CASE 0
+		PRINTFORMW %CALLNAME:ARG%「うぉっ！？　なんか出た……これ破水！？　スタートだ！」
+	CASEELSE
+		PRINTFORMW %CALLNAME:ARG%「うわぁ濡れた……！　よし、いよいよだ……！」
+ENDSELECT
+RETURN
+
+@妊娠口上_9_17(ARG,ARG:1)
+;多胎に気づく（驚き）
+TSTR:(FLAG:口上候補数++) = %CALLNAME:ARG%「えぇ!?　まだ産まれるって……!?　ダブルヘッダーかよ……!」
+TSTR:(FLAG:口上候補数++) = %CALLNAME:ARG%「うそ、双子!?　二人まとめてゴールだぁ……!」
+RETURN

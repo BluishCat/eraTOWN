@@ -1,0 +1,435 @@
+﻿;================================================
+; Hシーンの継続状態（挿入・キス・体位・器具挿入）の表示と個別解除
+;  erablue_resort 風に、保持中の状態をタグ＋[解除ボタン]で一覧表示する。
+;  ・@H状態表示    ：INFO.ERB @SHOW_STATUS の調教中ブランチから呼ぶ
+;  ・@XCOM991 引き抜く / @XCOM992 キスをやめる / @XCOM993 器具を抜く
+;  状態格納：TCVAR:挿入(29)/被挿入(35)/キス中(36)/現在体位(37)
+;           器具は TEQUIP:膣(==1 バイブ) / TEQUIP:アナル(==60-62 アナルバイブ類)
+;================================================
+
+;------------------------------------------------
+; H中の継続状態を1行ずつ、えっち色のタグ＋解除ボタンで表示
+; ARG＝表示対象（通常 MASTER）。行為対象が居ないときは何も出さない
+;------------------------------------------------
+@H状態表示(ARG)
+#DIM 相手
+#DIM 部位
+#DIM 体位
+相手 = TCVAR:ARG:行為対象
+SIF !相手
+	RETURN
+;体位はNPC側記録も拾い、「させる」系も基本体位名(正常位等)に正規化して表示する
+体位 = 体位正規化(現在体位取得(ARG))
+SETCOLOR 255,150,200
+;生身の挿入（ARGが攻め＝挿入 / ARGが受け＝被挿入。部位は 1=膣 / 2=アナル）
+IF TCVAR:ARG:挿入
+	PRINTFORM 　[%CALLNAME:ARG%は%CALLNAME:相手%の
+	IF TCVAR:ARG:挿入 == 2
+		PRINT アナル
+	ELSE
+		PRINT 膣
+	ENDIF
+	PRINT に
+	SIF 体位 > 0
+		PRINTFORM %TRAINNAME:体位%で
+	PRINTFORM 挿入し結合中 %UNICODE(0x2665)%]
+	PRINTBUTTON "[✕]", 991
+	PRINTL
+ELSE
+	;アナル受けは被挿入フラグが立たないため、相手の挿入値から部位を復元する
+	部位 = 生身被挿入部位(ARG)
+	IF 部位
+		PRINTFORM 　[%CALLNAME:ARG%は%CALLNAME:相手%に
+		SIF 体位 > 0
+			PRINTFORM %TRAINNAME:体位%で
+		IF 部位 == 2
+			PRINT アナル
+		ELSE
+			PRINT 膣
+		ENDIF
+		PRINTFORM を貫かれている %UNICODE(0x2665)%]
+		PRINTBUTTON "[✕]", 991
+		PRINTL
+	ENDIF
+ENDIF
+;器具挿入（バイブ=膣1 / アナルバイブ類=アナル60-62）。ARG・相手の両側を表示
+CALL H器具行表示(ARG)
+CALL H器具行表示(相手)
+;キス
+IF TCVAR:ARG:キス中
+	PRINTFORM 　[%CALLNAME:ARG%は%CALLNAME:相手%とキス中 %UNICODE(0x2665)%]
+	PRINTBUTTON "[✕]", 992
+	PRINTL
+ENDIF
+RESETCOLOR
+RETURN
+
+;------------------------------------------------
+; 指定キャラの膣・アナルに挿入された器具を1行ずつ表示（[抜く]ボタン付き）
+;------------------------------------------------
+@H器具行表示(ARG)
+;膣・アナルそれぞれ、対象(自分MASTER/相手)ごとに別コマンドで1つだけ抜く
+IF TEQUIP:ARG:膣 == 1
+	PRINTFORM 　[%CALLNAME:ARG%の膣に%ITEMNAME:(TEQUIP:ARG:膣)%が挿入中 %UNICODE(0x2665)%]
+	IF ARG == MASTER
+		PRINTBUTTON "[✕]", 993
+	ELSE
+		PRINTBUTTON "[✕]", 987
+	ENDIF
+	PRINTL
+ENDIF
+IF TEQUIP:ARG:アナル == 60 || TEQUIP:ARG:アナル == 61 || TEQUIP:ARG:アナル == 62
+	PRINTFORM 　[%CALLNAME:ARG%のアナルに%ITEMNAME:(TEQUIP:ARG:アナル)%が挿入中 %UNICODE(0x2665)%]
+	IF ARG == MASTER
+		PRINTBUTTON "[✕]", 994
+	ELSE
+		PRINTBUTTON "[✕]", 988
+	ENDIF
+	PRINTL
+ENDIF
+RETURN
+
+;================================================
+; 引き抜く（生身の挿入を解除）
+;================================================
+@XCOM_ABLE991(ARG)
+SIF !TCVAR:MASTER:行為対象
+	RETURN 0
+;アナル受けは被挿入フラグが立たないため、部位復元関数で受け側も判定する
+SIF !TCVAR:MASTER:挿入 && !生身被挿入部位(MASTER)
+	RETURN 0
+RETURN GLOBAL_COMABLE(991)
+
+@XCOM991(ARG)
+#DIM 相手
+相手 = TCVAR:MASTER:行為対象
+PRINTL
+PRINTFORML %"=" * 107%
+IF TCVAR:MASTER:挿入
+	PRINTFORMW %CALLNAME:MASTER%は%CALLNAME:相手%の中から、ゆっくりと引き抜いた。
+	SIF CFLAG:相手:膣内精液 > 0 || CFLAG:相手:肛内精液 > 0
+		PRINTFORMW %CALLNAME:相手%の奥から、こぼれた精液がとろりと垂れ落ちた…
+	TCVAR:MASTER:挿入 = 0
+	TCVAR:相手:被挿入 = 0
+ELSE
+	PRINTFORMW %CALLNAME:相手%が、%CALLNAME:MASTER%の中からゆっくりと引き抜いた。
+	SIF CFLAG:MASTER:膣内精液 > 0 || CFLAG:MASTER:肛内精液 > 0
+		PRINTFORMW %CALLNAME:MASTER%の奥から、こぼれた精液がとろりと垂れ落ちた…
+	TCVAR:MASTER:被挿入 = 0
+	TCVAR:相手:挿入 = 0
+ENDIF
+;体位も解除（NPC側にも記録されるため相手側もクリア）
+TCVAR:MASTER:現在体位 = 0
+TCVAR:相手:現在体位 = 0
+CFLAG:MASTER:待機時間 += 1
+RETURN 1
+
+;================================================
+; キスをやめる
+;================================================
+@XCOM_ABLE992(ARG)
+SIF !TCVAR:MASTER:行為対象
+	RETURN 0
+SIF !TCVAR:MASTER:キス中
+	RETURN 0
+RETURN GLOBAL_COMABLE(992)
+
+@XCOM992(ARG)
+#DIM 相手
+相手 = TCVAR:MASTER:行為対象
+PRINTL
+PRINTFORML %"=" * 107%
+PRINTFORMW %CALLNAME:MASTER%は%CALLNAME:相手%とのキスを、そっと解いた。
+TCVAR:MASTER:キス中 = 0
+RETURN 1
+
+;================================================
+; 器具を抜く（部位・対象を個別指定して1つだけ抜く）
+;  993=自分の膣器具 / 994=自分のアナル器具
+;  987=相手の膣器具 / 988=相手のアナル器具
+;================================================
+@XCOM_ABLE993(ARG)
+SIF TEQUIP:MASTER:膣 != 1
+	RETURN 0
+RETURN GLOBAL_COMABLE(993)
+@XCOM993(ARG)
+CALL 器具を抜く単体(MASTER, 0)
+CFLAG:MASTER:待機時間 += 1
+RETURN 1
+
+@XCOM_ABLE994(ARG)
+SIF !(TEQUIP:MASTER:アナル == 60 || TEQUIP:MASTER:アナル == 61 || TEQUIP:MASTER:アナル == 62)
+	RETURN 0
+RETURN GLOBAL_COMABLE(994)
+@XCOM994(ARG)
+CALL 器具を抜く単体(MASTER, 1)
+CFLAG:MASTER:待機時間 += 1
+RETURN 1
+
+@XCOM_ABLE987(ARG)
+SIF !TCVAR:MASTER:行為対象
+	RETURN 0
+SIF TEQUIP:(TCVAR:MASTER:行為対象):膣 != 1
+	RETURN 0
+RETURN GLOBAL_COMABLE(987)
+@XCOM987(ARG)
+CALL 器具を抜く単体(TCVAR:MASTER:行為対象, 0)
+CFLAG:MASTER:待機時間 += 1
+RETURN 1
+
+@XCOM_ABLE988(ARG)
+SIF !TCVAR:MASTER:行為対象
+	RETURN 0
+SIF !(TEQUIP:(TCVAR:MASTER:行為対象):アナル == 60 || TEQUIP:(TCVAR:MASTER:行為対象):アナル == 61 || TEQUIP:(TCVAR:MASTER:行為対象):アナル == 62)
+	RETURN 0
+RETURN GLOBAL_COMABLE(988)
+@XCOM988(ARG)
+CALL 器具を抜く単体(TCVAR:MASTER:行為対象, 1)
+CFLAG:MASTER:待機時間 += 1
+RETURN 1
+
+;------------------------------------------------
+; 指定キャラ(ARG)の指定スロット(ARG:1: 0=膣 / 1=アナル)の挿入器具を1つだけ抜く
+;------------------------------------------------
+@器具を抜く単体(ARG,ARG:1)
+PRINTL
+PRINTFORML %"=" * 107%
+IF ARG:1 == 0
+	SIF TEQUIP:ARG:膣 != 1
+		RETURN
+	PRINTFORMW %CALLNAME:ARG%の膣から%ITEMNAME:(TEQUIP:ARG:膣)%をずるりと引き抜いた。
+	TEQUIP:ARG:膣 = 0
+	TCVAR:ARG:被挿入 = 0
+ELSE
+	SIF !(TEQUIP:ARG:アナル == 60 || TEQUIP:ARG:アナル == 61 || TEQUIP:ARG:アナル == 62)
+		RETURN
+	PRINTFORMW %CALLNAME:ARG%のアナルから%ITEMNAME:(TEQUIP:ARG:アナル)%をずるりと引き抜いた。
+	TEQUIP:ARG:アナル = 0
+ENDIF
+RETURN
+
+;------------------------------------------------
+; ARGまたはその行為対象に挿入器具があるか（膣バイブ／アナルバイブ類）
+;------------------------------------------------
+@器具挿入あり(ARG)
+#FUNCTION
+#DIM 相手
+相手 = TCVAR:ARG:行為対象
+SIF TEQUIP:ARG:膣 == 1
+	RETURNF 1
+SIF TEQUIP:ARG:アナル == 60 || TEQUIP:ARG:アナル == 61 || TEQUIP:ARG:アナル == 62
+	RETURNF 1
+SIF 相手 && TEQUIP:相手:膣 == 1
+	RETURNF 1
+SIF 相手 && (TEQUIP:相手:アナル == 60 || TEQUIP:相手:アナル == 61 || TEQUIP:相手:アナル == 62)
+	RETURNF 1
+RETURNF 0
+
+;------------------------------------------------
+; ARGが生身で挿入されている部位を返す（0=なし / 1=膣 / 2=アナル）
+;  アナル受け側には被挿入フラグが立たないため、相手の挿入値(1=膣/2=アナル)を最優先で見る。
+;  被挿入は膣バイブ挿入(COMF44)でも立つので、器具装着中は生身扱いしない（EQUIP_CHECK側で処理済み）
+;------------------------------------------------
+@生身被挿入部位(ARG)
+#FUNCTION
+#DIM 相手
+相手 = TCVAR:ARG:行為対象
+SIF 相手 && TCVAR:相手:行為対象 == ARG && TCVAR:相手:挿入
+	RETURNF TCVAR:相手:挿入
+SIF TCVAR:ARG:被挿入 && TEQUIP:ARG:膣 != 1
+	RETURNF 1
+RETURNF 0
+
+;------------------------------------------------
+; ARGの口がキスで塞がっているか
+;  キス中フラグはMASTER側にのみ立つ（キスはMASTER関与時のみ状態化）ため、
+;  MASTERのキス相手（行為対象）から見た場合も塞がり扱いにする
+;------------------------------------------------
+@口キス中(ARG)
+#FUNCTION
+SIF TCVAR:ARG:キス中
+	RETURNF 1
+SIF TCVAR:MASTER:キス中 && TCVAR:MASTER:行為対象 == ARG
+	RETURNF 1
+RETURNF 0
+
+;------------------------------------------------
+; 体位コマンドIDを基本体位ID(60-71)へ正規化する（該当なしは0）
+;  NPC版(+2000)と「させる」系(100-110→60-70)を吸収。64/104は双方欠番で整合
+;------------------------------------------------
+@体位正規化(ARG)
+#FUNCTION
+#DIM 体位
+体位 = ARG % 2000
+SIF 体位 >= 100 && 体位 <= 119
+	体位 -= 40
+SIF 体位 < 60 || 体位 > 79
+	RETURNF 0
+RETURNF 体位
+
+;------------------------------------------------
+; ARGの現在体位（コマンドID）を取得
+;  現在体位はコマンド実行者側にのみ立つ（MASTER=USERCOM / NPC=XCOM2810・2820）ため、
+;  自分に無ければ相互に行為対象な相手側の記録をフォールバックで参照する
+;------------------------------------------------
+@現在体位取得(ARG)
+#FUNCTION
+#DIM 相手
+SIF TCVAR:ARG:現在体位
+	RETURNF TCVAR:ARG:現在体位
+相手 = TCVAR:ARG:行為対象
+SIF 相手 && TCVAR:相手:行為対象 == ARG
+	RETURNF TCVAR:相手:現在体位
+RETURNF 0
+
+;------------------------------------------------
+; ARGが背面系体位（後背位/背面座位/貝合わせ）の記録中か
+;  顔が届かないため、キス等の対面行為の不可判定に使う
+;------------------------------------------------
+@背面体位中(ARG)
+#FUNCTION
+#DIM 体位
+体位 = 体位正規化(現在体位取得(ARG))
+SIF 体位 == 61 || 体位 == 63 || 体位 == 68 || 体位 == 70 || 体位 == 71
+	RETURNF 1
+RETURNF 0
+
+;------------------------------------------------
+; 体位コマンド(ARG)が挿入器具と衝突するか
+;  ARG:1=行為者 / ARG:2=行為対象。受け側に膣バイブ(TEQUIP:膣==1)や
+;  アナルバイブ類(TEQUIP:アナル==60-62)が入ったままの体位は物理的に不可
+;  受け側：基本体位(60-71)=行為対象 / 「させる」系(100-110)=行為者
+;------------------------------------------------
+@体位器具衝突(ARG,ARG:1,ARG:2)
+#FUNCTION
+#DIM 体位
+#DIM 受け側
+体位 = 体位正規化(ARG)
+SIF !体位
+	RETURNF 0
+;貝合わせは両者の膣を使う
+IF 体位 == 71
+	SIF TEQUIP:(ARG:1):膣 == 1 || TEQUIP:(ARG:2):膣 == 1
+		RETURNF 1
+	RETURNF 0
+ENDIF
+受け側 = ARG:2
+SIF (ARG % 2000) >= 100 && (ARG % 2000) <= 119
+	受け側 = ARG:1
+;膣を使う体位×膣バイブ
+SIF (体位 == 60 || 体位 == 61 || 体位 == 65 || 体位 == 67 || 体位 == 68) && TEQUIP:受け側:膣 == 1
+	RETURNF 1
+;アナルを使う体位×アナルバイブ類
+SIF (体位 == 62 || 体位 == 63 || 体位 == 66 || 体位 == 69 || 体位 == 70) && (TEQUIP:受け側:アナル == 60 || TEQUIP:受け側:アナル == 61 || TEQUIP:受け側:アナル == 62)
+	RETURNF 1
+RETURNF 0
+
+;------------------------------------------------
+; ARG自身がH継続状態（挿入・被挿入・キス・器具挿入）にあるか
+;  TIME_COUNT の興奮度減衰スキップ用。器具挿入あり()と違い相手のTEQUIPは見ない
+;------------------------------------------------
+@H状態中(ARG)
+#FUNCTION
+SIF TCVAR:ARG:挿入 || TCVAR:ARG:被挿入 || TCVAR:ARG:キス中
+	RETURNF 1
+;キス中フラグは行為者(MASTER)側にのみ立つため、相手側から見た場合も拾う
+SIF TCVAR:ARG:行為対象 && TCVAR:(TCVAR:ARG:行為対象):キス中 && TCVAR:(TCVAR:ARG:行為対象):行為対象 == ARG
+	RETURNF 1
+SIF TEQUIP:ARG:膣 == 1
+	RETURNF 1
+SIF TEQUIP:ARG:アナル == 60 || TEQUIP:ARG:アナル == 61 || TEQUIP:ARG:アナル == 62
+	RETURNF 1
+RETURNF 0
+
+;================================================
+; H継続状態のターン経過効果（SOURCE_CHECK_1 から毎ターン呼ばれる）
+;  挿入中・被挿入中・キス中に、経過時間（自分の待機時間＝分）に応じて
+;  対応部位のソースを積む。強さは EQUIP_CHECK のバイブ装着中と同水準。
+;  器具（バイブ等）は EQUIP_CHECK 側で処理済みなのでここでは扱わない。
+;  呼び出し側で TFLAG:行為者 == ARG を保証（自分の行動ターンにのみ加算＝二重計上防止）
+;================================================
+@H状態継続ソース(ARG)
+#DIM 相手
+#DIM 分
+#DIM 部位
+相手 = TCVAR:ARG:行為対象
+SIF !相手
+	RETURN
+分 = CFLAG:ARG:待機時間
+SIF 分 <= 0
+	RETURN
+;攻め側：挿入したまま（1=膣/2=アナル）
+IF TCVAR:ARG:挿入
+	IF ARG == MASTER || 相手 == MASTER
+		IF TCVAR:ARG:挿入 == 2
+			PRINTFORML ＜結合中（アナル）＞（%CALLNAME:ARG%）
+		ELSE
+			PRINTFORML ＜結合中（膣）＞（%CALLNAME:ARG%）
+		ENDIF
+	ENDIF
+	DOWNBASE:ARG:体力 += 5
+	DOWNBASE:ARG:気力 += 10
+	SOURCE:ARG:快Ｃ += 100 * 分 / 10
+	SOURCE:ARG:欲情 += 30 * 分 / 10
+ENDIF
+;受け側：生身で挿入されたまま（相手の挿入値で膣/アナルを判別）
+部位 = 生身被挿入部位(ARG)
+IF 部位 == 1
+	SIF ARG == MASTER || 相手 == MASTER
+		PRINTFORML ＜挿入されたまま（膣）＞（%CALLNAME:ARG%）
+	DOWNBASE:ARG:体力 += 5
+	DOWNBASE:ARG:気力 += 10
+	SOURCE:ARG:快Ｖ += 150 * 分 / 10
+	SOURCE:ARG:欲情 += 30 * 分 / 10
+	;苦痛（Ｖ経験と潤滑で軽減。EQUIP_CHECKのバイブ処理の簡略版）
+	A = 20
+	IF EXP:ARG:0 >= EXPLV:4
+		A = 0
+	ELSEIF EXP:ARG:0 >= EXPLV:3
+		TIMES A , 0.10
+	ELSEIF EXP:ARG:0 >= EXPLV:2
+		TIMES A , 0.40
+	ENDIF
+	IF PALAM:ARG:4 < PALAMLV:1
+		TIMES A , 1.50
+	ELSEIF PALAM:ARG:4 >= PALAMLV:3
+		TIMES A , 0.20
+	ENDIF
+	SOURCE:ARG:苦痛 += A
+ELSEIF 部位 == 2
+	SIF ARG == MASTER || 相手 == MASTER
+		PRINTFORML ＜挿入されたまま（アナル）＞（%CALLNAME:ARG%）
+	DOWNBASE:ARG:体力 += 5
+	DOWNBASE:ARG:気力 += 15
+	SOURCE:ARG:快Ａ += 150 * 分 / 10
+	SOURCE:ARG:欲情 += 20 * 分 / 10
+	;苦痛・反感（Ａ経験と潤滑で軽減）
+	A = 60
+	B = 20
+	IF EXP:ARG:1 < EXPLV:1
+		TIMES A , 3.00
+		TIMES B , 2.00
+	ELSEIF EXP:ARG:1 < EXPLV:3
+		TIMES A , 1.00
+	ELSEIF EXP:ARG:1 < EXPLV:5
+		TIMES A , 0.40
+	ELSE
+		TIMES A , 0.20
+	ENDIF
+	IF PALAM:ARG:4 < PALAMLV:1
+		TIMES A , 1.50
+		TIMES B , 1.50
+	ELSEIF PALAM:ARG:4 >= PALAMLV:3
+		TIMES A , 0.30
+	ENDIF
+	SOURCE:ARG:苦痛 += A
+	SOURCE:ARG:反感 += B
+ENDIF
+;キス中（フラグは行為者=MASTER側のみに立つため、相手側から見た場合も拾って双方に加算）
+IF TCVAR:ARG:キス中 || (TCVAR:相手:キス中 && TCVAR:相手:行為対象 == ARG)
+	SIF ARG == MASTER || 相手 == MASTER
+		PRINTFORML ＜キス中＞（%CALLNAME:ARG%）
+	SOURCE:ARG:情愛 += 50 * 分 / 10
+	SOURCE:ARG:欲情 += 15 * 分 / 10
+ENDIF
+RETURN

@@ -1,0 +1,43 @@
+﻿;[入浴][シャワー]
+
+@XCOM_ABLE1008(ARG)
+;自宅、NPCの家、部室棟、ラブホテル、寮、プロレス事務所、銭湯以外は不可（場所の一覧は COMMON.ERB @浴場か）
+;ラブホテルは当日の休憩料金支払済（TCVAR:ホテル利用権、ROOM_IN_OUT.ERB @ラブホ受付）のみ可
+;銭湯は当日の入浴料支払済（TCVAR:銭湯利用権、銭湯.ERB @銭湯受付）のみ可
+SIF (CFLAG:MASTER:現在地区 == 2 && CFLAG:MASTER:現在位置 == 22 && !TCVAR:MASTER:ホテル利用権)
+	RETURN 0
+SIF (CFLAG:MASTER:現在地区 == 0 && CFLAG:MASTER:現在位置 == 10 && !TCVAR:MASTER:銭湯利用権)
+	RETURN 0
+SIF !(IS_MASTER_HOME() | 浴場か(CFLAG:MASTER:現在地区, CFLAG:MASTER:現在位置))
+	RETURN 0
+RETURN GLOBAL_COMABLE(1008)
+
+@XCOM1008(ARG)
+PRINTL
+PRINTFORML %"=" * 107%
+
+;入浴の効果本体（COMMON.ERB。銭湯のメニューからも同じ関数を呼ぶ）
+CALL 入浴効果(MASTER)
+CFLAG:MASTER:待機時間 = 60
+
+FOR LOCAL,2,CHARANUM
+	SIF !TCVAR:LOCAL:同室 || CFLAG:LOCAL:睡眠 || CFLAG:LOCAL:衰弱
+		CONTINUE
+	TA:LOCAL:1:0 += 5
+NEXT
+I = 0
+J:102 = RAND(CHARANUM - 2)
+J:102 += 2
+	IF CFLAG:(J:102):睡眠
+		PRINTFORMW %CALLNAME:(J:102)%は寝ている
+	ELSEIF CFLAG:(J:102):衰弱
+		PRINTFORMW %CALLNAME:(J:102)%は衰弱している
+	ELSEIF TA:(J:102):1:4 <= 100
+		PRINTFORMW %CALLNAME:(J:102)%は%CALLNAME:1%とやりたくないようだ
+	ELSEIF TA:(J:102):1:0 <= 200
+		PRINTFORMW %CALLNAME:(J:102)%は%CALLNAME:1%ではたたないようだ
+	ELSE
+	I = J:102
+	ENDIF
+M:101 = 0
+RETURN 1

@@ -1,0 +1,69 @@
+﻿@XCOM_ABLE1007(ARG)
+;安全な場所では必ず実行できる
+;それ以外の場所では自慰中毒か、よほど欲情の値が大きくないと実行できない
+;どこが「安全な場所」なのかはあとで考えることにする
+;現状は自宅のみ
+IF !IS_MASTER_HOME()
+	SIF ABL:MASTER:自慰中毒 < 2 || BASE:MASTER:興奮度 < 5
+		RETURN 0
+ENDIF
+RETURN GLOBAL_COMABLE(1007)
+
+
+
+@XCOM1007(ARG)
+PRINTL 
+PRINTFORML %"=" * 107%
+;オナニー
+
+;時間経過は20分以内とする
+;20分以上オナニーしつづけるとかダイナミックオナニー過ぎる…
+CFLAG:MASTER:待機時間 = RAND:20 +1
+
+DOWNBASE:MASTER:体力 += 5
+DOWNBASE:MASTER:気力 += 50
+;;;20120717 追加　自慰終了時にMAX体力＋３
+MAXBASE:MASTER:体力 += 3
+
+SOURCE:MASTER:快Ｃ = 80
+SOURCE:MASTER:快Ｂ = 80
+SOURCE:MASTER:性行動 = 100
+
+
+;経験があればＶやＡもいじる
+SIF EXP:MASTER:Ｖ経験
+	SOURCE:MASTER:快Ｖ = 80
+SIF EXP:MASTER:Ａ経験
+	SOURCE:MASTER:快Ａ = 80
+
+;場所が自宅でなければ露出のソースが加わり、逸脱と恐怖も増える
+IF !IS_MASTER_HOME()
+	SOURCE:MASTER:露出 = 500
+	SOURCE:MASTER:逸脱 = 300
+	SOURCE:MASTER:恐怖 = 200
+
+ENDIF
+;オナニーがしたくてしょうがなかったなら鬱屈も少し減る
+;ストレス発散だ！
+;どういう状態がオナニーしたくてしょうがないのかは考えよう
+;現状では取りあえず興奮度が高いとよし。
+;IF BASE:MASTER:興奮度 >= 4
+;	SOURCE:MASTER:鬱屈 = -(RAND:10)
+;	SIF SOURCE:MASTER:鬱屈 < 0
+;		SOURCE:MASTER:鬱屈 = 0
+;ENDIF
+
+;抑圧、抵抗持ちには、鬱屈ソース追加
+SIF TALENT:MASTER:自己愛 == -1 || TALENT:MASTER:抵抗
+	SOURCE:MASTER:鬱屈 = 30
+
+;経験を増やす
+EXP:MASTER:自慰経験 += 3
+M:101 = 0
+
+;;;	支配度に＋２
+CALL 支配度加算(ARG, 5)
+SIF CFLAG:MASTER:現在地区 != 0 && CFLAG:MASTER:現在位置 != 1
+	BASE:ARG:評判 -= 10
+
+RETURN 1

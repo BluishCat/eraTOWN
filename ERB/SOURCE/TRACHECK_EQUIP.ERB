@@ -1,0 +1,549 @@
+﻿@EQUIP_CHECK(ARG)
+
+;あなたでないキャラクタはチェックしない
+;SIF ARG != MASTER
+;	RETURN 0
+VARSET LOCAL
+
+IF TFLAG:行為者 == ARG
+	LOCAL:2 = CFLAG:ARG:待機時間
+ELSE
+	LOCAL:2 = CFLAG:(TCVAR:ARG:行為対象):待機時間
+ENDIF
+;他のキャラがまだ服を着ていないので暫定処理
+IF ARG == MASTER
+;--------------------------------------------------
+;服装の刺激度によるソース
+;--------------------------------------------------
+LOCAL:1 = 10
+SIF IS_MASTER_HOME()
+	LOCAL:1 = 100
+IF BASE:ARG:刺激度 > 600
+	SOURCE:ARG:露出 += (BASE:ARG:刺激度 - 600) * LOCAL:2 / LOCAL:1
+	SIF !IS_MASTER_HOME()
+		BASE:ARG:評判 = LIMIT(BASE:ARG:評判 - ((BASE:ARG:刺激度 - 600) * LOCAL:2 / 50),0,1000)
+ENDIF
+SIF BASE:ARG:刺激度 > 700
+	SOURCE:ARG:逸脱 += (BASE:ARG:刺激度 - 700) * LOCAL:2 * 2 / LOCAL:1
+SIF BASE:ARG:内部刺激度 > 600
+	SOURCE:ARG:欲情 += (BASE:ARG:内部刺激度 - 600) * LOCAL:2 * ABL:ARG:露出癖 / LOCAL:1
+ENDIF
+;---------------------------------------------------
+;各種器具装着（TEQUIPによって管理されるもので、服でないもの）によるソース
+;媚薬や利尿剤などもここ
+;---------------------------------------------------
+
+;クリキャップとローター装着中
+;性能の差はない
+IF (TFLAG:行為者 == ARG) && (TEQUIP:ARG:クリトリス == 40 || TEQUIP:ARG:クリトリス == 41)
+	SIF ARG == 1 || TCVAR:ARG:行為対象 == 1
+		PRINTFORML ＜%ITEMNAME:(TEQUIP:ARG:クリトリス)%着用中＞（%CALLNAME:ARG%）
+	;消費体力、気力
+	DOWNBASE:ARG:体力 += 5
+	DOWNBASE:ARG:気力 += 10
+
+	SOURCE:ARG:快Ｃ += 100 * LOCAL:2 / 10
+	SOURCE:ARG:露出 += 20 * LOCAL:2 / 10
+	SOURCE:ARG:逸脱 += 30 * LOCAL:2 / 10
+	SOURCE:ARG:反感 += 30 * LOCAL:2 / 10
+	
+	EXP:ARG:道具使用経験++
+
+ENDIF
+
+;オナホール装着中
+IF (TFLAG:行為者 == ARG) && (TEQUIP:ARG:クリトリス == 80)
+	SIF ARG == 1 || TCVAR:ARG:行為対象 == 1
+		PRINTFORML ＜オナホール着用中＞（%CALLNAME:ARG%）
+	;消費体力、気力
+	DOWNBASE:ARG:体力 += 5
+	DOWNBASE:ARG:気力 += 20
+
+	SOURCE:ARG:快Ｃ += 100 * LOCAL:2 / 10
+	SOURCE:ARG:露出 += 10 * LOCAL:2 / 10
+	SOURCE:ARG:逸脱 += 15 * LOCAL:2 / 10
+	SOURCE:ARG:反感 += 15 * LOCAL:2 / 10
+	
+	EXP:ARG:道具使用経験++
+ENDIF
+
+;バイブ装着中
+IF (TFLAG:行為者 == ARG) && (TEQUIP:ARG:膣 == 1)
+	SIF ARG == 1 || TCVAR:ARG:行為対象 == 1
+		PRINTFORML ＜バイブ着用中＞（%CALLNAME:ARG%）
+	DOWNBASE:ARG:体力 += 5
+	DOWNBASE:ARG:気力 += 20
+
+	SOURCE:ARG:快Ｖ += 125 * LOCAL:2 / 10
+	SOURCE:ARG:逸脱 += 30 * LOCAL:2 / 10
+	SOURCE:ARG:露出 += 25 * LOCAL:2 / 10
+	;-------------------------------------------------
+	;特殊ソース処理
+	;-------------------------------------------------
+	;抑圧、抵抗持ちには、抑鬱ソース追加
+	SIF TALENT:ARG:自己愛 == -1 || TALENT:ARG:抵抗
+		SOURCE:ARG:鬱屈 += 20
+	;Vへの苦痛は先に処理しておく
+	;EXP:Ｖ経験をみる（処女はありえない）
+	A = 25
+	B = 20
+	IF EXP:ARG:0 < EXPLV:2
+		TIMES A , 0.80
+		TIMES B , 1.20
+	ELSEIF EXP:ARG:0 < EXPLV:3
+		TIMES A , 0.40
+	ELSEIF EXP:ARG:0 < EXPLV:4
+		TIMES A , 0.10
+	ELSEIF EXP:ARG:0 < EXPLV:5
+		TIMES A , 0.00
+	ELSEIF EXP:ARG:0 >= EXPLV:5
+		TIMES A , 0.00
+	ENDIF
+	
+	;PALAM:潤滑をみる
+	IF PALAM:ARG:4 < PALAMLV:1
+		TIMES A , 1.20
+		TIMES B , 1.50
+	ELSEIF PALAM:ARG:4 < PALAMLV:2
+		TIMES A , 0.70
+		TIMES B , 1.20
+	ELSEIF PALAM:ARG:4 < PALAMLV:3
+		TIMES A , 0.40
+	ELSEIF PALAM:ARG:4 < PALAMLV:4
+		TIMES A , 0.10
+	ELSEIF PALAM:ARG:4 >= PALAMLV:4
+		TIMES A , 0.10
+	ENDIF
+	SOURCE:ARG:苦痛 += A
+	SOURCE:ARG:反感 += B
+
+	EXP:ARG:道具使用経験++
+
+ENDIF
+
+;アナルバイブ装着中
+IF (TFLAG:行為者 == ARG) && (TEQUIP:ARG:アナル == 60 || TEQUIP:ARG:アナル == 62)
+	SIF ARG == 1 || TCVAR:ARG:行為対象 == 1
+		PRINTFORML ＜%ITEMNAME:(TEQUIP:ARG:アナル)%着用中＞（%CALLNAME:ARG%）
+	DOWNBASE:ARG:体力 += 5
+	DOWNBASE:ARG:気力 += 20
+
+	SOURCE:ARG:快Ａ += 200 * LOCAL:2 / 10
+	SOURCE:ARG:苦痛 += 100 * LOCAL:2 / 10
+	SOURCE:ARG:露出 += 25 * LOCAL:2 / 10
+	SOURCE:ARG:逸脱 += 25 * LOCAL:2 / 10
+	SOURCE:ARG:反感 += 25 * LOCAL:2 / 10
+
+	;-------------------------------------------------
+	;特殊ソース処理
+	;-------------------------------------------------
+	;抑圧、抵抗持ちには、抑鬱ソース追加
+	SIF TALENT:ARG:自己愛 == -1 || TALENT:ARG:抵抗
+		SOURCE:ARG:鬱屈 += 35
+	;Aへの苦痛は先に処理しておく
+	;EXP:Ａ経験をみる
+	A = 100
+	B = 40
+	IF EXP:ARG:1 < EXPLV:1
+		TIMES A , 3.00
+		TIMES B , 3.00
+	ELSEIF EXP:ARG:1 < EXPLV:2
+		TIMES A , 1.20
+		TIMES B , 2.00
+	ELSEIF EXP:ARG:1 < EXPLV:3
+		TIMES A , 0.80
+		TIMES B , 1.50
+	ELSEIF EXP:ARG:1 < EXPLV:4
+		TIMES A , 0.60
+		TIMES B , 1.20
+	ELSEIF EXP:ARG:1 < EXPLV:5
+		TIMES A , 0.40
+	ELSEIF EXP:ARG:1 >= EXPLV:5
+		TIMES A , 0.20
+	ENDIF
+
+	;PALAM:潤滑をみる
+	IF PALAM:ARG:4 < PALAMLV:1
+		TIMES A , 1.20
+		TIMES B , 2.00
+	ELSEIF PALAM:ARG:4 < PALAMLV:2
+		TIMES A , 1.00
+		TIMES B , 1.50
+	ELSEIF PALAM:ARG:4 < PALAMLV:3
+		TIMES A , 0.60
+	ELSEIF PALAM:ARG:4 < PALAMLV:4
+		TIMES A , 0.30
+	ELSEIF PALAM:ARG:4 >= PALAMLV:4
+		TIMES A , 0.20
+	ENDIF
+	SOURCE:ARG:苦痛 += A
+	SOURCE:ARG:反感 += B
+
+	EXP:ARG:道具使用経験++
+
+ENDIF
+;アナルビーズ使用中
+
+IF (TFLAG:行為者 == ARG) && (TEQUIP:ARG:アナル == 61)
+	SIF ARG == 1 || TCVAR:ARG:行為対象 == 1
+		PRINTFORML ＜アナルビーズ着用中＞（%CALLNAME:ARG%）
+	DOWNBASE:ARG:体力 += 5
+	DOWNBASE:ARG:気力 += 40
+
+	SOURCE:ARG:快Ａ += 75 * LOCAL:2 / 10
+	SOURCE:ARG:露出 += 25 * LOCAL:2 / 10
+	SOURCE:ARG:屈従 += 25 * LOCAL:2 / 10
+	SOURCE:ARG:逸脱 += 25 * LOCAL:2 / 10
+	;-------------------------------------------------
+	;特殊ソース処理
+	;-------------------------------------------------
+	;抑圧、抵抗持ちには、抑鬱ソース追加
+	SIF TALENT:ARG:自己愛 == -1 || TALENT:ARG:抵抗
+		SOURCE:ARG:鬱屈 = 30
+	;Aへの苦痛は先に処理しておく
+	;EXP:Ａ経験をみる
+	A = 100
+	B = 25
+	IF EXP:ARG:1 < EXPLV:1
+		TIMES A , 3.00
+		TIMES B , 3.00
+	ELSEIF EXP:ARG:1 < EXPLV:2
+		TIMES A , 1.20
+		TIMES B , 2.00
+	ELSEIF EXP:ARG:1 < EXPLV:3
+		TIMES A , 0.80
+		TIMES B , 1.50
+	ELSEIF EXP:ARG:1 < EXPLV:4
+		TIMES A , 0.60
+		TIMES B , 1.20
+	ELSEIF EXP:ARG:1 < EXPLV:5
+		TIMES A , 0.40
+	ELSEIF EXP:ARG:1 >= EXPLV:5
+		TIMES A , 0.20
+	ENDIF
+
+	;PALAM:潤滑をみる
+	IF PALAM:ARG:4 < PALAMLV:1
+		TIMES A , 1.20
+		TIMES B , 2.00
+	ELSEIF PALAM:ARG:4 < PALAMLV:2
+		TIMES A , 1.00
+		TIMES B , 1.50
+	ELSEIF PALAM:ARG:4 < PALAMLV:3
+		TIMES A , 0.60
+	ELSEIF PALAM:ARG:4 < PALAMLV:4
+		TIMES A , 0.30
+	ELSEIF PALAM:ARG:4 >= PALAMLV:4
+		TIMES A , 0.20
+	ENDIF
+	SOURCE:ARG:苦痛 += A
+	SOURCE:ARG:反感 += B
+
+	
+	EXP:ARG:道具使用経験++
+ENDIF
+
+;二プルキャップ装着中
+
+IF (TFLAG:行為者 == ARG) && (TEQUIP:ARG:胸)
+	SIF ARG == 1 || TCVAR:ARG:行為対象 == 1
+		PRINTFORML ＜%ITEMNAME:(TEQUIP:ARG:胸)%着用中＞（%CALLNAME:ARG%）
+	DOWNBASE:ARG:体力 += 5
+	DOWNBASE:ARG:気力 += 10
+
+	SOURCE:ARG:快Ｂ += 100 * LOCAL:2 / 10
+	SOURCE:ARG:露出 += 10 * LOCAL:2 / 10
+	SOURCE:ARG:逸脱 += 15 * LOCAL:2 / 10
+	SOURCE:ARG:反感 += 15 * LOCAL:2 / 10
+
+	EXP:ARG:道具使用経験++
+ENDIF
+
+
+;媚薬服用中
+IF TEQUIP:ARG:媚薬
+	SIF ARG == 1 || TCVAR:ARG:行為対象 == 1
+		PRINTFORML ＜媚薬＞
+	DOWNBASE:ARG:体力 += 10
+	DOWNBASE:ARG:気力 += 80
+
+	SOURCE:ARG:欲情 += 300 * LOCAL:2 / 10
+	TEQUIP:ARG:媚薬 = MAX(0,TEQUIP:ARG:媚薬 - LOCAL:2)
+ENDIF
+
+;利尿剤服用中
+
+IF TEQUIP:ARG:利尿剤
+	SIF ARG == 1 || TCVAR:ARG:行為対象 == 1
+		PRINTFORML ＜利尿剤＞
+	DOWNBASE:ARG:体力 += 10
+	DOWNBASE:ARG:気力 += 80
+
+	DOWNBASE:ARG:尿意 -= 100
+
+	SOURCE:ARG:恐怖 += 10 * LOCAL:2 / 10
+	SOURCE:ARG:逸脱 += 30 * LOCAL:2 / 10
+	SOURCE:ARG:苦痛 += 30 * LOCAL:2 / 10
+	TEQUIP:ARG:利尿剤 = MAX(0,TEQUIP:ARG:利尿剤 - LOCAL:2)
+ENDIF
+
+;下剤服用中
+IF TEQUIP:ARG:下剤
+	SIF ARG == 1 || TCVAR:ARG:行為対象 == 1
+		PRINTFORML ＜下剤＞
+	DOWNBASE:ARG:体力 += 30
+	DOWNBASE:ARG:気力 += 80
+
+;便意は対応するパラメータが存在しない
+;現状では脱糞するＪＫなど夢のまた夢
+;下剤＜なぜ生んだ
+;	DOWNBASE:ARG:便意 -= 100
+
+	SOURCE:ARG:恐怖 += 50 * LOCAL:2 / 10
+	SOURCE:ARG:逸脱 += 50 * LOCAL:2 / 10
+	SOURCE:ARG:苦痛 += 60 * LOCAL:2 / 10
+	TEQUIP:ARG:下剤 = MAX(0,TEQUIP:ARG:下剤 - LOCAL:2)
+ENDIF
+
+
+IF TEQUIP:ARG:アロマスプレー
+	BASE:ARG:ストレス = LIMIT(BASE:ARG:ストレス - 10 * LOCAL:2,0,MAXBASE:ARG:ストレス)
+	TEQUIP:ARG:アロマスプレー = MAX(0,TEQUIP:ARG:アロマスプレー - LOCAL:2)
+ENDIF
+
+IF TEQUIP:ARG:睡眠薬
+	BASE:ARG:眠気 = LIMIT(BASE:ARG:眠気 + 10 * LOCAL:2,0,MAXBASE:ARG:眠気)
+	TEQUIP:ARG:睡眠薬 = MAX(0,TEQUIP:ARG:睡眠薬 - LOCAL:2)
+ENDIF
+
+IF TEQUIP:ARG:眠気覚まし
+	BASE:ARG:疲労 = LIMIT(BASE:ARG:疲労 + 10 * LOCAL:2,0,MAXBASE:ARG:疲労)
+	TEQUIP:ARG:眠気覚まし = MAX(0,TEQUIP:ARG:眠気覚まし - LOCAL:2)
+ENDIF
+
+IF TEQUIP:ARG:栄養ドリンク
+	TEQUIP:ARG:栄養ドリンク = MAX(0,TEQUIP:ARG:栄養ドリンク - LOCAL:2)
+ENDIF
+
+;追加特殊調教
+;縄
+IF (TFLAG:行為者 == ARG) && (TEQUIP:ARG:縄)
+	;-------------------------------------------------
+	;縄で緊縛中
+	;-------------------------------------------------
+	SIF ARG == 1 || TCVAR:ARG:行為対象 == 1
+		PRINTFORML ＜緊縛中＞（%CALLNAME:ARG%）
+	;-------------------------------------------------
+	;ソースの計算
+	;-------------------------------------------------
+	;緊縛経験が高いと消費減少
+	IF EXP:ARG:56 < EXPLV:3 / 2
+		DOWNBASE:ARG:体力 += 5
+		DOWNBASE:ARG:気力 += 10
+	ELSEIF EXP:ARG:56 < EXPLV:4 / 2
+		DOWNBASE:ARG:体力 += 4
+		DOWNBASE:ARG:気力 += 8
+	ELSE
+		DOWNBASE:ARG:体力 += 3
+		DOWNBASE:ARG:気力 += 6
+	ENDIF
+	;ABL:マゾっ気をみる
+	IF ABL:15 == 0
+		A = 60
+	ELSEIF ABL:ARG:15 == 1
+		A = 180
+	ELSEIF ABL:ARG:15 == 2
+		A = 300
+	ELSEIF ABL:ARG:15 == 3
+		A = 480
+	ELSEIF ABL:ARG:15 == 4
+		A = 700
+	ELSE
+		A = 850
+	ENDIF
+	;倒錯的
+	SIF TALENT:ARG:80
+		TIMES A , 2.00
+	;PALAM:欲情をみる
+	IF PALAM:ARG:11 < PALAMLV:1
+		TIMES A , 0.80
+	ELSEIF PALAM:ARG:11 < PALAMLV:2
+		TIMES A , 0.90
+	ELSEIF PALAM:ARG:11 < PALAMLV:3
+		TIMES A , 1.00
+	ELSEIF PALAM:ARG:11 < PALAMLV:4
+		TIMES A , 1.10
+	ELSEIF PALAM:ARG:11 >= PALAMLV:4
+		TIMES A , 1.20
+	ENDIF
+	SOURCE:ARG:苦痛 += A
+	SOURCE:ARG:露出 += A
+	SOURCE:ARG:屈従 += A
+	SOURCE:ARG:逸脱 += A
+	;-------------------------------------------------
+	;経験上昇
+	;-------------------------------------------------
+	EXP:ARG:緊縛経験 += 2
+ENDIF
+
+;胸縄
+IF TEQUIP:ARG:上半身下着 == 322
+	;-------------------------------------------------
+	;ソースの計算
+	;-------------------------------------------------
+	;緊縛経験が高いと消費減少
+	IF EXP:ARG:56 < EXPLV:3 / 2
+		DOWNBASE:ARG:体力 += 3
+		DOWNBASE:ARG:気力 += 5
+	ELSEIF EXP:ARG:56 < EXPLV:4 / 2
+		DOWNBASE:ARG:体力 += 2
+		DOWNBASE:ARG:気力 += 4
+	ELSE
+		DOWNBASE:ARG:体力 += 1
+		DOWNBASE:ARG:気力 += 3
+	ENDIF
+	;ABL:マゾっ気をみる
+	IF ABL:15 == 0
+		A = 6
+	ELSEIF ABL:ARG:15 == 1
+		A = 18
+	ELSEIF ABL:ARG:15 == 2
+		A = 30
+	ELSEIF ABL:ARG:15 == 3
+		A = 48
+	ELSEIF ABL:ARG:15 == 4
+		A = 70
+	ELSE
+		A = 85
+	ENDIF
+	;倒錯的
+	SIF TALENT:ARG:80
+		TIMES A , 2.00
+	;PALAM:欲情をみる
+	IF PALAM:ARG:11 < PALAMLV:1
+		TIMES A , 0.80
+	ELSEIF PALAM:ARG:11 < PALAMLV:2
+		TIMES A , 0.90
+	ELSEIF PALAM:ARG:11 < PALAMLV:3
+		TIMES A , 1.00
+	ELSEIF PALAM:ARG:11 < PALAMLV:4
+		TIMES A , 1.10
+	ELSEIF PALAM:ARG:11 >= PALAMLV:4
+		TIMES A , 1.20
+	ENDIF
+	SOURCE:ARG:苦痛 += A
+	SOURCE:ARG:露出 += A / 2
+	SOURCE:ARG:屈従 += A / 2
+	SOURCE:ARG:逸脱 += A / 10
+ENDIF
+
+;股縄
+IF TEQUIP:ARG:下半身下着 == 372
+	;-------------------------------------------------
+	;ソースの計算
+	;-------------------------------------------------
+	;緊縛経験が高いと消費減少
+	IF EXP:ARG:56 < EXPLV:3 / 2
+		DOWNBASE:ARG:体力 += 3
+		DOWNBASE:ARG:気力 += 5
+	ELSEIF EXP:ARG:56 < EXPLV:4 / 2
+		DOWNBASE:ARG:体力 += 2
+		DOWNBASE:ARG:気力 += 4
+	ELSE
+		DOWNBASE:ARG:体力 += 1
+		DOWNBASE:ARG:気力 += 3
+	ENDIF
+	;ABL:マゾっ気をみる
+	IF ABL:15 == 0
+		A = 6
+	ELSEIF ABL:ARG:15 == 1
+		A = 18
+	ELSEIF ABL:ARG:15 == 2
+		A = 30
+	ELSEIF ABL:ARG:15 == 3
+		A = 48
+	ELSEIF ABL:ARG:15 == 4
+		A = 70
+	ELSE
+		A = 85
+	ENDIF
+	;倒錯的
+	SIF TALENT:ARG:80
+		TIMES A , 2.00
+	;PALAM:欲情をみる
+	IF PALAM:ARG:11 < PALAMLV:1
+		TIMES A , 0.80
+	ELSEIF PALAM:ARG:11 < PALAMLV:2
+		TIMES A , 0.90
+	ELSEIF PALAM:ARG:11 < PALAMLV:3
+		TIMES A , 1.00
+	ELSEIF PALAM:ARG:11 < PALAMLV:4
+		TIMES A , 1.10
+	ELSEIF PALAM:ARG:11 >= PALAMLV:4
+		TIMES A , 1.20
+	ENDIF
+	SOURCE:ARG:苦痛 += A
+	SOURCE:ARG:露出 += A / 2
+	SOURCE:ARG:屈従 += A / 2
+	SOURCE:ARG:逸脱 += A / 10
+ENDIF
+
+;ボールギャグ
+IF (TFLAG:行為者 == ARG) && (TEQUIP:ARG:ボールギャグ)
+	;-------------------------------------------------
+	;ボールギャグ装備中
+	;-------------------------------------------------
+	SIF ARG == 1 || TCVAR:ARG:行為対象 == 1
+		PRINTFORML ＜ボールギャグ装備中＞（%CALLNAME:ARG%）
+	;緊縛経験が高いと消費減少
+	IF EXP:ARG:56 < EXPLV:3 / 2
+		DOWNBASE:ARG:体力 += 5
+		DOWNBASE:ARG:気力 += 10
+	ELSEIF EXP:ARG:56 < EXPLV:4 / 2
+		DOWNBASE:ARG:体力 += 4
+		DOWNBASE:ARG:気力 += 8
+	ELSE
+		DOWNBASE:ARG:体力 += 3
+		DOWNBASE:ARG:気力 += 6
+	ENDIF
+	;-------------------------------------------------
+	;ソースの計算
+	;-------------------------------------------------
+	;ABL:マゾっ気をみる
+	IF ABL:15 == 0
+		A = 40
+	ELSEIF ABL:ARG:15 == 1
+		A = 120
+	ELSEIF ABL:ARG:15 == 2
+		A = 250
+	ELSEIF ABL:ARG:15 == 3
+		A = 450
+	ELSEIF ABL:ARG:15 == 4
+		A = 600
+	ELSE
+		A = 750
+	ENDIF
+
+	;PALAM:欲情をみる
+	IF PALAM:ARG:11 < PALAMLV:1
+		TIMES A , 0.80
+	ELSEIF PALAM:ARG:11 < PALAMLV:2
+		TIMES A , 0.90
+	ELSEIF PALAM:ARG:11 < PALAMLV:3
+		TIMES A , 1.00
+	ELSEIF PALAM:ARG:11 < PALAMLV:4
+		TIMES A , 1.10
+	ELSEIF PALAM:ARG:11 >= PALAMLV:4
+		TIMES A , 1.20
+	ENDIF
+
+	SOURCE:ARG:露出 += A
+	SOURCE:ARG:屈従 += A
+	SOURCE:ARG:逸脱 += A
+	SOURCE:ARG:恭順 += A
+
+	;-------------------------------------------------
+	;経験上昇
+	;-------------------------------------------------
+	EXP:ARG:緊縛経験 += 1
+ENDIF

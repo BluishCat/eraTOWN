@@ -1,0 +1,331 @@
+﻿;================================================================
+; DISEASE.ERB 病気システム（風邪・性病）
+;
+; 病気の実体：CFLAG:8「病気」のビットフィールド
+;   bit0 = 風邪（自然治癒あり）
+;   bit1 = 性病（自然治癒なし。NPCのみ21日で自動完治＝病院に行った扱い）
+; 関連CFLAG：
+;   46 風邪日数（残り日数。0で完治）
+;   47 性病日数（経過日数）
+;   48 性病自覚（1=検査で判明済み）
+;   49 風邪免疫（完治後の再感染しない残日数）
+;   50 風邪薬効（1以上で当日の症状無効＋治りが早い）
+; 設定FLAG：75 病気機能 / 76 風邪発症率倍率 / 77 性病感染率倍率 / 78 病気設定済
+;
+; 感染フック：
+;   SOURCE.ERB の膣内/肛内射精 → @性病感染チェック
+;   EVENT_路上遭遇.ERB → 見知らぬ男へのシード＋感染チェック
+; 日次進行：INFO.ERB @NEXT_DAY → @病気_日次_ALL
+; 検査・治療：COMF1049（病院受付メニュー）
+;================================================================
+
+;----------------------------------------------------------------
+;判定ヘルパ
+;----------------------------------------------------------------
+@風邪中(ARG)
+#FUNCTION
+RETURNF GETBIT(CFLAG:ARG:病気,0)
+
+@性病持ち(ARG)
+#FUNCTION
+RETURNF GETBIT(CFLAG:ARG:病気,1)
+
+;----------------------------------------------------------------
+;日次処理（NEXT_DAY から呼ぶ）
+;----------------------------------------------------------------
+@病気_日次_ALL
+SIF FLAG:病気機能 == 0
+	RETURN
+REPEAT CHARANUM
+	CALL 病気_日次処理(COUNT)
+REND
+RETURN
+
+@病気_日次処理(ARG)
+#DIM 発症率
+;風邪免疫の残日数を減らす
+SIF CFLAG:ARG:風邪免疫 > 0
+	CFLAG:ARG:風邪免疫 -= 1
+;--- 風邪の進行 ---
+IF 風邪中(ARG)
+	;症状ペナルティ（風邪薬の効果中は無効）
+	IF CFLAG:ARG:風邪薬効 <= 0
+		BASE:ARG:体力 = MAX(0, BASE:ARG:体力 - MAXBASE:ARG:体力 * 15 / 100)
+		BASE:ARG:気力 = MAX(0, BASE:ARG:気力 - MAXBASE:ARG:気力 * 15 / 100)
+		BASE:ARG:疲労 = MIN(MAXBASE:ARG:疲労, BASE:ARG:疲労 + 1500)
+		BASE:ARG:ストレス = MIN(MAXBASE:ARG:ストレス, BASE:ARG:ストレス + 800)
+		BASE:ARG:眠気 = MIN(MAXBASE:ARG:眠気, BASE:ARG:眠気 + 500)
+		SIF ARG == MASTER
+			PRINTW 風邪気味で体が重い……。
+	ENDIF
+	;治りの進行（風邪薬を飲んだ日は2日分回復）
+	CFLAG:ARG:風邪日数 -= 1
+	SIF CFLAG:ARG:風邪薬効 > 0
+		CFLAG:ARG:風邪日数 -= 1
+	IF CFLAG:ARG:風邪日数 <= 0
+		CLEARBIT CFLAG:ARG:病気,0
+		CFLAG:ARG:風邪日数 = 0
+		CFLAG:ARG:風邪免疫 = 7
+		SIF ARG == MASTER
+			PRINTW 体がすっかり軽くなった。風邪が治ったようだ。
+	ENDIF
+ENDIF
+;風邪薬の効果は当日限り
+SIF CFLAG:ARG:風邪薬効 > 0
+	CFLAG:ARG:風邪薬効 -= 1
+;--- 性病の進行 ---
+IF 性病持ち(ARG)
+	CFLAG:ARG:性病日数 += 1
+	;潜伏期間（3日）が明けると症状が出始める
+	IF CFLAG:ARG:性病日数 >= 4
+		BASE:ARG:体力 = MAX(0, BASE:ARG:体力 - MAXBASE:ARG:体力 * 8 / 100)
+		BASE:ARG:ストレス = MIN(MAXBASE:ARG:ストレス, BASE:ARG:ストレス + MAXBASE:ARG:ストレス * 10 / 100)
+		;本人はまだ何の病気か分からない（検査で判明）
+		SIF ARG == MASTER && CFLAG:ARG:性病自覚 == 0 && CFLAG:ARG:性病日数 == 4
+			PRINTW 下腹部に違和感がある……なんだか調子が悪い。
+	ENDIF
+	;NPCはそのうち自分で病院に行く（21日で完治扱い）。プレイヤーは自然治癒しない
+	IF ARG != MASTER && CFLAG:ARG:性病日数 >= 21
+		CLEARBIT CFLAG:ARG:病気,1
+		CFLAG:ARG:性病日数 = 0
+		CFLAG:ARG:性病自覚 = 0
+	ENDIF
+ENDIF
+;--- 風邪の新規発症判定（罹患中・免疫中は対象外） ---
+IF !風邪中(ARG) && CFLAG:ARG:風邪免疫 <= 0
+	発症率 = 1
+	SIF BASE:ARG:疲労 >= MAXBASE:ARG:疲労 * 70 / 100
+		発症率 += 4
+	SIF BASE:ARG:ストレス >= MAXBASE:ARG:ストレス * 70 / 100
+		発症率 += 4
+	SIF BASE:ARG:不潔 >= MAXBASE:ARG:不潔 * 60 / 100
+		発症率 += 3
+	SIF BASE:ARG:体力 < MAXBASE:ARG:体力 * 30 / 100
+		発症率 += 3
+	;冬（12〜2月）は流行期
+	SIF DAY:2 == 12 || DAY:2 <= 2
+		発症率 += 3
+	;同じ場所に風邪ひきがいると伝染る（1人+8%、最大+24%）
+	LOCAL:1 = 0
+	REPEAT CHARANUM
+		SIF COUNT == ARG
+			CONTINUE
+		SIF !風邪中(COUNT)
+			CONTINUE
+		SIF CFLAG:COUNT:現在地区 == CFLAG:ARG:現在地区 && CFLAG:COUNT:現在位置 == CFLAG:ARG:現在位置
+			LOCAL:1 += 8
+	REND
+	発症率 += MIN(LOCAL:1, 24)
+	発症率 = 発症率 * FLAG:風邪発症率倍率 / 100
+	IF RAND(100) < 発症率
+		SETBIT CFLAG:ARG:病気,0
+		CFLAG:ARG:風邪日数 = 4 + RAND(3)
+		SIF ARG == MASTER
+			PRINTW 喉が痛い……風邪をひいたようだ。
+	ENDIF
+ENDIF
+RETURN
+
+;----------------------------------------------------------------
+;性病の感染判定
+; ARG   = 感染する側の候補
+; ARG:1 = 相手
+; ARG:2 = 基礎感染確率(%)　※相手が感染者のときに適用
+; 相手が非感染でも、外部由来キャラ（見知らぬ男・店主・客層）は
+; 低確率(5%)の持ち込みリスクがある（感染の初期供給源）
+; 感染しても無表示（検査するまで本人も分からない）
+;----------------------------------------------------------------
+@性病感染チェック(ARG, ARG:1, ARG:2)
+#DIM 率
+SIF FLAG:病気機能 == 0
+	RETURN
+;対象なし・同一人物は対象外
+SIF ARG <= 0 || ARG:1 <= 0 || ARG == ARG:1
+	RETURN
+;既に感染している
+SIF 性病持ち(ARG)
+	RETURN
+IF 性病持ち(ARG:1)
+	率 = ARG:2
+ELSEIF NO:(ARG:1) >= 41 && NO:(ARG:1) <= 59
+	;見知らぬ男(041)・店主(042-058)・お客さん(059)は外部由来の低リスク
+	率 = 5
+ELSE
+	RETURN
+ENDIF
+率 = 率 * FLAG:性病感染率倍率 / 100
+IF RAND(100) < 率
+	SETBIT CFLAG:ARG:病気,1
+	CFLAG:ARG:性病日数 = 1
+	CFLAG:ARG:性病自覚 = 0
+ENDIF
+RETURN
+
+;----------------------------------------------------------------
+;状態タグ（メイン画面の @状態タグ文字列 から呼ぶ）
+; 風邪 → 【風邪】
+; 性病 → 検査済みなら【性病】(赤)、未検査は症状が出た本人のみ【体調不良】
+;----------------------------------------------------------------
+@病気状態タグ(ARG)
+#FUNCTIONS
+#DIMS OUT
+OUT =
+SIF 風邪中(ARG)
+	OUT '= @"%OUT%【風邪】"
+IF 性病持ち(ARG)
+	IF CFLAG:ARG:性病自覚 >= 1
+		OUT '= @"%OUT%<font color='#FF6666'>【性病】</font>"
+	ELSEIF ARG == MASTER && CFLAG:ARG:性病日数 >= 4
+		OUT '= @"%OUT%【体調不良】"
+	ENDIF
+ENDIF
+RETURNF OUT
+
+;----------------------------------------------------------------
+;設定の初期化（EVENTFIRST / EVENTLOAD から呼ぶ）
+; 既定値未投入のセーブにだけ標準値を入れる（ユーザー変更は保持）
+;----------------------------------------------------------------
+@病気設定_INIT
+SIF FLAG:病気設定済
+	RETURN
+CALL 病気設定_既定値
+RETURN
+
+;----------------------------------------------------------------
+;設定を標準値に戻す
+;----------------------------------------------------------------
+@病気設定_既定値
+FLAG:病気機能 = 1
+FLAG:風邪発症率倍率 = 100
+FLAG:性病感染率倍率 = 100
+FLAG:病気設定済 = 1
+RETURN
+
+;----------------------------------------------------------------
+;全キャラの病気を治す（機能OFF時・デバッグ用）
+;----------------------------------------------------------------
+@病気_全治癒
+REPEAT CHARANUM
+	CFLAG:COUNT:病気 = 0
+	CFLAG:COUNT:風邪日数 = 0
+	CFLAG:COUNT:性病日数 = 0
+	CFLAG:COUNT:性病自覚 = 0
+	CFLAG:COUNT:風邪免疫 = 0
+	CFLAG:COUNT:風邪薬効 = 0
+REND
+RETURN
+
+;----------------------------------------------------------------
+;病気設定画面（SHOP の設定メニュー @SCHEDULE から呼ぶ）
+;----------------------------------------------------------------
+@病気設定画面
+$SETTING_LOOP
+PRINTL
+PRINTFORML %"=" * 60%
+PRINTL 　【病気システム設定】
+DRAWLINE
+PRINTFORML [1] 病気機能　　　：%設定_ONOFF名(FLAG:病気機能)%（OFFにすると全員治癒・発症/感染なし）
+PRINTFORML [2] 風邪発症率　　：{FLAG:風邪発症率倍率}％（発症・伝染確率への倍率・標準100・0で発症しない）
+PRINTFORML [3] 性病感染率　　：{FLAG:性病感染率倍率}％（感染確率への倍率・標準100・0で感染しない）
+DRAWLINE
+PRINTL [4] 標準設定に戻す　　[0] 閉じる
+$SETTING_INPUT
+INPUT
+SELECTCASE RESULT
+	CASE 0
+		RETURN
+	CASE 1
+		;病気機能 ON/OFF トグル（OFF時は全員治癒）
+		IF FLAG:病気機能
+			FLAG:病気機能 = 0
+			CALL 病気_全治癒
+			PRINTL 　病気機能をOFFにし、全員の病気を治しました。
+		ELSE
+			FLAG:病気機能 = 1
+		ENDIF
+	CASE 2
+		;76=風邪発症率倍率
+		CALL 設定_数値入力(76, 0, 500)
+	CASE 3
+		;77=性病感染率倍率
+		CALL 設定_数値入力(77, 0, 500)
+	CASE 4
+		CALL 病気設定_既定値
+		PRINTL 　標準設定に戻しました。
+	CASE 99
+		;隠しデバッグメニュー
+		CALL 病気_デバッグ画面
+	CASEELSE
+		CLEARLINE 1
+		GOTO SETTING_INPUT
+ENDSELECT
+GOTO SETTING_LOOP
+
+;----------------------------------------------------------------
+;デバッグ画面（設定画面で 99 入力・非表示）
+;----------------------------------------------------------------
+@病気_デバッグ画面
+#DIM 対象
+$DEBUG_LOOP
+PRINTL
+DRAWLINE
+PRINTL 　【病気デバッグ】
+PRINTL [1] 自分に風邪を付与　[2] 自分に性病を付与
+PRINTL [3] 番号指定で風邪を付与　[4] 番号指定で性病を付与
+PRINTL [5] 全員治癒　[6] 全キャラ罹患一覧　[0] 戻る
+$DEBUG_INPUT
+INPUT
+SELECTCASE RESULT
+	CASE 0
+		RETURN
+	CASE 1
+		SETBIT CFLAG:MASTER:病気,0
+		CFLAG:MASTER:風邪日数 = 4 + RAND(3)
+		CFLAG:MASTER:風邪免疫 = 0
+		PRINTFORML 　→ %CALLNAME:MASTER%に風邪を付与（{CFLAG:MASTER:風邪日数}日）
+	CASE 2
+		SETBIT CFLAG:MASTER:病気,1
+		CFLAG:MASTER:性病日数 = 1
+		CFLAG:MASTER:性病自覚 = 0
+		PRINTFORML 　→ %CALLNAME:MASTER%に性病を付与
+	CASE 3, 4
+		LOCAL:2 = RESULT
+		PRINTFORML 　対象のキャラ登録番号を入力（0〜{CHARANUM - 1}）
+		INPUT
+		SIF RESULT < 0 || RESULT >= CHARANUM
+			GOTO DEBUG_LOOP
+		対象 = RESULT
+		IF LOCAL:2 == 3
+			SETBIT CFLAG:(対象):病気,0
+			CFLAG:(対象):風邪日数 = 4 + RAND(3)
+			CFLAG:(対象):風邪免疫 = 0
+			PRINTFORML 　→ %CALLNAME:(対象)%に風邪を付与（{CFLAG:(対象):風邪日数}日）
+		ELSE
+			SETBIT CFLAG:(対象):病気,1
+			CFLAG:(対象):性病日数 = 1
+			CFLAG:(対象):性病自覚 = 0
+			PRINTFORML 　→ %CALLNAME:(対象)%に性病を付与
+		ENDIF
+	CASE 5
+		CALL 病気_全治癒
+		PRINTL 　→ 全員治癒しました
+	CASE 6
+		PRINTL 　登録番号 / 名前 / 風邪(残日数) / 性病(経過・自覚) / 免疫
+		REPEAT CHARANUM
+			SIF CFLAG:COUNT:病気 == 0 && CFLAG:COUNT:風邪免疫 == 0
+				CONTINUE
+			PRINTFORM 　[{COUNT,3}] %CALLNAME:COUNT%
+			SIF 風邪中(COUNT)
+				PRINTFORM 　風邪(あと{CFLAG:COUNT:風邪日数}日)
+			SIF 性病持ち(COUNT)
+				PRINTFORM 　性病({CFLAG:COUNT:性病日数}日目・自覚{CFLAG:COUNT:性病自覚})
+			SIF CFLAG:COUNT:風邪免疫 > 0
+				PRINTFORM 　免疫(あと{CFLAG:COUNT:風邪免疫}日)
+			PRINTL
+		REND
+		PRINTL 　（表示なし＝全員健康）
+	CASEELSE
+		CLEARLINE 1
+		GOTO DEBUG_INPUT
+ENDSELECT
+GOTO DEBUG_LOOP

@@ -1,0 +1,163 @@
+﻿;パイズリさせる
+@XCOM_ABLE2082(ARG)
+VARSET LOCAL
+LOCAL = ARG
+VARSET ARG
+SIF !TCVAR:LOCAL:行為対象
+	RETURN 0
+SIF !GETBIT(TALENT:LOCAL:2,1)
+	RETURN 0
+SIF TALENT:(TCVAR:LOCAL:行為対象):バストサイズ == -2 || TALENT:(TCVAR:LOCAL:行為対象):性別 == 2
+	RETURN 0
+SIF TALENT:(TCVAR:LOCAL:行為対象):バストサイズ + ABL:(TCVAR:LOCAL:行為対象):技巧 < 3
+	RETURN 0
+SIF TEQUIP:LOCAL:下半身下着 == 373
+	RETURN 0
+;行為者がオナホール装着時は不可
+SIF TEQUIP:LOCAL:クリトリス == 80
+	RETURN 0
+;行為者が縄装着時は不可
+SIF TEQUIP:LOCAL:縄
+	RETURN 0
+;相手が縄装着時は可（不可にしたければコメント外す）
+;;;SIF TEQUIP:(TCVAR:LOCAL:行為対象):縄
+;;;	RETURN 0
+
+;生身挿入中（自分または相手が結合中）は解かないと不可
+SIF TCVAR:LOCAL:挿入 || TCVAR:LOCAL:被挿入 || TCVAR:(TCVAR:LOCAL:行為対象):挿入
+	RETURN 0
+
+RETURN GLOBAL_COMABLE(2082)
+
+;--------------------------------------------------
+;パイズリさせる
+;--------------------------------------------------
+@XCOM2082(ARG)
+VARSET LOCAL
+
+PRINTL 
+PRINTFORML %"=" * 107%
+PRINTFORML パイズリさせる(%CALLNAME:ARG%,%CALLNAME:(TCVAR:ARG:行為対象)%)
+SIF ARG == MASTER || TCVAR:ARG:行為対象 == MASTER
+	CALL 汎用口上(2, TCVAR:ARG:行為対象, ARG)
+;-------------------------------------------------
+;ソース追加処理
+;-------------------------------------------------
+;消費体力、気力
+DOWNBASE:ARG:体力 += 20
+DOWNBASE:ARG:気力 += 75
+DOWNBASE:(TCVAR:ARG:行為対象):体力 += 10
+DOWNBASE:(TCVAR:ARG:行為対象):気力 += 75
+
+SOURCE:ARG:快Ｃ = 150
+SOURCE:ARG:露出 = 30
+SOURCE:ARG:逸脱 = 30
+
+SOURCE:(TCVAR:ARG:行為対象):反感 = 30
+
+SOURCE:(TCVAR:ARG:行為対象):屈従 = 18
+SOURCE:(TCVAR:ARG:行為対象):逸脱 = 9
+;ABL:奉仕精神をみる
+IF ABL:(TCVAR:ARG:行為対象):奉仕精神 == 0
+	SOURCE:(TCVAR:ARG:行為対象):性行動 = 8
+	SOURCE:(TCVAR:ARG:行為対象):達成 = 1
+	SOURCE:(TCVAR:ARG:行為対象):不潔 = 4
+ELSEIF ABL:(TCVAR:ARG:行為対象):奉仕精神 == 1
+	SOURCE:(TCVAR:ARG:行為対象):性行動 = 9
+	SOURCE:(TCVAR:ARG:行為対象):達成 = 3
+	SOURCE:(TCVAR:ARG:行為対象):不潔 = 3
+ELSEIF ABL:(TCVAR:ARG:行為対象):奉仕精神 == 2
+	SOURCE:(TCVAR:ARG:行為対象):性行動 = 10
+	SOURCE:(TCVAR:ARG:行為対象):達成 = 6
+	SOURCE:(TCVAR:ARG:行為対象):不潔 = 1
+ELSEIF ABL:(TCVAR:ARG:行為対象):奉仕精神 == 3
+	SOURCE:(TCVAR:ARG:行為対象):性行動 = 11
+	SOURCE:(TCVAR:ARG:行為対象):達成 = 9
+	SOURCE:(TCVAR:ARG:行為対象):不潔 = 0
+ELSEIF ABL:(TCVAR:ARG:行為対象):奉仕精神 == 4
+	SOURCE:(TCVAR:ARG:行為対象):性行動 = 13
+	SOURCE:(TCVAR:ARG:行為対象):達成 = 15
+	SOURCE:(TCVAR:ARG:行為対象):不潔 = 0
+ELSE
+	SOURCE:(TCVAR:ARG:行為対象):性行動 = 15
+	SOURCE:(TCVAR:ARG:行為対象):達成 = 22
+	SOURCE:(TCVAR:ARG:行為対象):不潔 = 0
+ENDIF
+
+;ABL:Ｂ感覚をみる
+IF ABL:(TCVAR:ARG:行為対象):Ｂ感覚 == 0
+	A = 60
+ELSEIF ABL:(TCVAR:ARG:行為対象):Ｂ感覚 == 1
+	A = 70
+ELSEIF ABL:(TCVAR:ARG:行為対象):Ｂ感覚 == 2
+	A = 80
+ELSEIF ABL:(TCVAR:ARG:行為対象):Ｂ感覚 == 3
+	A = 100
+ELSEIF ABL:(TCVAR:ARG:行為対象):Ｂ感覚 == 4
+	A = 110
+ELSE
+	A = 130
+ENDIF
+
+;巨乳
+IF TALENT:(TCVAR:ARG:行為対象):105 == 1
+	TIMES A , 1.20
+ENDIF
+;Ｂ敏感
+IF TALENT:(TCVAR:ARG:行為対象):104 >= 1
+	TIMES A , 1.20
+;Ｂ鈍感
+ELSEIF TALENT:(TCVAR:ARG:行為対象):104 < 0
+	TIMES A , 0.70
+ENDIF
+
+SOURCE:(TCVAR:ARG:行為対象):快Ｂ += A
+
+;ABL:技巧をみる
+IF ABL:(TCVAR:ARG:行為対象):技巧 == 0
+	TIMES SOURCE:(TCVAR:ARG:行為対象):性行動 , 0.50
+	TIMES SOURCE:(TCVAR:ARG:行為対象):達成   , 0.50
+ELSEIF ABL:(TCVAR:ARG:行為対象):技巧 == 1
+	TIMES SOURCE:(TCVAR:ARG:行為対象):性行動 , 0.80
+	TIMES SOURCE:(TCVAR:ARG:行為対象):達成   , 0.80
+ELSEIF ABL:(TCVAR:ARG:行為対象):技巧 == 2
+	TIMES SOURCE:(TCVAR:ARG:行為対象):性行動 , 1.00
+	TIMES SOURCE:(TCVAR:ARG:行為対象):達成   , 1.00
+ELSEIF ABL:(TCVAR:ARG:行為対象):技巧 == 3
+	TIMES SOURCE:(TCVAR:ARG:行為対象):性行動 , 1.20
+	TIMES SOURCE:(TCVAR:ARG:行為対象):達成   , 1.20
+ELSEIF ABL:(TCVAR:ARG:行為対象):技巧 == 4
+	TIMES SOURCE:(TCVAR:ARG:行為対象):性行動 , 1.50
+	TIMES SOURCE:(TCVAR:ARG:行為対象):達成   , 1.50
+ELSE
+	TIMES SOURCE:(TCVAR:ARG:行為対象):性行動 , 2.00
+	TIMES SOURCE:(TCVAR:ARG:行為対象):達成   , 2.00
+ENDIF
+
+;-------------------------------------------------
+;特殊ソース処理
+;-------------------------------------------------
+;抑圧、抵抗持ちには、抑鬱ソース追加
+SIF TALENT:(TCVAR:ARG:行為対象):自己愛 < 0 || TALENT:(TCVAR:ARG:行為対象):抵抗
+	SOURCE:(TCVAR:ARG:行為対象):鬱屈 += 20
+
+
+;-------------------------------------------------
+;汚れの処理
+;-------------------------------------------------
+;奴隷のＰ⇔調教者の胸の汚れが移動
+STAIN:ARG:2 |= STAIN:(TCVAR:ARG:行為対象):5
+STAIN:(TCVAR:ARG:行為対象):5 |= STAIN:ARG:2
+
+;-------------------------------------------------
+;経験の処理
+;-------------------------------------------------
+CALL HETEROSEX_EXP(TCVAR:ARG:行為対象,ARG,5)
+
+
+
+;パイズリ経験
+EXP:(TCVAR:ARG:行為対象):パイズリ経験 ++
+CFLAG:ARG:待機時間 += 2
+VARSET ARG
+RETURN 1

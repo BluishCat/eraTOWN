@@ -1,0 +1,35 @@
+﻿;[セフレに誘う]（2026-07-17追加。恋愛.ERB の共通基盤を使用）
+;会話イベント(3)中に相手を割り切った関係に誘う。成立条件は @セフレ可否（恋愛.ERB）を参照。
+;愛情不要・肉欲/欲情ベース。恋人と併存可（浮気仕様＝自分や相手に恋人がいても誘える）。
+
+@XCOM_ABLE984(ARG)
+VARSET LOCAL
+LOCAL = ARG
+VARSET ARG
+SIF TCVAR:LOCAL:イベント != 3
+	RETURN 0
+;既にセフレ／相手が自分の恋人（誘う意味なし）／相手が家族／今日すでに勧誘済みなら不可
+SIF TA:LOCAL:(TCVAR:LOCAL:行為対象):7 || CFLAG:LOCAL:恋人相手 == TCVAR:LOCAL:行為対象 || TALENT:(TCVAR:LOCAL:行為対象):家族 || TCVAR:(TCVAR:LOCAL:行為対象):セフレ勧誘済
+	RETURN 0
+RETURN GLOBAL_COMABLE(984)
+
+@XCOM984(ARG)
+VARSET LOCAL
+PRINTL
+PRINTFORML %"=" * 107%
+
+TFLAG:成否用変数 = 0
+;同じ相手への連続勧誘は1日1回まで
+TCVAR:(TCVAR:ARG:行為対象):セフレ勧誘済 = 1
+PRINTFORML あなたは%CALLNAME:(TCVAR:ARG:行為対象)%に割り切った関係にならないかと持ちかけた。
+IF セフレ可否(TCVAR:ARG:行為対象)
+	TFLAG:成否用変数 = 1
+	CALL セフレ成立(ARG, TCVAR:ARG:行為対象)
+ELSE
+	TFLAG:成否用変数 = -1
+	TA:(TCVAR:ARG:行為対象):ARG:3 -= 5
+	CALL 汎用口上(16, TCVAR:ARG:行為対象, ARG)
+	CFLAG:ARG:待機時間 += 10
+ENDIF
+VARSET ARG
+RETURN 1

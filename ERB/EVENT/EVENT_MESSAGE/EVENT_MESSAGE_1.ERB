@@ -1,0 +1,46 @@
+﻿@EVENT_MESSAGE_1
+;電車で痴漢イベント
+;--------------------------------------------------------------------------
+;痴漢に遭遇
+;--------------------------------------------------------------------------
+IF FLAG:痴漢され中 >= 1
+	PRINTFORMW %CALLNAME:MASTER%が痴漢の攻めに耐えていると、急に触ってくる手が増えたように感じた
+	PRINTFORMW 明らかにこれまでとは違う触り方をしてくる
+	PRINTFORMW どうやら痴漢が増えてしまったようだ
+ELSE
+	;午前７時〜10時 or 午後６時〜９時までラッシュ時間と想定
+	IF (TIME / 60 >= 7 && TIME / 60 <= 10) || (TIME / 60 >= 18 && TIME / 60 <= 21)
+		PRINTFORMW ラッシュの時間であるためか、車内は混み合っている。
+		PRINTFORM …
+	ELSE
+		PRINTFORM 電車に揺られていると、
+	ENDIF
+	PRINTFORMW ふと、腰の後ろに違和感を感じた。
+	PRINTFORMW 誰かがいやらしい手つきで、%CALLNAME:MASTER%のお尻を撫で回している…痴漢だ！
+	FLAG:痴漢され中 += 1
+ENDIF
+
+@EVENT_END_MESSAGE_1
+VARSET LOCAL
+SELECTCASE TFLAG:イベント変数
+	;騒ぎ > 混雑
+	CASE 1
+		PRINTFORMW 周りの人に気が付かれ危険を感じた%CALLNAME:(TCVAR:MASTER:行為対象)%は逃走した
+	;電車到着
+	CASE 2
+		PRINTFORMW 電車が目的地に到着したので%CALLNAME:MASTER%は急いで逃げた
+	;痴漢興奮度一定値以下
+	CASE 3
+		PRINTFORMW 萎えてしまったのか%CALLNAME:(TCVAR:MASTER:行為対象)%は自ら去っていった
+	;逃走成功
+	CASE 4
+		PRINTFORMW 隙を突き%CALLNAME:MASTER%は逃走した
+	;痴漢全員体力切れ
+	CASE 5
+		PRINTFORMW 痴漢を返り討ちにしたみたいだ･･････
+ENDSELECT
+			FLAG:痴漢され中 = 0
+
+@EVENT_NPC_END_MESSAGE_1(ARG)
+VARSET LOCAL
+PRINTFORMW %CALLNAME:ARG%は体力が持たず逃げていった･･････

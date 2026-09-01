@@ -1,0 +1,24 @@
+﻿@COM_MESSAGE_1014
+;--------------------------------------------------------------------------
+;遊ぶ
+;--------------------------------------------------------------------------
+PRINTFORML ＜遊ぶ＞
+;ゲームセンターの分岐がカラオケ屋と同じ「位置 == 7」で書かれていて、
+;対戦ゲーム／コインゲームの文が一度も出ていなかった。ゲーセンは位置8(2026-08-30)
+IF TCVAR:MASTER:行為対象
+	IF CFLAG:MASTER:現在地区 == 2 && CFLAG:MASTER:現在位置 == 7
+		PRINTFORML %CALLNAME:MASTER%は%CALLNAME:(TCVAR:MASTER:行為対象)%とカラオケを楽しんだ。
+	ELSEIF CFLAG:MASTER:現在地区 == 2 && CFLAG:MASTER:現在位置 == 8
+		PRINTFORML %CALLNAME:MASTER%は%CALLNAME:(TCVAR:MASTER:行為対象)%と対戦ゲームに興じた。
+	ELSE
+		PRINTFORML %CALLNAME:MASTER%は%CALLNAME:(TCVAR:MASTER:行為対象)%と遊んだ。
+	ENDIF
+ELSE
+	IF CFLAG:MASTER:現在地区 == 2 && CFLAG:MASTER:現在位置 == 7
+		PRINTFORML %CALLNAME:MASTER%は一人カラオケを堪能した。
+	ELSEIF CFLAG:MASTER:現在地区 == 2 && CFLAG:MASTER:現在位置 == 8
+		PRINTFORML %CALLNAME:MASTER%は一人でコインゲームに熱中した。
+	ELSE
+		PRINTFORML %CALLNAME:MASTER%は一人で遊んだ。
+	ENDIF
+ENDIF

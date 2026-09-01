@@ -1,0 +1,563 @@
+﻿;================================================================
+; ホストクラブ（地区2・位置53、裏通り接続。2026-07-21追加）
+;  ・営業20時〜翌2時（営業時間.ERB）。閉店中はCOMF1000の移動ガードで入店不可。
+;  ・プレイヤー（女性）は「客専門」。バイト職業・身分は追加していない
+;    ＝既存施設（キャバクラ/ソープランド/劇場）が全て「稼ぐ」側なのに対し、
+;      本施設は初めての「散財する」側の施設として作ってある。
+;  ・スタッフ＝Chara063「藤堂 蓮」（店長・受付兼会計兼取り立て）
+;              Chara064「氷室 慎」（Ｎｏ．１ホスト・指名候補）
+;              Chara065「柊 ゆうた」（新人ホスト・指名候補）
+;  ・遊び方: 初回は3人が順に挨拶に来る体験コース→本指名を決める。
+;    2回目以降は担当が付き、セット／ボトル／シャンパンで金を落とすほど
+;    TA（好意・愛情）が上がり、条件を満たすとアフター（ラブホでH）に誘える。
+;  ・売掛（ツケ）: 手持ちが足りなくてもシャンパンは入れられる。不足分はCFLAG:3512に積む。
+;    月初にEVENTTRAIN→@ホストクラブ日次が所持金から徴収し、払いきれない分に利息10%が付く。
+;    残高30万以上で来店すると、店長が「体で返す」取り立てイベントを持ちかける
+;    （＝ソープランド/劇場/キャバクラで稼ぐ既存導線への逆流）。
+;  ・使用フラグ（CSV未登録の生番号運用＝ソープ3506・劇場3507/3508の続き）:
+;      CFLAG:MASTER:3509 指名ホストの「キャラ番号」(63〜65。0=未指名)
+;                        ※登録番号は可変なので必ずGETCHARA()で解決する
+;      CFLAG:MASTER:3510 来店回数（0=初回。初回コースの判定に使う）
+;      CFLAG:MASTER:3511 累計使用額（円。アフターの解禁条件）
+;      CFLAG:MASTER:3512 売掛（ツケ）残高（円）
+;      CFLAG:MASTER:3513 体で売掛を返した回数（累計・永続）
+;      CFLAG:MASTER:3514 最終来店DAY（日次の好意減衰の判定に使う）
+;      TCVAR:MASTER:635  ホストアフター済（当日1回制限。BEGIN TRAINで自動クリア）
+;  ・Hシーン本体は@ソープH_おまかせ（ソープランド.ERB、XCOM2820＋SOURCE_CHECKS）を流用。
+;    料金・評判・カウンタはH呼び出しの前に処理する先払い規約（NPC_ENKOU.ERB冒頭）に従う。
+;================================================================
+
+;================================================================
+;@ホスト指名者
+;  現在指名している担当ホストの登録番号を返す #FUNCTION。未指名・未登録なら-1。
+;================================================================
+@ホスト指名者
+#FUNCTION
+SIF !CFLAG:MASTER:3509
+	RETURNF -1
+RETURNF GETCHARA(CFLAG:MASTER:3509)
+
+;================================================================
+;@ホスト肩書(ARG)
+;  ホストのキャラ番号(63〜65)の肩書を返す #FUNCTIONS。
+;================================================================
+@ホスト肩書(ARG)
+#FUNCTIONS
+SELECTCASE ARG
+	CASE 63
+		RETURNF "店長"
+	CASE 64
+		RETURNF "Ｎｏ．１"
+	CASEELSE
+		RETURNF "新人"
+ENDSELECT
+
+;================================================================
+;@ホスト紹介文(ARG)
+;  初回来店の紹介シーンで添える一言を返す #FUNCTIONS。
+;================================================================
+@ホスト紹介文(ARG)
+#FUNCTIONS
+SELECTCASE ARG
+	CASE 63
+		RETURNF "落ち着いた物腰。隙のない気配りで場を仕切っている"
+	CASE 64
+		RETURNF "整った顔立ちと巧みな話術。視線を逸らさせてくれない"
+	CASEELSE
+		RETURNF "垢抜けないが、一生懸命なのが微笑ましい"
+ENDSELECT
+
+;================================================================
+;@ホストアフター可(ARG)
+;  ARG = 担当ホストの登録番号。アフターに誘えるか(1/0)を返す #FUNCTION。
+;================================================================
+@ホストアフター可(ARG)
+#FUNCTION
+;当日1回まで
+SIF TCVAR:MASTER:ホストアフター済
+	RETURNF 0
+;閉店間際（23時〜翌2時）のみ
+SIF TIME < 1380 && TIME >= 120
+	RETURNF 0
+;担当に気に入られている
+SIF TA:ARG:MASTER:3 < 30
+	RETURNF 0
+;累計10万円以上の上客であること
+SIF CFLAG:MASTER:3511 < 100000
+	RETURNF 0
+RETURNF 1
+
+;================================================================
+;@ホストアフター条件文(ARG)
+;  未解禁のアフターに添える条件テキストを返す #FUNCTIONS（劇場の@劇場演目_条件文と同型）。
+;================================================================
+@ホストアフター条件文(ARG)
+#FUNCTIONS
+SIF TCVAR:MASTER:ホストアフター済
+	RETURNF "今夜はもう誘えない"
+SIF TIME < 1380 && TIME >= 120
+	RETURNF "要：閉店間際（２３時以降）"
+SIF TA:ARG:MASTER:3 < 30
+	RETURNF "要：担当に気に入られる"
+RETURNF "要：この店で累計10万円を使う"
+
+;================================================================
+;@ホストクラブ受付
+;  ホストクラブ(2,53)到着時の受付フック（ROOM_IN_OUT.ERB @到着時処理から呼ばれる）。
+;================================================================
+@ホストクラブ受付
+#DIM 店長
+SIF CFLAG:MASTER:現在地区 != 2 || CFLAG:MASTER:現在位置 != 53
+	RETURN
+;イベント文脈からの到着では何もしない（通常コマンド文脈のみ）
+SIF TCVAR:MASTER:イベント
+	RETURN
+店長 = GETCHARA(63)
+SIF 店長 == -1
+	RETURN
+;来店日を記録（日次の好意減衰の基準）
+CFLAG:MASTER:3514 = DAY
+PRINTL
+PRINTFORML %"=" * 107%
+;売掛が嵩んでいると入口で店長に捕まる（成立したら以降の遊びはできない）
+CALL ホスト売掛取り立て
+SIF RESULT
+	RETURN
+IF CFLAG:MASTER:3510 == 0
+	CALL ホスト初回来店
+	RETURN
+ENDIF
+CALL ホストクラブメニュー
+RETURN
+
+;================================================================
+;@ホスト初回来店
+;  初回のみの体験コース（60分3000円）。3人が順に挨拶に来て、最後に本指名を決める。
+;================================================================
+@ホスト初回来店
+#DIM 店長
+#DIM 対象
+店長 = GETCHARA(63)
+PRINTL きらびやかなシャンデリアと、甘い香水と煙草が混ざった匂い。黒服の男が慇懃に頭を下げた。
+PRINTL 「いらっしゃいませ。……初めてのご来店でいらっしゃいますか？」
+IF MONEY:MASTER < 3000
+	PRINTL 初回料金は60分3,000円らしい。あいにく、その持ち合わせすらない。
+	PRINTFORMW 気まずさに耐えきれず、あなたは逃げるように店を出た。
+	RETURN
+ENDIF
+PRINTFORML 奥から出てきたのは店長の%CALLNAME:店長%。「初回は60分3,000円。うちの子を見ていってくださいよ」
+PRINTL どうしますか？
+PRINTL [0] - 席に着く（初回60分・3,000円）
+PRINTL [1] - 帰る
+$HOST_FIRST_INPUT
+INPUT
+SIF RESULT != 0 && RESULT != 1
+	GOTO HOST_FIRST_INPUT
+IF RESULT == 1
+	PRINTFORMW やはり場違いな気がして、あなたは会釈だけして店を出た。
+	RETURN
+ENDIF
+;先払い
+MONEY:MASTER -= 3000
+CFLAG:MASTER:3511 += 3000
+CFLAG:MASTER:3510 = 1
+CFLAG:MASTER:待機時間 += 60
+PRINTL
+PRINTL ボックス席に通されると、ホストが入れ替わり立ち替わり挨拶にやってきた。
+FOR LOCAL, 63, 66
+	対象 = GETCHARA(LOCAL)
+	SIF 対象 == -1
+		CONTINUE
+	PRINTFORML 　%CALLNAME:対象%（%ホスト肩書(LOCAL)%）　── %ホスト紹介文(LOCAL)%
+	TA:MASTER:対象:3 += 1
+NEXT
+PRINTFORMW 水割りを作る手つき、絶妙な間合いの相槌。気が付けば、６０分はあっという間に過ぎていた。
+;本指名を決める
+CALL ホスト指名選択
+CFLAG:MASTER:3509 = RESULT
+対象 = GETCHARA(CFLAG:MASTER:3509)
+TA:MASTER:対象:3 += 5
+TA:対象:MASTER:3 += 5
+DOWNBASE:MASTER:ストレス += 200
+PRINTFORML 指名を告げると、%CALLNAME:対象%は嬉しそうに名刺を差し出してきた。
+PRINTFORMW 「ありがとう。……次からは、俺を呼んでくれよ」
+RETURN
+
+;================================================================
+;@ホスト指名選択
+;  本指名にするホストを選ばせる（戻り値RESULT＝キャラ番号 63〜65）。
+;  ※INPUTを使うため式中関数(#FUNCTION)にはできない。CALLで呼ぶこと。
+;================================================================
+@ホスト指名選択
+#DIM 対象
+#DIM 選択番号
+PRINTL
+PRINTL 誰を本指名にしますか？
+FOR LOCAL, 63, 66
+	対象 = GETCHARA(LOCAL)
+	SIF 対象 == -1
+		CONTINUE
+	PRINTFORML [{LOCAL - 63}] - %CALLNAME:対象%（%ホスト肩書(LOCAL)%）
+NEXT
+$HOST_SHIMEI_INPUT
+INPUT
+SIF RESULT < 0 || RESULT > 2
+	GOTO HOST_SHIMEI_INPUT
+選択番号 = 63 + RESULT
+SIF GETCHARA(選択番号) == -1
+	GOTO HOST_SHIMEI_INPUT
+RETURN 選択番号
+
+;================================================================
+;@ホストクラブメニュー
+;  2回目以降の来店。担当が席に着き、帰るまで遊びを選び続ける。
+;================================================================
+@ホストクラブメニュー
+#DIM 担当
+担当 = ホスト指名者()
+;担当が消えている（未指名・キャラ未登録）場合はまず指名から
+IF 担当 == -1
+	PRINTL 担当がいないので、まずは指名を決めることになった。
+	CALL ホスト指名選択
+	CFLAG:MASTER:3509 = RESULT
+	担当 = ホスト指名者()
+	SIF 担当 == -1
+		RETURN
+ENDIF
+CFLAG:MASTER:3510 += 1
+;出迎え（担当の好意でトーンが変わる）
+IF TA:担当:MASTER:3 >= 60
+	PRINTFORML 扉を開けるなり%CALLNAME:担当%が飛んできて、当たり前のようにあなたの腰を抱き寄せた。
+	PRINTL 「遅いよ。……ずっと待ってたんだからな」
+ELSEIF TA:担当:MASTER:3 >= 25
+	PRINTFORML 案内された席へ、担当の%CALLNAME:担当%がグラスを片手にやってきた。
+	PRINTL 「来てくれると思ってた。今日は何を飲む？」
+ELSE
+	PRINTFORML 薄暗い店内。担当の%CALLNAME:担当%が営業スマイルで隣に腰を下ろした。
+	PRINTL 「いらっしゃい。……今夜は付き合ってくれるんだろ？」
+ENDIF
+$HOST_MENU_INPUT
+PRINTL
+PRINTFORML ＜%CALLNAME:担当%を指名中／累計%金額(CFLAG:MASTER:3511)%円／売掛%金額(CFLAG:MASTER:3512)%円／所持金%金額(MONEY:MASTER)%円＞
+PRINTL [0] - セットで飲む（10,000円）
+PRINTL [1] - ボトルを入れる（30,000円）
+PRINTL [2] - シャンパンを入れる（100,000円。足りない分は売掛になる）
+PRINTL [3] - 指名を変える
+IF ホストアフター可(担当)
+	PRINTL [4] - アフターに誘う
+ELSE
+	SETCOLOR 96 , 96, 96
+	PRINTFORML 　　　アフターに誘う（%ホストアフター条件文(担当)%）
+	RESETCOLOR
+ENDIF
+IF CFLAG:MASTER:3512 > 0
+	PRINTL [5] - 売掛を返す
+ELSE
+	SETCOLOR 96 , 96, 96
+	PRINTL 　　　売掛を返す（ツケは残っていない）
+	RESETCOLOR
+ENDIF
+PRINTL [6] - 帰る
+INPUT
+SIF RESULT < 0 || RESULT > 6
+	GOTO HOST_MENU_INPUT
+SIF RESULT == 4 && !ホストアフター可(担当)
+	GOTO HOST_MENU_INPUT
+SIF RESULT == 5 && CFLAG:MASTER:3512 <= 0
+	GOTO HOST_MENU_INPUT
+SELECTCASE RESULT
+	CASE 0, 1, 2
+		CALL ホスト飲む(担当, RESULT)
+	CASE 3
+		CALL ホスト指名変更(担当)
+		担当 = ホスト指名者()
+		SIF 担当 == -1
+			RETURN
+	CASE 4
+		CALL ホストアフター(担当)
+		RETURN
+	CASE 5
+		CALL ホスト売掛返済
+	CASEELSE
+		PRINTFORMW %CALLNAME:担当%は店の外まで見送りに出て、名残惜しそうに手を振った。
+		RETURN
+ENDSELECT
+GOTO HOST_MENU_INPUT
+
+;================================================================
+;@ホスト飲む(ARG, ARG:1)
+;  ARG   = 担当ホストの登録番号
+;  ARG:1 = 0=セット(10000円) / 1=ボトル(30000円) / 2=シャンパン(100000円)
+;  料金は先払い。シャンパンのみ手持ち不足でも売掛(CFLAG:3512)を積んで注文できる。
+;================================================================
+@ホスト飲む(ARG, ARG:1)
+#DIM 料金
+#DIM 売掛分
+SELECTCASE ARG:1
+	CASE 0
+		料金 = 10000
+	CASE 1
+		料金 = 30000
+	CASEELSE
+		料金 = 100000
+ENDSELECT
+;セット・ボトルは手持ちの範囲でしか頼めない（売掛はシャンパンの特権）
+IF ARG:1 != 2 && MONEY:MASTER < 料金
+	PRINTFORMW 財布の中身を思い出して、あなたは黙って首を振った。（所持金%金額(MONEY:MASTER)%円）
+	RETURN
+ENDIF
+;----------------------------------------------------------------
+;支払い（先払い。不足分は売掛へ）
+;----------------------------------------------------------------
+売掛分 = 0
+IF MONEY:MASTER >= 料金
+	MONEY:MASTER -= 料金
+ELSE
+	売掛分 = 料金 - MONEY:MASTER
+	MONEY:MASTER = 0
+	CFLAG:MASTER:3512 += 売掛分
+ENDIF
+CFLAG:MASTER:3511 += 料金
+;----------------------------------------------------------------
+;描写と効果
+;----------------------------------------------------------------
+PRINTL
+SELECTCASE ARG:1
+	CASE 0
+		PRINTFORML %CALLNAME:ARG%は手際よく水割りを作り、氷を鳴らしてグラスを差し出した。
+		PRINTL 他愛のない話に相槌を打たれているだけなのに、不思議と胸の内が軽くなっていく。
+		PRINTFORMW 「な、俺と飲んでる時くらい、余計なこと忘れろよ」
+		DOWNBASE:MASTER:ストレス += 200
+		BASE:MASTER:興奮度 = MIN(BASE:MASTER:興奮度 + 100, BASE:MASTER:性欲)
+		CFLAG:MASTER:待機時間 += 60
+	CASE 1
+		PRINTFORML ボトルを入れると、%CALLNAME:ARG%の名前が入ったプレートがテーブルに据えられた。
+		PRINTL 「……嬉しいな。これで、この店にあんたの席ができたってことだ」
+		PRINTFORMW 少し照れたようなその顔が、営業なのか本気なのか分からなくなってくる。
+		DOWNBASE:MASTER:ストレス += 300
+		BASE:MASTER:興奮度 = MIN(BASE:MASTER:興奮度 + 150, BASE:MASTER:性欲)
+		CFLAG:MASTER:待機時間 += 30
+	CASEELSE
+		PRINTL 「シャンパン入りまーす！」黒服の声が飛び、店内の照明がいっせいに落ちた。
+		PRINTFORML スパークの光を掲げたホストたちが手を叩いて囃し立て、%CALLNAME:ARG%があなたの手を取って立たせる。
+		PRINTL 名前を呼ぶコールが店中に響き渡り、視線という視線が全部あなたに集まった。
+		PRINTFORMW 誇らしさと羞恥と酔いがぐるぐる混ざって、頭の芯が甘く痺れていく……。
+		DOWNBASE:MASTER:ストレス += 500
+		BASE:MASTER:興奮度 = MIN(BASE:MASTER:興奮度 + 250, BASE:MASTER:性欲)
+		BASE:MASTER:評判 -= 10
+		CFLAG:MASTER:待機時間 += 30
+ENDSELECT
+;----------------------------------------------------------------
+;関係の変化（金額が担当の好意に、話術がこちらの入れ込み具合に効く）
+;----------------------------------------------------------------
+TA:ARG:MASTER:3 += 料金 / 10000
+TA:MASTER:ARG:3 += 料金 / 10000 + ABL:ARG:話術技能
+TA:MASTER:ARG:1 += 料金 / 20000 + ABL:ARG:話術技能 / 2
+IF 売掛分 > 0
+	PRINTFORML %CALLNAME:ARG%は伝票にさらりとサインを促し、足りない分を売掛に回してくれた。
+	PRINTFORMW 「気にすんなって。……次に来た時でいいから」（売掛 +%金額(売掛分)%円　残高%金額(CFLAG:MASTER:3512)%円）
+ENDIF
+RETURN
+
+;================================================================
+;@ホスト指名変更(ARG)
+;  ARG = 現在の担当。指名替えは店では御法度＝前の担当の好意が大きく下がり敵対が上がる。
+;================================================================
+@ホスト指名変更(ARG)
+#DIM 新番号
+#DIM 新担当
+PRINTL
+PRINTFORML 店長を呼んで担当を替えたいと切り出すと、%CALLNAME:ARG%の顔から笑みが消えた。
+CALL ホスト指名選択
+新番号 = RESULT
+IF 新番号 == CFLAG:MASTER:3509
+	PRINTFORMW 結局、指名はそのままにしておいた。
+	RETURN
+ENDIF
+;前の担当との関係
+TA:ARG:MASTER:3 -= 20
+SIF TA:ARG:MASTER:3 < 0
+	TA:ARG:MASTER:3 = 0
+TA:ARG:MASTER:6 += 10
+CFLAG:MASTER:3509 = 新番号
+新担当 = GETCHARA(新番号)
+PRINTFORMW 「……そう。まあ、客の勝手だからな」%CALLNAME:ARG%は吐き捨てるように言って席を立った。
+PRINTFORMW 入れ替わりに%CALLNAME:新担当%がやってきて、あらためてグラスを差し出してきた。
+RETURN
+
+;================================================================
+;@ホスト売掛返済
+;  売掛(CFLAG:3512)を所持金の範囲で返す。
+;================================================================
+@ホスト売掛返済
+#DIM 額
+IF MONEY:MASTER <= 0
+	PRINTFORMW 財布は空だった。今日は一円も返せそうにない。
+	RETURN
+ENDIF
+額 = MIN(MONEY:MASTER, CFLAG:MASTER:3512)
+PRINTL
+PRINTFORML 売掛の残りは%金額(CFLAG:MASTER:3512)%円。今なら%金額(額)%円まで返せる。
+PRINTFORML [0] - %金額(額)%円返す
+PRINTL [1] - やめておく
+$HOST_URIKAKE_INPUT
+INPUT
+SIF RESULT != 0 && RESULT != 1
+	GOTO HOST_URIKAKE_INPUT
+IF RESULT == 1
+	PRINTL 今日は返さないでおくことにした。
+	RETURN
+ENDIF
+MONEY:MASTER -= 額
+CFLAG:MASTER:3512 -= 額
+IF CFLAG:MASTER:3512 <= 0
+	CFLAG:MASTER:3512 = 0
+	PRINTFORMW 店長は札を数えると、「きれいなもんだ」と伝票を破ってみせた。
+ELSE
+	PRINTFORMW 店長は札を数え、「残りは%金額(CFLAG:MASTER:3512)%円だな」と手帳に書き付けた。
+ENDIF
+RETURN
+
+;================================================================
+;@ホストアフター(ARG)
+;  ARG = 担当ホスト。閉店間際に誘って裏通りのラブホテル(2,22)へ。
+;  場所移動・関係更新はH呼び出しの前に済ませる（先払い規約）。
+;================================================================
+@ホストアフター(ARG)
+#DIM 操作
+操作 = 0
+TCVAR:MASTER:ホストアフター済 = 1
+PRINTL
+PRINTFORMW ラストソングが流れ終える頃、あなたは%CALLNAME:ARG%の腕にそっと指を絡めていた。
+PRINTFORML 「……このまま帰したくないな」%CALLNAME:ARG%はそう囁くと、店の裏口へあなたを促した。
+PRINTL どうしますか？
+PRINTL [0] - ついていく（自分で操作する）
+PRINTL [1] - ついていく（おまかせ）
+PRINTL [2] - やっぱり帰る
+$HOST_AFTER_INPUT
+INPUT
+SIF RESULT != 0 && RESULT != 1 && RESULT != 2
+	GOTO HOST_AFTER_INPUT
+IF RESULT == 2
+	PRINTFORMW 我に返って首を振ると、%CALLNAME:ARG%は「つれないな」と笑い、タクシーを拾ってくれた。
+	RETURN
+ENDIF
+SIF RESULT == 0
+	操作 = 1
+;ラブホテルへ（客ホテル.ERBと同じ手順）
+CFLAG:MASTER:現在地区 = 2
+CFLAG:MASTER:現在位置 = 22
+TA:MASTER:ARG:1 += 5
+TA:ARG:MASTER:3 += 5
+PRINTFORMW 手を引かれるまま裏通りのラブホテルへ入ると、%CALLNAME:ARG%は営業用の笑みを消してあなたを抱き寄せた。
+IF 操作
+	;イベント4（コマンド選択式）へ合流。終了は997行為を終えるに任せる
+	CALL 援交操作モード開始(ARG)
+	RETURN
+ENDIF
+CALL ソープH_おまかせ(ARG, MASTER)
+CFLAG:MASTER:待機時間 += 90
+PRINTFORML 事が済むと、%CALLNAME:ARG%は手早く身支度を整え、あなたの髪を軽く撫でた。
+PRINTFORMW 「……また店で待ってる。次はもっといい酒、入れてくれよ」
+RETURN
+
+;================================================================
+;@ホスト売掛取り立て
+;  来店時、売掛が30万以上あると店長が入口で待ち構える。
+;  戻り値(RESULT): 1=ここで来店処理を終える / 0=通常の受付へ続く
+;  減額・評判・累計はH呼び出しの前に処理（先払い規約）。
+;================================================================
+@ホスト売掛取り立て
+#DIM 店長
+#DIM 客
+SIF CFLAG:MASTER:3512 < 300000
+	RETURN 0
+店長 = GETCHARA(63)
+客 = GETCHARA(59)
+PRINTFORML 席へ向かおうとしたあなたの前に、店長の%CALLNAME:店長%が静かに立ちはだかった。
+PRINTFORML 「%CALLNAME:MASTER%さん。……溜まってる分、そろそろ何とかしてもらえないかな」
+PRINTFORMW 差し出された伝票の合計は%金額(CFLAG:MASTER:3512)%円。とても普通に稼いで返せる額ではない。
+PRINTL どうしますか？
+IF MONEY:MASTER >= CFLAG:MASTER:3512
+	PRINTFORML [0] - 現金で全額返す（%金額(CFLAG:MASTER:3512)%円）
+ELSE
+	SETCOLOR 96 , 96, 96
+	PRINTL 　　　現金で全額返す（所持金が足りない）
+	RESETCOLOR
+ENDIF
+IF 客 != -1
+	PRINTL [1] - 「体で返せ」と言われるまま従う（売掛50,000円分）
+ELSE
+	SETCOLOR 96 , 96, 96
+	PRINTL 　　　「体で返せ」と言われるまま従う（今夜は客がいない）
+	RESETCOLOR
+ENDIF
+PRINTL [2] - 今日は帰る
+$HOST_TORITATE_INPUT
+INPUT
+SIF RESULT < 0 || RESULT > 2
+	GOTO HOST_TORITATE_INPUT
+SIF RESULT == 0 && MONEY:MASTER < CFLAG:MASTER:3512
+	GOTO HOST_TORITATE_INPUT
+SIF RESULT == 1 && 客 == -1
+	GOTO HOST_TORITATE_INPUT
+IF RESULT == 0
+	MONEY:MASTER -= CFLAG:MASTER:3512
+	CFLAG:MASTER:3512 = 0
+	PRINTFORMW 札束を叩きつけると、%CALLNAME:店長%は満面の笑みで伝票を破り捨てた。「さすがだね。さあ、今夜も楽しんで」
+	RETURN 0
+ELSEIF RESULT == 2
+	PRINTFORML 言葉を濁して踵を返す。背中に%CALLNAME:店長%の溜め息が刺さった。
+	PRINTFORMW 「……キャバクラでもソープでも、稼ぐ当てはあるだろ。逃げるのだけはやめときな」
+	RETURN 1
+ENDIF
+;----------------------------------------------------------------
+;体で返す（先払い規約: 減額・評判・累計はH前に処理）
+;----------------------------------------------------------------
+CFLAG:MASTER:3512 -= 50000
+SIF CFLAG:MASTER:3512 < 0
+	CFLAG:MASTER:3512 = 0
+CFLAG:MASTER:3513 += 1
+BASE:MASTER:評判 -= 50
+;客を店へ（乗車・睡眠は解除）
+CFLAG:客:現在地区 = 2
+CFLAG:客:現在位置 = 53
+CFLAG:客:乗車 = 0
+CFLAG:客:睡眠 = 0
+PRINTL
+PRINTFORML 頷くと、%CALLNAME:店長%は奥のＶＩＰルームへあなたを押し込み、待っていた男に引き合わせた。
+PRINTFORMW 「この娘だよ。……ごゆっくり」扉が閉まる音が、やけに重く響いた。
+CALL ソープH_おまかせ(客, MASTER)
+CFLAG:MASTER:待機時間 += 120
+PRINTFORML 部屋を出ると、%CALLNAME:店長%が伝票の数字を書き換えて見せた。残りは%金額(CFLAG:MASTER:3512)%円。
+PRINTFORMW 「筋がいいじゃないか。この調子なら、すぐ返し終わるよ」
+RETURN 1
+
+;================================================================
+;@ホストクラブ日次
+;  EVENTTRAIN.ERB（毎朝）の家賃徴収の直後から呼ばれる。
+;   ・月初(DAY:3==1)に売掛を所持金から徴収し、払いきれない分に利息10%を付ける
+;   ・しばらく通わないと担当の好意が冷める
+;================================================================
+@ホストクラブ日次
+#DIM 担当
+#DIM 徴収
+IF CFLAG:MASTER:3512 > 0 && DAY:3 == 1
+	徴収 = MIN(MONEY:MASTER, CFLAG:MASTER:3512)
+	IF 徴収 > 0
+		MONEY:MASTER -= 徴収
+		CFLAG:MASTER:3512 -= 徴収
+		PRINTFORMW ホストクラブの売掛を払いました(-%金額(徴収)%円)
+	ENDIF
+	IF CFLAG:MASTER:3512 > 0
+		CFLAG:MASTER:3512 = CFLAG:MASTER:3512 * 110 / 100
+		PRINTFORMW 払いきれなかった売掛に利息が付いた(残り%金額(CFLAG:MASTER:3512)%円)
+	ENDIF
+ENDIF
+;金の切れ目が縁の切れ目（3日以上ご無沙汰なら担当の好意が下がる）
+担当 = ホスト指名者()
+IF 担当 != -1 && CFLAG:MASTER:3514 > 0 && DAY - CFLAG:MASTER:3514 >= 3
+	SIF TA:担当:MASTER:3 > 0
+		TA:担当:MASTER:3 -= 1
+ENDIF
+RETURN
