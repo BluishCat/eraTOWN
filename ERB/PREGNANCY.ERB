@@ -1073,7 +1073,7 @@ IF RAND(100) < FLAG:早期破水率
 ELSE
 	;陣痛先行：まだ破水はしていない（後で適時破水する）
 	IF ARG == MASTER
-		STR:0 = 下腹部に規則的な痛み――陣痛が始まった。（まだ破水はしていない）
+		STR:0 = 下腹部に規則的な痛み――陣痛が始まった。
 		CALL 陣痛ログ(ARG)
 		CALL 妊娠口上(4, ARG, CFLAG:ARG:父親)
 	ENDIF
@@ -1220,9 +1220,9 @@ IF CFLAG:ARG:分娩残 <= 0
 	CFLAG:ARG:分娩済 = 0
 	;産後の回復期を確定（胎児数リセット前に妊娠期間から算出。この間は妊娠しない）
 	CFLAG:ARG:産後回復 = 産後回復日数算出(ARG)
-	;いきみ（分娩直前）の口上
-	CALL 妊娠口上(7, ARG, CFLAG:ARG:父親)
 ENDIF
+;いきみ（娩出直前）の口上。多胎は児ごとに娩出があるため、児ごとに出す
+CALL 妊娠口上(7, ARG, CFLAG:ARG:父親)
 ;この1児を娩出（介助の有無は児ごとに判定＝小休止の間に病院へ移れば以後は介助になる）
 LOCAL = 分娩介助中(ARG, ARG:1)
 CALL 出産_1児娩出(ARG, LOCAL)
@@ -1359,9 +1359,11 @@ RETURN
 ;----------------------------------------------------------------
 @分娩_次児待機_進行(ARG,ARG:1)
 VARSET LOCAL
-;LOCAL:2=分娩到達値、LOCAL:1=実効経過分（長時間行動で猶予を飛ばさないよう30分で頭打ち）
+;LOCAL=加算前の陣痛値、LOCAL:2=分娩到達値、LOCAL:1=実効経過分（長時間行動で猶予を飛ばさないよう30分で頭打ち）
+;LOCAL:3=このターンに地の文を出した、LOCAL:4=波の間隔
 LOCAL:2 = 陣痛_満了(ARG)
 LOCAL:1 = MIN(ARG:1, 30)
+LOCAL = CFLAG:ARG:陣痛
 CFLAG:ARG:陣痛 = MIN(LOCAL:2, CFLAG:ARG:陣痛 + LOCAL:1)
 ;小休止のあいだも体は削られ続ける（娩出そのものよりは軽い）
 IF ARG == MASTER
@@ -1376,7 +1378,15 @@ IF !CFLAG:ARG:破水済 && LOCAL:2 - CFLAG:ARG:陣痛 <= MAX(5, LOCAL:2 / 48)
 		CALL 陣痛ログ(ARG)
 		STR:0 = ……そろそろ、次の子が生まれる。
 		CALL 陣痛ログ(ARG)
+		LOCAL:3 = 1
 	ENDIF
+ENDIF
+;次の児を待つあいだも陣痛の波は続く（間隔は娩出期と同じ。反応セリフは状況17を流用）
+;破水の地の文を出した回は出さない。猶予を使い切る回は娩出描写に譲る
+IF ARG == MASTER && LOCAL:3 == 0 && CFLAG:ARG:陣痛 < LOCAL:2
+	LOCAL:4 = MAX(1, LOCAL:2 / 48)
+	SIF LOCAL / LOCAL:4 != CFLAG:ARG:陣痛 / LOCAL:4
+		CALL 妊娠口上(17, ARG, CFLAG:ARG:父親)
 ENDIF
 ;猶予を使い切ったら次の児を娩出（介助の有無は@出産側で現在地から判定する）
 SIF CFLAG:ARG:陣痛 >= LOCAL:2

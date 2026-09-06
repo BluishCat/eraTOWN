@@ -1,4 +1,4 @@
-﻿;================================================
+;================================================
 ; あなた（キャラ番号 1）の妊娠・出産口上
 ; 状況：1危険日 2妊娠中 3発覚 4陣痛開始 5出産 6陣痛激化 7いきみ 8破水 12着床感
 ;       14〜17 陣痛の波（14本格化 15活動期 16移行期 17娩出期。周期的に発火・セリフのみ）
@@ -56,12 +56,42 @@ ENDSELECT
 RETURN
 @妊娠口上_7_1(ARG,ARG:1)
 ;いきみ
-SELECTCASE RAND(2)
-	CASE 0
-		PRINTFORMW %CALLNAME:ARG%「う、うぅ……っ、いくよ……っ！」
-	CASEELSE
-		PRINTFORMW %CALLNAME:ARG%「んんっ……！　もう、出そう……！」
-ENDSELECT
+LOCAL = CFLAG:ARG:妊娠日数 * 100 / 出産予定日数(ARG)
+IF LOCAL >= 85
+	IF 分娩介助中(ARG, 0)
+		;---【病院】管理された苦悶 ---
+		SELECTCASE RAND(3)
+			CASE 0
+				PRINTFORMW "スタッフの指示に従い、必死にいきむ。"
+				PRINTFORMW %CALLNAME:ARG%「うぅ……っ！　あぁっ……！　骨盤が、壊れるみたいに……っ！」
+			CASE 1
+				PRINTFORMW %CALLNAME:ARG%「んんんんっ……！！　お腹の奥を、全部押しつぶされる……！　あぁ、もう出ちゃう……っ！」
+			CASEELSE
+				PRINTFORMW %CALLNAME:ARG%「ひっ、うぅ……っ！　これ以上は……耐えられない……！　体が、勝手に……っ！」
+		ENDSELECT
+	ELSE
+		;---【自宅等】過酷な苦悶 ---
+		SELECTCASE RAND(4)
+			CASE 0
+				PRINTFORMW %CALLNAME:ARG%「うぅ……っ！　あぁっ……！　もう、我慢できない……！　骨盤が、壊れるみたいに……っ！」
+			CASE 1
+				PRINTFORMW %CALLNAME:ARG%「んんんんっ……！！　お腹の奥を、全部押しつぶされる……！　あぁ、もう出ちゃう……っ！」
+			CASE 2
+				PRINTFORMW %CALLNAME:ARG%「ひっ、うぅ……っ！　これ以上は……耐えられない……！　体が、勝手に……っ！」
+			CASEELSE
+				PRINTFORMW "必死に顔を歪ませていきみ、意識が遠のくような腹圧に耐える。"
+				PRINTFORMW %CALLNAME:ARG%「んんんーーーっ！！　あ、ああぁぁーー！！」
+		ENDSELECT
+	ENDIF
+ELSE
+	;初期・中期（予兆〜苦悶）
+	SELECTCASE RAND(2)
+		CASE 0
+			PRINTFORMW %CALLNAME:ARG%「う、うぅ……っ、いくよ……っ！」
+		CASEELSE
+			PRINTFORMW %CALLNAME:ARG%「んんっ……！　もう、出そう……！」
+		ENDSELECT
+ENDIF
 RETURN
 @妊娠口上_8_1(ARG,ARG:1)
 ;破水
@@ -80,47 +110,168 @@ TSTR:(FLAG:口上候補数++) = %CALLNAME:ARG%「まだ産まれてくる……!
 RETURN
 @妊娠口上_14_1(ARG,ARG:1)
 ;陣痛の波・本格化（規則的な波に耐える）
-SELECTCASE RAND(3)
-	CASE 0
-		PRINTFORMW %CALLNAME:ARG%「んっ……く……また来た……ふーっ、ふーっ……」
-	CASE 1
-		PRINTFORMW %CALLNAME:ARG%「……はぁ……今は、引いてる……次が来る前に、息を……」
-	CASEELSE
-		PRINTFORMW %CALLNAME:ARG%「お腹、硬くなってる……赤ちゃん、もうすぐ会えるんだよね……」
-ENDSELECT
+LOCAL = CFLAG:ARG:妊娠日数 * 100 / 出産予定日数(ARG)
+IF LOCAL >= 85
+	IF 分娩介助中(ARG, 0)
+		;---【病院】管理された苦悶 ---
+		SELECTCASE RAND(3)
+			CASE 0
+				PRINTFORMW "スタッフの指示に従い、必死にいきむ。"
+				PRINTFORMW %CALLNAME:ARG%「んっ……く……また来た……！　お腹の奥が、内臓を押しつぶすみたいに……っ！」
+			CASE 1
+				PRINTFORMW %CALLNAME:ARG%「……はぁ……今は、引いてる……次が来る前に、息を……っ。あぁ、骨盤が、広がる感覚が……」
+			CASEELSE
+				PRINTFORMW %CALLNAME:ARG%「お腹、硬くなってる……赤ちゃん、もうすぐ会えるんだよね……うぅ、でも、この圧迫感……耐えられない……！」
+		ENDSELECT
+	ELSE
+		;---【自宅等】過酷な苦悶 ---
+		SELECTCASE RAND(4)
+			CASE 0
+				PRINTFORMW %CALLNAME:ARG%「んっ……く……また来た……！　お腹の奥が、内臓を押しつぶすみたいに……っ！」
+			CASE 1
+				PRINTFORMW %CALLNAME:ARG%「……はぁ……今は、引いてる……次が来る前に、息を……っ。あぁ、骨盤が、広がる感覚が……」
+			CASE 2
+				PRINTFORMW %CALLNAME:ARG%「お腹、硬くなってる……赤ちゃん、もうすぐ会えるんだよね……うぅ、でも、この圧迫感……耐えられない……！」
+			CASEELSE
+				PRINTFORMW "必死に顔を歪ませていきみ、意識が遠のくような腹圧に耐える。"
+				PRINTFORMW %CALLNAME:ARG%「んんんーーーっ！！　あ、ああぁぁーー！！」
+		ENDSELECT
+	ENDIF
+ELSE
+	;初期・中期（予兆〜苦悶）
+	SELECTCASE RAND(3)
+		CASE 0
+			PRINTFORMW %CALLNAME:ARG%「んっ……く……また来た……ふーっ、ふーっ……」
+		CASE 1
+			PRINTFORMW %CALLNAME:ARG%「……はぁ……今は、引いてる……次が来る前に、息を……」
+		CASEELSE
+			PRINTFORMW %CALLNAME:ARG%「お腹、硬くなってる……赤ちゃん、もうすぐ会えるんだよね……」
+	ENDSELECT
+ENDIF
 RETURN
 @妊娠口上_15_1(ARG,ARG:1)
 ;陣痛の波・活動期（痛み激化・間隔短縮）
-SELECTCASE RAND(3)
-	CASE 0
-		PRINTFORMW %CALLNAME:ARG%「いっ、たぁ……！　どんどん、強くなってる……！」
-	CASE 1
-		PRINTFORMW %CALLNAME:ARG%「はぁっ、はぁっ……休ませて、くれないよぉ……！」
-	CASEELSE
-		PRINTFORMW %CALLNAME:ARG%「うぅ……っ、腰が、割れちゃいそう……！」
-ENDSELECT
+LOCAL = CFLAG:ARG:妊娠日数 * 100 / 出産予定日数(ARG)
+IF LOCAL >= 85
+	IF 分娩介助中(ARG, 0)
+		;---【病院】管理された苦悶 ---
+		SELECTCASE RAND(3)
+			CASE 0
+				PRINTFORMW "スタッフの指示に従い、必死にいきむ。"
+				PRINTFORMW %CALLNAME:ARG%「いっ、たぁ……！　どんどん、強くなってる……！　お腹の中がぐちゃぐちゃに……！」
+			CASE 1
+				PRINTFORMW %CALLNAME:ARG%「はぁっ、はぁっ……休ませて、くれないよぉ……！　もう、内臓まで押しつぶされそうで……」
+			CASEELSE
+				PRINTFORMW %CALLNAME:ARG%「うぅ……っ、腰が、割れちゃいそう……！　骨盤から、何かが……！」
+		ENDSELECT
+	ELSE
+		;---【自宅等】過酷な苦悶 ---
+		SELECTCASE RAND(4)
+			CASE 0
+				PRINTFORMW %CALLNAME:ARG%「いっ、たぁ……！　どんどん、強くなってる……！　お腹の中がぐちゃぐちゃに……！」
+			CASE 1
+				PRINTFORMW %CALLNAME:ARG%「はぁっ、はぁっ……休ませて、くれないよぉ……！　もう、内臓まで押しつぶされそうで……」
+			CASE 2
+				PRINTFORMW %CALLNAME:ARG%「うぅ……っ、腰が、割れちゃいそう……！　骨盤から、何かが……！」
+			CASEELSE
+				PRINTFORMW "必死に顔を歪ませていきみ、意識が遠のくような腹圧に耐える。"
+				PRINTFORMW %CALLNAME:ARG%「んんんーーーっ！！　あ、ああぁぁーー！！」
+		ENDSELECT
+	ENDIF
+ELSE
+	;初期・中期（予兆〜苦悶）
+	SELECTCASE RAND(3)
+		CASE 0
+			PRINTFORMW %CALLNAME:ARG%「いっ、たぁ……！　どんどん、強くなってる……！」
+		CASE 1
+			PRINTFORMW %CALLNAME:ARG%「はぁっ、はぁっ……休ませて、くれないよぉ……！」
+		CASEELSE
+			PRINTFORMW %CALLNAME:ARG%「うぅ……っ、腰が、割れちゃいそう……！」
+	ENDSELECT
+ENDIF
 RETURN
 @妊娠口上_16_1(ARG,ARG:1)
 ;陣痛の波・移行期（途切れない波・いきみ衝動を逃がす）
-SELECTCASE RAND(3)
-	CASE 0
-		PRINTFORMW %CALLNAME:ARG%「んんー……っ！　だめ、まだいきんじゃだめ……わたし……！」
-	CASE 1
-		PRINTFORMW %CALLNAME:ARG%「ひぐっ……うぅ……波が、つながって……終わらない……！」
-	CASEELSE
-		PRINTFORMW %CALLNAME:ARG%「はっ、はっ、はっ……逃がすの……こういう時は、短く息を……！」
-ENDSELECT
+LOCAL = CFLAG:ARG:妊娠日数 * 100 / 出産予定日数(ARG)
+IF LOCAL >= 85
+	IF 分娩介助中(ARG, 0)
+		;---【病院】管理された苦悶 ---
+		SELECTCASE RAND(3)
+			CASE 0
+				PRINTFORMW "スタッフの指示に従いながら、波を耐える。"
+				PRINTFORMW %CALLNAME:ARG%「んんー……っ！　だめ、まだいきんじゃだめ……わたし……！　お腹が、破裂しそう……っ！」
+			CASE 1
+				PRINTFORMW %CALLNAME:ARG%「ひぐっ……うぅ……波が、つながって……終わらない……！　内臓を…全部、押しつぶされる……！」
+			CASEELSE
+				PRINTFORMW %CALLNAME:ARG%「はっ、はっ、はっ……逃がすの……こういう時は、短く息を……！　うぅ、でも…これじゃ…足りない……！」
+		ENDSELECT
+	ELSE
+		;---【自宅等】過酷な苦悶 ---
+		SELECTCASE RAND(4)
+			CASE 0
+				PRINTFORMW %CALLNAME:ARG%「んんー……っ！　だめ、まだいきんじゃだめ……わたし……！　お腹が、破裂しそう……っ！」
+			CASE 1
+				PRINTFORMW %CALLNAME:ARG%「ひぐっ……うぅ……波が、つながって……終わらない……！　内臓を…全部、押しつぶされる……！」
+			CASE 2
+				PRINTFORMW %CALLNAME:ARG%「はっ、はっ、はっ……逃がすの……こういう時は、短く息を……！　うぅ、でも…これじゃ…足りない……！」
+			CASEELSE
+				PRINTFORMW "必死に顔を歪ませていきみ、意識が遠のくような腹圧に耐える。"
+				PRINTFORMW %CALLNAME:ARG%「んんんーーーっ！！　あ、ああぁぁーー！！」
+		ENDSELECT
+	ENDIF
+ELSE
+	;初期・中期（予兆〜苦悶）
+	SELECTCASE RAND(3)
+		CASE 0
+			PRINTFORMW %CALLNAME:ARG%「んんー……っ！　だめ、まだいきんじゃだめ……わたし……！」
+		CASE 1
+			PRINTFORMW %CALLNAME:ARG%「ひぐっ……うぅ……波が、つながって……終わらない……！」
+		CASEELSE
+			PRINTFORMW %CALLNAME:ARG%「はっ、はっ、はっ……逃がすの……こういう時は、短く息を……！」
+	ENDSELECT
+ENDIF
 RETURN
 @妊娠口上_17_1(ARG,ARG:1)
 ;陣痛の波・娩出期（抗えないいきみ・児頭下降）
-SELECTCASE RAND(3)
-	CASE 0
-		PRINTFORMW %CALLNAME:ARG%「んんんっ……！　からだが、勝手にいきんじゃう……！」
-	CASE 1
-		PRINTFORMW %CALLNAME:ARG%「うーっ……！　降りてきてる……押し広げられて……！」
-	CASEELSE
-		PRINTFORMW %CALLNAME:ARG%「ふーっ、ふーっ……もうすぐ……もうすぐだから、がんばって……！」
-ENDSELECT
+LOCAL = CFLAG:ARG:妊娠日数 * 100 / 出産予定日数(ARG)
+IF LOCAL >= 85
+	IF 分娩介助中(ARG, 0)
+		;---【病院】管理された苦悶 ---
+		SELECTCASE RAND(3)
+			CASE 0
+				PRINTFORMW "スタッフの指示に従い、必死にいきむ。"
+				PRINTFORMW %CALLNAME:ARG%「んんんっ……！　からだが、勝手にいきんじゃう……！　あぁ…もう、内臓が……！」
+			CASE 1
+				PRINTFORMW %CALLNAME:ARG%「うーっ……！　降りてきてる……押し広げられて……！　骨盤が、壊れちゃう……っ！」
+			CASEELSE
+				PRINTFORMW "スタッフの誘導を受けながら。"
+				PRINTFORMW %CALLNAME:ARG%「ふーっ、ふーっ……もうすぐ……もうすぐだから、がんばって……！　うぅ、でも…これじゃ…足りない……！」
+		ENDSELECT
+	ELSE
+		;---【自宅等】過酷な苦悶 ---
+		SELECTCASE RAND(4)
+			CASE 0
+				PRINTFORMW %CALLNAME:ARG%「んんんっ……！　からだが、勝手にいきんじゃう……！　あぁ…もう、内臓が……！」
+			CASE 1
+				PRINTFORMW %CALLNAME:ARG%「うーっ……！　降りてきてる……押し広げられて……！　骨盤が、壊れちゃう……っ！」
+			CASE 2
+				PRINTFORMW %CALLNAME:ARG%「ふーっ、ふーっ……もうすぐ……もうすぐだから、がんばって……！　うぅ、でも…これじゃ…足りない……！」
+			CASEELSE
+				PRINTFORMW "意識を失いそうになるほどの腹圧に耐えながら、魂を削るようにいきむ。"
+				PRINTFORMW %CALLNAME:ARG%「んんんーーーっ！！　あ、ああぁぁーー！！」
+		ENDSELECT
+	ENDIF
+ELSE
+	;初期・中期（予兆〜苦悶）
+	SELECTCASE RAND(3)
+		CASE 0
+			PRINTFORMW %CALLNAME:ARG%「んんんっ……！　からだが、勝手にいきんじゃう……！」
+		CASE 1
+			PRINTFORMW %CALLNAME:ARG%「うーっ……！　降りてきてる……押し広げられて……！」
+		CASEELSE
+			PRINTFORMW %CALLNAME:ARG%「ふーっ、ふーっ……もうすぐ……もうすぐだから、がんばって……！」
+	ENDSELECT
+ENDIF
 RETURN
 @妊娠口上_12_1(ARG,ARG:1)
 ;着床感（ごく稀に妊娠成立の瞬間をかすかに感じる。本人はまだ正体不明のまま）
@@ -130,6 +281,6 @@ SELECTCASE RAND(3)
 	CASE 1
 		PRINTFORMW %CALLNAME:ARG%「……？　下腹部が、少しだけ疼いたような……気のせい、かな」
 	CASEELSE
-		PRINTFORMW %CALLNAME:ARG%「（お腹の奥に、なにか小さな熱が灯ったような……そんな気がした）」
+		PRINTFORMW "お腹の奥に、なにか小さな熱が灯ったような……そんな気がした。"
 ENDSELECT
 RETURN
