@@ -322,7 +322,7 @@ IF TALENT:ARG:86
 	S = 4
 ENDIF
 ;調教者がふたなり
-IF TALENT:PLAYER:121
+IF (TALENT:ARG:2 & 3) == 3
 	SIF S
 	A += 8
 	S = 1

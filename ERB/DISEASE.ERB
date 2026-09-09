@@ -93,13 +93,12 @@ IF 性病持ち(ARG)
 ENDIF
 ;--- 風邪の新規発症判定（罹患中・免疫中は対象外） ---
 IF !風邪中(ARG) && CFLAG:ARG:風邪免疫 <= 0
-	発症率 = 1
+	;素の発症率。旧・不潔判定はMAXBASE:不潔が全キャラ未設定(=0)で常時成立していたため撤去し、その+3をここに畳み込んだ
+	発症率 = 4
 	SIF BASE:ARG:疲労 >= MAXBASE:ARG:疲労 * 70 / 100
 		発症率 += 4
 	SIF BASE:ARG:ストレス >= MAXBASE:ARG:ストレス * 70 / 100
 		発症率 += 4
-	SIF BASE:ARG:不潔 >= MAXBASE:ARG:不潔 * 60 / 100
-		発症率 += 3
 	SIF BASE:ARG:体力 < MAXBASE:ARG:体力 * 30 / 100
 		発症率 += 3
 	;冬（12〜2月）は流行期
