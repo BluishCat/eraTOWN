@@ -40,6 +40,9 @@ ENDIF
 
 
 PRINTL 調教する
+;調教が成立したので双方に調教経験
+EXP:ARG:調教経験 += 1
+EXP:(TCVAR:ARG:行為対象):調教経験 += 1
 ;調教
 FLAG:タイマー = TIME + 28
 CALL EVENT_JOIN(ARG,TCVAR:ARG:行為対象,7)

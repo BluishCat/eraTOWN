@@ -31,8 +31,16 @@ IF ABL:ARG:酒耐性 < 6
 	ENDIF
 ENDIF
 
-IF ABL:ARG:清掃技能 < 4
-	IF EXP:ARG:清掃経験 > EXPLV:(ABL:ARG:清掃技能 + 3)
+;親密（人懐こさ。会話を重ねるほど誰とでも打ち解けやすくなる。話術技能より1段伸びが遅い）
+IF ABL:ARG:親密 < 4
+	IF EXP:ARG:会話経験 > EXPLV:(ABL:ARG:親密 + 4)
+		ABL:ARG:親密 ++
+		PRINTFORMW %CALLNAME:ARG%の親密がLV{ABL:ARG:親密}になりました
+	ENDIF
+ENDIF
+;清掃技能（清掃経験で上がる。家事・映画館の清掃・清掃を伴うバイト）
+IF ABL:ARG:清掃技能 < 6
+	IF EXP:ARG:清掃経験 > EXPLV:(ABL:ARG:清掃技能 + 3) || (EXP:ARG:清掃経験 > 5 && ABL:ARG:清掃技能 == 0)
 		ABL:ARG:清掃技能 ++
 		PRINTFORMW %CALLNAME:ARG%の清掃技能がLV{ABL:ARG:清掃技能}になりました
 	ENDIF

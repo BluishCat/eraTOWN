@@ -361,10 +361,10 @@ ENDIF
 SELECTCASE HETEROSEX(ARG,ARG:1)
 	CASE 1
 		EXP:ARG:レズ経験 += ARG:2
-		EXP:(TCVAR:ARG:行為対象):レズ経験 += ARG:2
+		EXP:(ARG:1):レズ経験 += ARG:2
 	CASE 2
 		EXP:ARG:ゲイ経験 += ARG:2
-		EXP:(TCVAR:ARG:行為対象):ゲイ経験 += ARG:2
+		EXP:(ARG:1):ゲイ経験 += ARG:2
 ENDSELECT
 
 @SAME_ROOM_CHECK

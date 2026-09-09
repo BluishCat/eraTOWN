@@ -285,11 +285,17 @@ IF TCVAR:MASTER:デート満足度 >= 3
 	TA:相手:MASTER:1 += 2
 	TA:MASTER:相手:1 += 2
 	CFLAG:相手:デート回数 += 1
+	;デートは会話の塊。双方に会話経験（話術技能と親密が伸びる）
+	EXP:MASTER:会話経験 += 5
+	EXP:相手:会話経験 += 5
 ELSEIF TCVAR:MASTER:デート満足度 >= 1
 	PRINTFORML %CALLNAME:相手%とのデートを終えた。
 	TA:相手:MASTER:1 += 1
 	TA:MASTER:相手:1 += 1
 	CFLAG:相手:デート回数 += 1
+	;デートは会話の塊。双方に会話経験（話術技能と親密が伸びる）
+	EXP:MASTER:会話経験 += 3
+	EXP:相手:会話経験 += 3
 ENDIF
 TCVAR:MASTER:デート中 = 0
 TCVAR:相手:デート中 = 0

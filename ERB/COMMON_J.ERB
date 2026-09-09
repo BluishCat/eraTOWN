@@ -67,6 +67,22 @@ SIF LOVE_CHECK(TCVAR:ARG:行為対象,ARG)
 SIF TCVAR:(TCVAR:ARG:行為対象):行為対象 == CFLAG:(TCVAR:ARG:行為対象):最愛
 	LOCAL += 40
 
+;親密（人懐こさ。誰とでも打ち解けやすい性格ほど誘いに乗りやすい）
+LOCAL += ABL:(TCVAR:ARG:行為対象):親密 * 3
+
+;機嫌（上機嫌なら乗りやすく、不機嫌なら渋る。-10〜+10）
+;MAXBASEが未設定のキャラ（ダミー等）ではゼロ除算になるため補正ごと飛ばす
+SIF MAXBASE:(TCVAR:ARG:行為対象):機嫌 > 0
+	LOCAL += BASE:(TCVAR:ARG:行為対象):機嫌 * 20 / MAXBASE:(TCVAR:ARG:行為対象):機嫌 - 10
+
+;同性が相手のとき、その気があるほど乗りやすい（素質「性別嗜好」の男嫌い/女嫌いとは別枠）
+SELECTCASE HETEROSEX(ARG,TCVAR:ARG:行為対象)
+	CASE 1
+		LOCAL += ABL:(TCVAR:ARG:行為対象):レズっ気 * 4 - 8
+	CASE 2
+		LOCAL += ABL:(TCVAR:ARG:行為対象):ホモっ気 * 4 - 8
+ENDSELECT
+
 SIF LOCAL < 0
 	LOCAL = 0
 RETURNF LOCAL
