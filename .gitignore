@@ -20,3 +20,6 @@ list.txt
 *.bak
 *.ERB.bak
 emuera.log
+_verify_newline.ps1
+_lines.ps1
+_origcheck.ps1
