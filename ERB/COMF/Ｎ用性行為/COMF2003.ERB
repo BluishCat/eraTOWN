@@ -77,6 +77,8 @@ CALL HETEROSEX_EXP(ARG,TCVAR:ARG:行為対象,3)
 EXP:ARG:口淫経験 ++
 ;フェラ経験
 EXP:ARG:フェラ経験 ++
+;口内で受けるので、射精されたら精飲経験が入る(@EVENT_SHOOT)
+TCVAR:ARG:口淫中 = 1
 CFLAG:ARG:待機時間 += 2
 
 VARSET ARG

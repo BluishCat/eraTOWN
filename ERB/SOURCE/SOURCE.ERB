@@ -523,6 +523,7 @@ VARSET CUP:ARG:0
 VARSET CDOWN:ARG:0
 
 TCVAR:ARG:破瓜抑制 = 0
+TCVAR:ARG:口淫中 = 0
 ;TCVAR:挿入はH状態保持の継続フラグ（引き抜く/シーン終了で解除）のため、ここではリセットしない
 
 @EVENT_SHOOT(ARG)
@@ -574,6 +575,9 @@ ENDIF
 EXP:ARG:射精経験 += NOWEX:ARG:11
 SIF TCVAR:ARG:行為対象
 	EXP:(TCVAR:ARG:行為対象):精液経験 += NOWEX:ARG:11
+;口でペニスを扱う行為(フェラ系)の最中なら、口内で受けたものとして精飲経験も入る
+SIF TCVAR:ARG:行為対象 && TCVAR:(TCVAR:ARG:行為対象):口淫中
+	EXP:(TCVAR:ARG:行為対象):精飲経験 += NOWEX:ARG:11
 EX:ARG:射精 += NOWEX:ARG:11
 BASE:ARG:精力 = MAX(BASE:ARG:精力 - NOWEX:ARG:11 * 1000 * (3 - TALENT:ARG:絶倫 * 2), 0)
 BASE:ARG:性欲 = MAX(BASE:ARG:性欲 - NOWEX:ARG:11 * 1000 * (3 - TALENT:ARG:絶倫 * 2), 0)
