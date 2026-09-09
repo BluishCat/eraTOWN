@@ -1,348 +1,261 @@
 ﻿@FIGHT1(ARG,ARG:1)
+;ARG		攻撃側のキャラクター登録番号
+;ARG:1		防御側のキャラクター登録番号
+;F:100		呼び出し元が設定する強姦フラグ（1なら強姦時の戦闘）
+;
+;戻り値	1 … 攻撃側の勝ち
+;		2 … 攻撃側の負け（＝防御側の勝ち）
+;		3 … プレイヤーが逃走に成功
+;
+;2026-09-09 ターン制のHP/MP削り合いを廃止し、一発判定に置き換えた。
+;援軍（＝縄張りの支配度）の算出だけは旧実装をそのまま引き継いでいる。
+;旧実装は FIGHT1.ERB.bak / FIGHT2.ERB.bak を参照。
+
 VARSET LOCAL
-;;;戦闘今のところ先攻（攻撃側）有利になっています
-;;;攻撃判定が攻撃側から必ず行われるのが理由です
+VARSET LOCALS
 
+;LOCAL		戦闘場所のNPC人数
+;LOCAL:1	攻撃側支配度
+;LOCAL:2	防御側支配度
+;LOCAL:3	攻撃側援軍
+;LOCAL:4	防御側援軍
+;LOCAL:5	攻撃側の挑み方（0:腕力 1:知略）
+;LOCAL:6	防御側の挑み方（同上）
+;LOCAL:7	攻撃側戦力
+;LOCAL:8	防御側戦力
+;LOCAL:9	攻撃側の勝率（％）
+;LOCAL:10	作業用
+;LOCAL:11	プレイヤーの選択
+;LOCAL:12	逃走失敗フラグ
+;LOCAL:13	勝敗（0:攻撃側の勝ち 1:防御側の勝ち）
+;LOCAL:14	レベルアップ判定を行うか（プレイヤーが絡む戦闘のみ）
 
+;------------------------------------------------------------------------
+;戦闘場所のNPC人数
+;（旧実装は N:101 を見ていたが、あれは EVENTCOMEND のループが最後に触った
+;  キャラの現在地の人数であって、戦闘場所とは無関係だった）
+LOCAL:10 = TIME / 60
+RESULT = 0
+TRYCALLFORM PLACE_NINZU_{CFLAG:ARG:現在地区}_{CFLAG:ARG:現在位置}(LOCAL:10)
+LOCAL = MAX(RESULT,0)
 
-F:101 = TB:(CFLAG:ARG:現在地区):(CFLAG:ARG:現在位置):ARG * BASE:ARG:評判 / 1000
-F:111 = TB:(CFLAG:ARG:現在地区):(CFLAG:ARG:現在位置):(ARG:1) * BASE:(ARG:1):評判 / 1000
-F:201 = MAXBASE:ARG:体力 / 100 + 100
-F:202 = MAXBASE:ARG:気力 / 20
-F:205 = 100
-F:211 = MAXBASE:(ARG:1):体力 / 100 + 100
-F:212 = MAXBASE:(ARG:1):気力 / 20
-F:215 = 100
-F:301 = RAND(MAX(ABL:ARG:運動能力,2) * 20 + 10) + ABL:ARG:戦闘能力 * ABL:ARG:戦闘能力 * 2
-F:302 = RAND(MAX(ABL:ARG:運動能力,2)) + ABL:ARG:指 + ABL:ARG:舌 + ABL:ARG:胸 + ABL:ARG:腰 + ABL:ARG:膣 + ABL:ARG:アナル
-F:311 = RAND(MAX(ABL:(ARG:1):運動能力,2) * 20 + 10) + ABL:(ARG:1):戦闘能力 * ABL:(ARG:1):戦闘能力
-F:312 = RAND(MAX(ABL:(ARG:1):運動能力,2)) + ABL:(ARG:1):指 + ABL:(ARG:1):舌 + ABL:(ARG:1):胸 + ABL:(ARG:1):腰 + ABL:(ARG:1):膣 + ABL:(ARG:1):アナル
-F:351 = RAND(MAX(ABL:ARG:教養,2) * 10 + 10) * MAX(ABL:ARG:教養,1) * MAX(ABL:ARG:戦闘能力,1)
-F:352 = RAND(MAX(ABL:ARG:教養,2)) + ABL:ARG:話術技能 * 10 + ABL:ARG:指 + ABL:ARG:舌
-F:361 = RAND(MAX(ABL:(ARG:1):教養,2) * 10 + 10) * MAX(ABL:ARG:教養,1) * MAX(ABL:ARG:戦闘能力,1)
-F:362 = RAND(MAX(ABL:(ARG:1):教養,2)) + ABL:ARG:話術技能 * 10 + ABL:(ARG:1):指 + ABL:(ARG:1):舌
+;------------------------------------------------------------------------
+;支配度
+LOCAL:1 = TB:(CFLAG:ARG:現在地区):(CFLAG:ARG:現在位置):ARG * BASE:ARG:評判 / 1000
+LOCAL:2 = TB:(CFLAG:ARG:現在地区):(CFLAG:ARG:現在位置):(ARG:1) * BASE:(ARG:1):評判 / 1000
 
-;MASTER(操作キャラ)でないキャラにおいて、教養が運動能力を上回るとき、フラグ(F:209)を立てる（知能派？）
-;（これは次回戦闘でもリセットされない？）
-SIF ARG != 1 && ABL:ARG:運動能力 < ABL:ARG:教養
-	F:209 = 1
-SIF ARG:1 != 1 && ABL:(ARG:1):運動能力 < ABL:(ARG:1):教養
-	F:219 = 1
-
-;(2014/09/10)
-;F:102をARGのＨＰ、F:112をARG:1のＨＰとして計算している
-;F:100		強姦時戦闘のフラグ
-;F:101		攻撃側支配度
-;F:102		攻撃側援軍人数
-;F:111		防御側支配度
-;F:112		防御側援軍人数
-;ＨＰは体力、ＭＰは気力に依存する
-;F:201		攻撃側ＨＰ	
-;F:202		攻撃側ＭＰ	
-;F:211		防御側ＨＰ	
-;F:212		防御側ＭＰ	
-
-;F:205	攻撃側ＭＰの小数点以下第二位まで（扱いとしては似ているが繰り下がりの計算が異なる）
-;F:215	防御側ＭＰの小数点以下第二位まで（同上）
-
-;F:301		
-;F:302		
-;F:311		
-;F:312		
-;F:351		
-;F:352		
-;F:361		
-;F:362		
-
-
-;攻撃側と防御側、どちらも支配度0ならどちらも援軍は来ない
-IF F:101 < 1 && F:111 < 1
-	F:102 = 0
-	F:112 = 0
-;攻撃側の支配度が0なら、支配度の分だけ援軍が来る（最大で戦闘場所のNPCの人数まで）
-ELSEIF F:101 < 1
-	F:102 = 0
-	IF F:111 <= N:101
-		F:112 = F:111
-	ELSE
-		F:112 = N:101
-	ENDIF
-;防御側の支配度が0なら前述の逆
-ELSEIF F:111 < 1
-	F:112 = 0
-	IF F:101 <= N:101
-		F:102 = F:101
-	ELSE
-		F:102 = N:101
-	ENDIF
+;援軍の分配（旧実装どおり）
+;どちらも支配度0ならどちらにも援軍は来ない
+IF LOCAL:1 < 1 && LOCAL:2 < 1
+	LOCAL:3 = 0
+	LOCAL:4 = 0
+;片方だけ支配度があるなら、支配度の分だけ援軍が来る（最大で戦闘場所のNPCの人数まで）
+ELSEIF LOCAL:1 < 1
+	LOCAL:3 = 0
+	LOCAL:4 = LIMIT(LOCAL:2,0,LOCAL)
+ELSEIF LOCAL:2 < 1
+	LOCAL:4 = 0
+	LOCAL:3 = LIMIT(LOCAL:1,0,LOCAL)
 ;ともに支配度があるなら、戦闘場所にいるNPCを互いの支配度で分配
 ELSE
-	IF (F:101 + F:111) <= N:101
-		F:102 = F:101
-		F:112 = F:111
+	IF (LOCAL:1 + LOCAL:2) <= LOCAL
+		LOCAL:3 = LOCAL:1
+		LOCAL:4 = LOCAL:2
 	ELSE
-;;;少数が存在しないのでわざわざこんなことしてます
-		F:103 = (N:101 * 100) / (F:101 + F:111)
-		F:102 = F:101 * F:103 / 100
-		F:112 = F:111 * F:103 / 100
+;;;小数が存在しないのでわざわざこんなことしてます
+		LOCAL:10 = (LOCAL * 100) / (LOCAL:1 + LOCAL:2)
+		LOCAL:3 = LOCAL:1 * LOCAL:10 / 100
+		LOCAL:4 = LOCAL:2 * LOCAL:10 / 100
 	ENDIF
 ENDIF
 
-;攻撃側か防御側がプレイヤーキャラであるとき、PRINTによる表示を行う
+;戦闘場所が大学(地区1)内で、どちらか一方のみが学生の場合、学生側の援軍が5人増える
+SIF !TALENT:ARG:160 && TALENT:(ARG:1):160 && CFLAG:ARG:現在地区 == 1
+	LOCAL:4 += 5
+SIF TALENT:ARG:160 && !TALENT:(ARG:1):160 && CFLAG:ARG:現在地区 == 1
+	LOCAL:3 += 5
+;強姦時に戦闘すると攻撃側の援軍が半減、防御側の援軍が倍増する
+IF F:100
+	LOCAL:3 /= 2
+	LOCAL:4 *= 2
+ENDIF
+;防御側がモブ（TALENT:200持ち）の場合、周囲が総出で守る
+IF TALENT:(ARG:1):200
+	LOCAL:3 = 0
+	LOCAL:4 = LOCAL
+ENDIF
+;Chara040（押小路美麻瑠）なら援軍が100人増える
+SIF NO:ARG == 40
+	LOCAL:3 += 100
+SIF NO:(ARG:1) == 40
+	LOCAL:4 += 100
+
+;------------------------------------------------------------------------
+;挑み方の決定
+;NPCは運動能力より教養が高ければ知略で挑む
+LOCAL:5 = 0
+SIF ABL:ARG:運動能力 < ABL:ARG:教養
+	LOCAL:5 = 1
+LOCAL:6 = 0
+SIF ABL:(ARG:1):運動能力 < ABL:(ARG:1):教養
+	LOCAL:6 = 1
+
+;プレイヤーが絡むなら選択させる
 IF ARG == 1 || ARG:1 == 1
-	;戦闘場所が大学(地区1)内で、どちらか一方のみが学生の場合、学生側の援軍が5人増える
-	SIF !TALENT:ARG:160 && TALENT:(ARG:1):160 && CFLAG:ARG:現在地区 == 1
-		F:112 += 5
-	SIF TALENT:ARG:160 && !TALENT:(ARG:1):160 && CFLAG:ARG:現在地区 == 1
-		F:102 += 5
-	PRINTFORML %CALLNAME:ARG%に{F:102}人の援軍が来た
-	PRINTFORML %CALLNAME:(ARG:1)%に{F:112}人の援軍が来た
-	
-	;強姦時に戦闘すると攻撃側の援軍が半減、防御側の援軍が倍増する。
-	IF F:100
-		PRINTL 強姦ボーナス！
-		F:102 = F:102 / 2
-		F:112 = F:112 * 2
-		PRINTFORML %CALLNAME:ARG%の援軍は{F:102}人になった
-		PRINTFORML %CALLNAME:(ARG:1)%の援軍は{F:112}人になった
-	ENDIF
-	;防御側がモブ（TALENT:200持ち）の場合、攻撃側の援軍が0になり、防御側の援軍が戦闘場所のNPCの人数と同数になる。
-	IF TALENT:(ARG:1):200
+	PRINTL
+	PRINTFORML %"-" * 60%
+	SIF F:100
+		PRINTL 強姦ボーナス！（襲われた側に加勢が集まる）
+	SIF TALENT:(ARG:1):200
 		PRINTL モブさんボーナス！
-		F:102 = 0
-		F:112 = N:101
-		PRINTFORML %CALLNAME:ARG%の援軍は{F:102}人になった
-		PRINTFORML %CALLNAME:(ARG:1)%の援軍は{F:112}人になった
-	ENDIF
-	;Chara040（押小路美麻瑠）なら援軍が100人増える（攻撃側・防御側ともに）
-	IF NO:ARG == 40
+	SIF NO:ARG == 40 || NO:(ARG:1) == 40
 		PRINTL お嬢様ボーナス！
-		F:102 += 100
-		PRINTFORML %CALLNAME:ARG%の援軍は{F:102}人になった
-		PRINTFORML %CALLNAME:(ARG:1)%の援軍は{F:112}人になった
-	ENDIF
-	;Chara040（押小路美麻瑠）なら援軍が100人増える（攻撃側・防御側ともに）
-	IF NO:(ARG:1) == 40
-		PRINTL お嬢様ボーナス！
-		F:112 += 100
-		PRINTFORML %CALLNAME:ARG%の援軍は{F:102}人になった
-		PRINTFORML %CALLNAME:(ARG:1)%の援軍は{F:112}人になった
-	ENDIF
+	CALL FIGHT_STATUS(ARG,LOCAL:3)
+	CALL FIGHT_STATUS((ARG:1),LOCAL:4)
+	PRINTFORML %"-" * 60%
 $INPUT_LOOP
-	PRINTFORMLCK %CALLNAME:ARG%
-	PRINTFORM  HP:
-	PRINTFORM  {F:201}
-	PRINTFORM  MP:
-	PRINTFORM  {F:202}
-	PRINTFORM  援軍:
-	PRINTFORML  {F:102}
-	PRINTFORMLCK %CALLNAME:(ARG:1)%
-	PRINTFORM  HP:
-	PRINTFORM  {F:211}
-	PRINTFORM  MP:
-	PRINTFORM  {F:212}
-	PRINTFORM  援軍:
-	PRINTFORML  {F:112}
-	PRINTL [00] - 攻撃
-	PRINTL [01] - まやかし攻撃
-	PRINTL [02] - 逃げる
+	PRINTL [0] - 正面から挑む（戦闘能力・運動能力）
+	PRINTL [1] - 口先で挑む（教養・話術技能）
+	PRINTL [2] - 逃げる
 	PRINTL どうしますか？
 	INPUT
-	IF RESULT == 0
-		PRINTL 戦闘開始！
-		;攻撃側がプレイヤー
-		IF ARG == 1
-			;知能派フラグが立っていて、MPがまだ残っているなら相手（防御側）はまやかし攻撃をする
-			IF F:219 && F:212 >= 30
-				CALL FIGHT2(ARG,ARG:1,0,1)
-				F:212 -= 30
-			ELSE
-				CALL FIGHT2(ARG,ARG:1,0,0)
-			ENDIF
-		;防御側がプレイヤー
-		ELSE
-			IF F:209 && F:202 >= 30
-				CALL FIGHT2(ARG,ARG:1,1,0)
-				F:202 -= 30
-			ELSE
-				CALL FIGHT2(ARG,ARG:1,0,0)
-			ENDIF
-		ENDIF
-		IF F:211 < 1
-			IF BASE:(ARG:1):気力 > 300
-				DOWNBASE:(ARG:1):気力 += 300
-			ELSE
-				DOWNBASE:(ARG:1):体力 += 300
-			ENDIF
-		ELSEIF F:201 < 1
-			IF BASE:ARG:気力 > 300
-				DOWNBASE:ARG:気力 += 300
-			ELSE
-				DOWNBASE:ARG:体力 += 300
-			ENDIF
-			RETURN 2
-		ELSE
-			CLEARLINE 1
-			GOTO INPUT_LOOP
-		ENDIF
-	ELSEIF RESULT == 1
-		IF ARG == 1
-			IF F:202 < 30
-				PRINTL MPが足りません（30必要）
-;;;				CLEARLINE 1
-				GOTO INPUT_LOOP
-			ENDIF
-			PRINTL 戦闘開始！
-			IF F:219 && F:212 >= 30
-				CALL FIGHT2(ARG,ARG:1,1,1)
-				F:212 -= 30
-				F:202 -= 30
-			ELSE
-				CALL FIGHT2(ARG,ARG:1,1,0)
-				F:202 -= 30
-			ENDIF
-		ELSE
-			IF F:212 < 30
-				PRINTL MPが足りません（30必要）
-				CLEARLINE 1
-				GOTO INPUT_LOOP
-			ENDIF
-			PRINTL 戦闘開始！
-			IF F:209 && F:202 >= 30
-				CALL FIGHT2(ARG,ARG:1,1,1)
-				F:212 -= 30
-				F:202 -= 30
-			ELSE
-				CALL FIGHT2(ARG,ARG:1,0,1)
-				F:212 -= 30
-			ENDIF
-		ENDIF
-		;防御側が負けた
-		IF F:211 < 1
-			IF BASE:(ARG:1):気力 > 300
-				DOWNBASE:(ARG:1):気力 += 300
-			ELSE
-				DOWNBASE:(ARG:1):体力 += 300
-			ENDIF
-		;攻撃側が負けた
-		ELSEIF F:201 < 1
-			IF BASE:ARG:気力 > 300
-				DOWNBASE:ARG:気力 += 300
-			ELSE
-				DOWNBASE:ARG:体力 += 300
-			ENDIF
-			RETURN 2
-		;どちらもHPが残っているなら戦闘続行
-		ELSE
-			CLEARLINE 1
-			GOTO INPUT_LOOP
-		ENDIF
-	;逃走を試みる
-	ELSEIF RESULT == 2
-		IF RAND(3)
-			PRINTL 逃げられなかった
-			PRINTL 戦闘開始！
-;;;3だと攻撃なし（攻撃受けるのみ）
-			IF ARG == 1
-				IF F:219 && F:212 >= 30
-					CALL FIGHT2(ARG,ARG:1,3,1)
-					F:212 -= 30
-				ELSE
-					CALL FIGHT2(ARG,ARG:1,3,0)
-				ENDIF
-			ELSE
-				IF F:209 && F:202 >= 30
-					CALL FIGHT2(ARG,ARG:1,1,3)
-					F:202 -= 30
-				ELSE
-					CALL FIGHT2(ARG,ARG:1,0,3)
-				ENDIF
-			ENDIF
-			IF F:211 < 1
-				IF BASE:(ARG:1):気力 > 300
-					DOWNBASE:(ARG:1):気力 += 300
-				ELSE
-					DOWNBASE:(ARG:1):体力 += 300
-				ENDIF
-			ELSEIF F:201 < 1
-				IF BASE:ARG:気力 > 300
-					DOWNBASE:ARG:気力 += 300
-				ELSE
-					DOWNBASE:ARG:体力 += 300
-				ENDIF
-				RETURN 2
-			ELSE
-				CLEARLINE 1
-				GOTO INPUT_LOOP
-			ENDIF
-		ELSE
+	SIF RESULT != 0 && RESULT != 1 && RESULT != 2
+		GOTO INPUT_LOOP
+	LOCAL:11 = RESULT
+
+	IF LOCAL:11 == 2
+		IF RAND(3) == 0
+			PRINTW うまく逃げ切った
 			RETURN 3
 		ENDIF
+		PRINTL 逃げられなかった！
+		;逃走に失敗した側は体勢を崩している
+		LOCAL:12 = 1
+	ELSEIF ARG == 1
+		LOCAL:5 = LOCAL:11
 	ELSE
-		CLEARLINE 1
-		GOTO INPUT_LOOP
+		LOCAL:6 = LOCAL:11
 	ENDIF
-;攻撃側と防御側ともにプレイヤーキャラでないなら、PRINTによる表示は行わない
-ELSE
-	;戦闘場所が大学(地区1)内で、どちらか一方のみが学生の場合、学生側の援軍が5人増える
-	SIF !TALENT:ARG:160 && TALENT:(ARG:1):160 && CFLAG:ARG:現在地区 == 1
-		F:112 += 5
-	SIF TALENT:ARG:160 && !TALENT:(ARG:1):160 && CFLAG:ARG:現在地区 == 1
-		F:102 += 5
-	IF F:100
-	;強姦時に戦闘すると攻撃側の援軍が半減、防御側の援軍が倍増する。
-		F:102 = F:102 / 2
-		F:112 = F:112 * 2
-	ENDIF
-	;防御側がモブ（TALENT:200持ち）の場合、攻撃側の援軍が0になり、防御側の援軍が戦闘場所のNPCの人数と同数になる。
-	IF TALENT:(ARG:1):200
-		F:102 = 0
-		F:112 = N:101
-	ENDIF
-	;Chara040（押小路美麻瑠）なら援軍が100人増える（攻撃側・防御側ともに）
-	IF NO:ARG == 40
-		F:102 += 100
-	ENDIF
-	;Chara040（押小路美麻瑠）なら援軍が100人増える（攻撃側・防御側ともに）
-	IF NO:(ARG:1) == 40
-		F:112 += 100
-	ENDIF
-	;戦闘は9999ターン行われる（決着がつかなければそのままループを抜ける。つまり引き分け）
-	FOR LOCAL,0,9999
-		IF F:209 && F:202 >= 30
-			IF F:219 && F:212 >= 30
-				CALL FIGHT2(ARG,ARG:1,1,1)
-				F:202 -= 30
-				F:212 -= 30
-			ELSE
-				CALL FIGHT2(ARG,ARG:1,1,0)
-				F:202 -= 30
-			ENDIF
-		ELSE
-			IF F:219 && F:212 >= 30
-				CALL FIGHT2(ARG,ARG:1,0,1)
-				F:212 -= 30
-			ELSE
-				CALL FIGHT2(ARG,ARG:1,0,0)
-			ENDIF
-		ENDIF
-		IF F:211 < 1
-			LOCAL = 9999
-			IF BASE:(ARG:1):気力 > 300
-				DOWNBASE:(ARG:1):気力 += 300
-			ELSE
-				DOWNBASE:(ARG:1):体力 += 300
-			ENDIF
-		ELSEIF F:201 < 1
-			LOCAL = 9999
-			IF BASE:ARG:気力 > 300
-				DOWNBASE:ARG:気力 += 300
-			ELSE
-				DOWNBASE:ARG:体力 += 300
-			ENDIF
-			RETURN 2
-		ENDIF
-	NEXT
 ENDIF
 
+;------------------------------------------------------------------------
+;戦力の算出
+CALL FIGHT_POWER(ARG,LOCAL:5)
+LOCAL:7 = RESULT
+CALL FIGHT_POWER((ARG:1),LOCAL:6)
+LOCAL:8 = RESULT
+
+;援軍差による補正（援軍1人差につき5％、25％〜400％でクランプ）
+LOCAL:7 = LOCAL:7 * LIMIT(100 + (LOCAL:3 - LOCAL:4) * 5,25,400) / 100
+LOCAL:8 = LOCAL:8 * LIMIT(100 + (LOCAL:4 - LOCAL:3) * 5,25,400) / 100
+
+;先攻（攻撃側）有利
+LOCAL:7 = LOCAL:7 * 110 / 100
+
+;逃げ損ねた側は戦力半減
+IF LOCAL:12
+	IF ARG == 1
+		LOCAL:7 /= 2
+	ELSE
+		LOCAL:8 /= 2
+	ENDIF
+ENDIF
+
+LOCAL:7 = MAX(LOCAL:7,1)
+LOCAL:8 = MAX(LOCAL:8,1)
+
+;------------------------------------------------------------------------
+;勝敗判定（上下5％は必ず残すので、格上相手でもワンチャンある）
+LOCAL:9 = LIMIT(LOCAL:7 * 100 / (LOCAL:7 + LOCAL:8),5,95)
+LOCAL:13 = 0
+SIF RAND(100) >= LOCAL:9
+	LOCAL:13 = 1
+
+IF ARG == 1 || ARG:1 == 1
+	LOCALS = 力ずくで挑んだ
+	SIF LOCAL:5
+		LOCALS = 口先で挑んだ
+	LOCALS:1 = 力ずくで応じた
+	SIF LOCAL:6
+		LOCALS:1 = 口先で応じた
+	PRINTFORMW %CALLNAME:ARG%は%LOCALS%。%CALLNAME:(ARG:1)%は%LOCALS:1%
+ENDIF
+
+;敗者は消耗する（旧実装どおり気力を優先して削る）
+IF LOCAL:13 == 0
+	IF BASE:(ARG:1):気力 > 300
+		DOWNBASE:(ARG:1):気力 += 300
+	ELSE
+		DOWNBASE:(ARG:1):体力 += 300
+	ENDIF
+ELSE
+	IF BASE:ARG:気力 > 300
+		DOWNBASE:ARG:気力 += 300
+	ELSE
+		DOWNBASE:ARG:体力 += 300
+	ENDIF
+ENDIF
+
+;戦って強くなる（腕力なら戦闘経験、知略なら会話経験）
+;SOURCE_ABLUPはレベルアップをPRINTFORMWで知らせる＝キー待ちが入るので、
+;プレイヤーの見ていないNPC同士の戦闘では判定まで行わない。
+;経験値自体は貯まるので、そのNPCが次に雑談したときなどにまとめて上がる。
+LOCAL:14 = 0
+SIF ARG == 1 || ARG:1 == 1
+	LOCAL:14 = 1
+CALL FIGHT_EXP(ARG,LOCAL:5,(LOCAL:13 == 0),LOCAL:14)
+CALL FIGHT_EXP((ARG:1),LOCAL:6,(LOCAL:13 == 1),LOCAL:14)
+
+SIF LOCAL:13
+	RETURN 2
+RETURN 1
+
+
+;------------------------------------------------------------------------
+@FIGHT_STATUS(ARG,ARG:1)
+;ARG		キャラクター登録番号
+;ARG:1		援軍の人数
+PRINTFORM %CALLNAME:ARG,14%
+PRINTFORM  戦闘Lv{ABL:ARG:戦闘能力} 運動Lv{ABL:ARG:運動能力}
+PRINTFORM 　教養Lv{ABL:ARG:教養} 話術Lv{ABL:ARG:話術技能}
+PRINTFORML 　援軍{ARG:1,4}人
+RETURN 1
+
+
+;------------------------------------------------------------------------
+@FIGHT_POWER(ARG,ARG:1)
+;ARG		キャラクター登録番号
+;ARG:1		挑み方（0:腕力 1:知略）
+;戻り値		戦力
+VARSET LOCAL
+IF ARG:1
+	LOCAL = 20 + MAXBASE:ARG:気力 / 100 + ABL:ARG:教養 * 25 + ABL:ARG:話術技能 * 15
+ELSE
+	LOCAL = 20 + MAXBASE:ARG:体力 / 100 + ABL:ARG:戦闘能力 * 25 + ABL:ARG:運動能力 * 15
+ENDIF
+;消耗補正（体力満タンで等倍、瀕死で半減）
+LOCAL:1 = 100
+SIF MAXBASE:ARG:体力 > 0
+	LOCAL:1 = 50 + LIMIT(BASE:ARG:体力,0,MAXBASE:ARG:体力) * 50 / MAXBASE:ARG:体力
+LOCAL = LOCAL * LOCAL:1 / 100
+RETURN MAX(LOCAL,1)
+
+
+;------------------------------------------------------------------------
+@FIGHT_EXP(ARG,ARG:1,ARG:2,ARG:3)
+;ARG		キャラクター登録番号
+;ARG:1		挑み方（0:腕力 1:知略）
+;ARG:2		勝ったなら1
+;ARG:3		レベルアップ判定を行うなら1（キー待ちが入るのでプレイヤーが絡む戦闘のみ）
+VARSET LOCAL
+LOCAL = 1
+SIF ARG:2
+	LOCAL = 3
+IF ARG:1
+	EXP:ARG:会話経験 += LOCAL
+ELSE
+	EXP:ARG:戦闘経験 += LOCAL
+ENDIF
+SIF ARG:3
+	CALL SOURCE_ABLUP(ARG)
 RETURN 1
